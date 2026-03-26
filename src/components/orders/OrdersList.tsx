@@ -7,25 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import OrderStatusModal from './OrderStatusModal';
 import OrderActionsGuide from './OrderActionsGuide';
 import CreateInvoiceFromOrderModal from './CreateInvoiceFromOrderModal';
-import {
-  Plus,
-  Search,
-  Filter,
-  Edit,
-  Trash2,
-  FileText,
-  Package,
-  Calendar,
-  User,
-  DollarSign,
-  ChevronDown,
-  ChevronUp,
-  ChevronRight,
-  X,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-} from 'lucide-react';
+import { Plus, Search, Filter, CreditCard as Edit, Trash2, FileText, Package, Calendar, User, DollarSign, ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function OrdersList() {
@@ -188,12 +170,15 @@ export default function OrdersList() {
     [ordersByYear]
   );
 
-  // Ouvrir toutes les années
+  // Ouvrir UNIQUEMENT l'année actuelle par défaut
   useEffect(() => {
+    const currentYear = new Date().getFullYear();
     setExpandedYears((prev) => {
       const next = { ...prev };
       sortedYears.forEach((y) => {
-        if (next[y] === undefined) next[y] = true;
+        if (next[y] === undefined) {
+          next[y] = y === currentYear;
+        }
       });
       return next;
     });
