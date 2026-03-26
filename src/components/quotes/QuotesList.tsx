@@ -9,20 +9,7 @@ import EditQuote from './EditQuote';
 import ProTemplateModal from '../license/ProTemplateModal';
 import QuoteActionsGuide from './QuoteActionsGuide';
 
-import {
-  Plus,
-  Search,
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
-  FileText,
-  Crown,
-  ChevronDown,
-  ChevronRight,
-  CheckCircle2,
-  AlertTriangle,
-} from 'lucide-react';
+import { Plus, Search, Filter, Eye, CreditCard as Edit, Trash2, FileText, Crown, ChevronDown, ChevronRight, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 /* === Toast (message court) ======================== */
@@ -277,13 +264,16 @@ export default function QuotesList() {
     return { count, totalTTC };
   };
 
-  // Ouvrir TOUS les blocs d'année par défaut
+  // Ouvrir UNIQUEMENT l'année actuelle par défaut
   useEffect(() => {
+    const currentYear = new Date().getFullYear();
     const allYears = Object.keys(quotesByYear).map(Number);
     setExpandedYears((prev) => {
       const next = { ...prev };
       allYears.forEach((y) => {
-        if (next[y] === undefined) next[y] = true;
+        if (next[y] === undefined) {
+          next[y] = y === currentYear;
+        }
       });
       return next;
     });
