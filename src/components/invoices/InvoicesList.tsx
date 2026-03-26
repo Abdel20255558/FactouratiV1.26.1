@@ -11,19 +11,7 @@ import InvoiceStatusModal from './InvoiceStatusModal';
 import InvoiceActionsGuide from './InvoiceActionsGuide';
 
 import ProTemplateModal from '../license/ProTemplateModal';
-import {
-  Plus,
-  Search,
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
-  Crown,
-  CreditCard,
-  FileText,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react';
+import { Plus, Search, Filter, Eye, CreditCard as Edit, Trash2, Crown, CreditCard, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
 export default function InvoicesList() {
@@ -134,12 +122,15 @@ export default function InvoicesList() {
     [invoicesByYear]
   );
 
-  // ✅ Ouvrir **toutes** les années par défaut (comme pour les devis)
+  // ✅ Ouvrir UNIQUEMENT l'année actuelle par défaut
   useEffect(() => {
+    const currentYear = new Date().getFullYear();
     setExpandedYears((prev) => {
       const next = { ...prev };
       sortedYears.forEach((y) => {
-        if (next[y] === undefined) next[y] = true;
+        if (next[y] === undefined) {
+          next[y] = y === currentYear;
+        }
       });
       return next;
     });
