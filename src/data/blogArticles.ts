@@ -87,18 +87,28 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: 'comment-gerer-votre-stock-efficacement',
     title: 'Comment gerer votre stock efficacement',
-    seoTitle: 'Comment gerer votre stock efficacement | Blog Factourati',
+    seoTitle: 'Comment gerer votre stock efficacement au Maroc | Factourati',
     description:
-      'Les bonnes pratiques pour suivre votre stock, reduire les ruptures et mieux anticiper les besoins de votre entreprise.',
+      'Découvrez comment mieux gérer votre stock, éviter les ruptures et suivre vos produits avec une méthode simple et un logiciel comme Factourati.',
     excerpt:
       "Une methode simple pour eviter les ruptures, suivre les sorties et garder un stock sain sans complexifier votre quotidien.",
     category: 'Stock',
     publishedAt: '27 mars 2026',
     readingTime: '7 min',
     heroLabel: 'Maitriser le stock',
-    image: '/blog-assets/gerer-stock-efficacement.svg',
-    imageAlt: 'Illustration gestion de stock efficace',
-    keywords: ['gestion stock maroc', 'suivi stock pme', 'logiciel stock maroc', 'gestion inventaire'],
+    image: '/blog-assets/stock.svg',
+    imageAlt: 'gestion de stock produits avec Factourati',
+    keywords: [
+      'gerer son stock efficacement',
+      'gestion de stock Maroc',
+      'logiciel de stock Maroc',
+      'suivi stock PME',
+      'stock produit entreprise',
+      'eviter rupture de stock',
+      'gestion produits Factourati',
+      'stock faible',
+      'stock restant',
+    ],
     intro:
       "Une mauvaise gestion du stock a un cout direct: ruptures, surstock, perte de marge et commandes faites dans l urgence. Une methode simple et un bon outil changent rapidement la donne.",
     summaryPoints: [
