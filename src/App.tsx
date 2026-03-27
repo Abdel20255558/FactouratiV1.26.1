@@ -13,6 +13,8 @@ import ExpirationNotification from './components/auth/ExpirationNotification';
 import ExpiredAccountModal from './components/auth/ExpiredAccountModal';
 import EmailVerificationBanner from './components/auth/EmailVerificationBanner';
 import HomePage from './components/home/HomePage';
+import BlogPage from './components/blog/BlogPage';
+import BlogArticlePage from './components/blog/BlogArticlePage';
 import Login from './components/auth/Login';
 import Dashboard from './components/dashboard/Dashboard';
 import Sidebar from './components/layout/Sidebar';
@@ -129,6 +131,8 @@ function AppContent() {
       <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50">
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/logiciel-facturation-maroc" element={<BlogArticlePage />} />
           <Route path="/login" element={<Login />} />
             <Route path="/verify-email" element={<EmailVerificationPage />} /> {/* ⬅️ ajouté */}
         <Route path="/verify-email-success" element={<EmailActionPage />} />
