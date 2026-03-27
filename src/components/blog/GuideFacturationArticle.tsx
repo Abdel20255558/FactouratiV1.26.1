@@ -147,10 +147,10 @@ export default function GuideFacturationArticle() {
     description:
       'Découvrez comment réussir votre facturation au Maroc : mentions utiles, organisation, paiements, relances et outils pour PME avec Factourati.',
     image: [
-      'https://www.factourati.com/blog/facturation-dashboard.png',
-      'https://www.factourati.com/blog/facture-exemple.svg',
-      'https://www.factourati.com/blog/suivi-paiements.svg',
-      'https://www.factourati.com/blog/facturation-process.png',
+      'https://www.factourati.com/blog-assets/facturation-dashboard.png',
+      'https://www.factourati.com/blog-assets/facture-exemple.svg',
+      'https://www.factourati.com/blog-assets/suivi-paiements.svg',
+      'https://www.factourati.com/blog-assets/facturation-process.png',
     ],
     keywords: keywords.join(', '),
     mainEntityOfPage: 'https://www.factourati.com/blog/guide-complet-facturation-maroc',
@@ -171,7 +171,7 @@ export default function GuideFacturationArticle() {
         description="Découvrez comment réussir votre facturation au Maroc : mentions utiles, organisation, paiements, relances et outils pour PME avec Factourati."
         canonicalPath="/blog/guide-complet-facturation-maroc"
         keywords={keywords.join(', ')}
-        image="/blog/facturation-dashboard.png"
+        image="/blog-assets/facturation-dashboard.png"
         type="article"
       />
       <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
@@ -198,7 +198,7 @@ export default function GuideFacturationArticle() {
               </p>
             </div>
             <div className="rounded-[2rem] border border-white/10 bg-white/10 p-4 shadow-2xl backdrop-blur">
-              <img src="/blog/facturation-dashboard.png" alt="logiciel de facturation au Maroc pour PME" className="h-full w-full rounded-[1.5rem] object-cover" />
+              <img src="/blog-assets/facturation-dashboard.png" alt="logiciel de facturation au Maroc pour PME" className="h-full w-full rounded-[1.5rem] object-cover" />
             </div>
           </div>
         </div>
@@ -233,7 +233,7 @@ export default function GuideFacturationArticle() {
               ))}
 
               <figure className="overflow-hidden rounded-[1.75rem] border border-gray-200 bg-white shadow-sm">
-                <img src="/blog/facture-exemple.svg" alt="exemple de facture au Maroc pour entreprise" className="w-full object-cover" />
+                <img src="/blog-assets/facture-exemple.svg" alt="exemple de facture au Maroc pour entreprise" className="w-full object-cover" />
               </figure>
 
               {sections.slice(4, 8).map((section) => (
@@ -247,7 +247,7 @@ export default function GuideFacturationArticle() {
               ))}
 
               <figure className="overflow-hidden rounded-[1.75rem] border border-gray-200 bg-white shadow-sm">
-                <img src="/blog/suivi-paiements.svg" alt="suivi des paiements et relances clients au Maroc" className="w-full object-cover" />
+                <img src="/blog-assets/suivi-paiements.svg" alt="suivi des paiements et relances clients au Maroc" className="w-full object-cover" />
               </figure>
 
               {sections.slice(8).map((section) => (
@@ -260,7 +260,7 @@ export default function GuideFacturationArticle() {
               ))}
 
               <figure className="overflow-hidden rounded-[1.75rem] border border-gray-200 bg-white shadow-sm">
-                <img src="/blog/facturation-process.png" alt="gestion devis facture paiement avec Factourati" className="w-full object-cover" />
+                <img src="/blog-assets/facturation-process.png" alt="gestion devis facture paiement avec Factourati" className="w-full object-cover" />
               </figure>
 
               <section className="rounded-[1.75rem] border border-teal-100 bg-gradient-to-br from-white to-teal-50 p-8 shadow-sm">
