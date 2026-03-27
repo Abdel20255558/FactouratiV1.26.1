@@ -143,7 +143,7 @@ export default function GuideStockArticle() {
     description:
       'Découvrez comment mieux gérer votre stock, éviter les ruptures et suivre vos produits avec une méthode simple et un logiciel comme Factourati.',
     image: [
-      'https://www.factourati.com/blog-assets/stock.svg',
+      'https://www.factourati.com/blog-assets/stock.PNG',
       'https://www.factourati.com/blog-assets/stock-alerts.svg',
       'https://www.factourati.com/blog-assets/stock-remaining.svg',
       'https://www.factourati.com/blog-assets/stock-search.svg',
