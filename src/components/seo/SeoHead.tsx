@@ -5,6 +5,8 @@ type SeoHeadProps = {
   description: string;
   canonicalPath: string;
   keywords?: string;
+  image?: string;
+  type?: 'article' | 'website';
 };
 
 const SITE_URL = 'https://www.factourati.com';
@@ -21,7 +23,7 @@ function setMetaContent(name: string, content: string, attribute: 'name' | 'prop
   meta.setAttribute('content', content);
 }
 
-export default function SeoHead({ title, description, canonicalPath, keywords }: SeoHeadProps) {
+export default function SeoHead({ title, description, canonicalPath, keywords, image, type = 'website' }: SeoHeadProps) {
   useEffect(() => {
     document.title = title;
     setMetaContent('description', description);
@@ -32,8 +34,17 @@ export default function SeoHead({ title, description, canonicalPath, keywords }:
 
     setMetaContent('og:title', title, 'property');
     setMetaContent('og:description', description, 'property');
-    setMetaContent('og:type', 'article', 'property');
+    setMetaContent('og:type', type, 'property');
     setMetaContent('og:url', `${SITE_URL}${canonicalPath}`, 'property');
+    setMetaContent('twitter:card', image ? 'summary_large_image' : 'summary');
+    setMetaContent('twitter:title', title);
+    setMetaContent('twitter:description', description);
+
+    if (image) {
+      const imageUrl = image.startsWith('http') ? image : `${SITE_URL}${image}`;
+      setMetaContent('og:image', imageUrl, 'property');
+      setMetaContent('twitter:image', imageUrl);
+    }
 
     let canonical = document.head.querySelector('link[rel="canonical"]');
     if (!canonical) {
