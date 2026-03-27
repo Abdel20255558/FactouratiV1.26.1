@@ -1,0 +1,22 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" rx="40" fill="#111827"/>
+  <rect x="36" y="36" width="1128" height="558" rx="32" fill="url(#a)"/>
+  <rect x="816" y="120" width="250" height="336" rx="30" fill="#fff" fill-opacity=".12"/>
+  <rect x="850" y="164" width="182" height="28" rx="10" fill="#fff" fill-opacity=".15"/>
+  <rect x="850" y="218" width="146" height="18" rx="9" fill="#fff" fill-opacity=".2"/>
+  <rect x="850" y="256" width="182" height="18" rx="9" fill="#fff" fill-opacity=".2"/>
+  <rect x="850" y="294" width="168" height="18" rx="9" fill="#fff" fill-opacity=".2"/>
+  <rect x="850" y="348" width="110" height="42" rx="12" fill="#FBBF24"/>
+  <text x="86" y="121" fill="#FEF3C7" font-size="24" font-family="Arial, sans-serif" font-weight="700">FISCALITE</text>
+  <text x="86" y="228" fill="white" font-size="52" font-family="Arial, sans-serif" font-weight="800">Conformite fiscale</text>
+  <text x="86" y="296" fill="white" font-size="52" font-family="Arial, sans-serif" font-weight="800">au Maroc avec</text>
+  <text x="86" y="364" fill="white" font-size="52" font-family="Arial, sans-serif" font-weight="800">Factourati</text>
+  <text x="86" y="444" fill="#FEFCE8" font-size="28" font-family="Arial, sans-serif">Mieux organiser vos documents</text>
+  <text x="86" y="486" fill="#FEFCE8" font-size="28" font-family="Arial, sans-serif">et garder une gestion sereine</text>
+  <defs>
+    <linearGradient id="a" x1="36" y1="36" x2="1164" y2="594" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#92400E"/>
+      <stop offset="1" stop-color="#B45309"/>
+    </linearGradient>
+  </defs>
+</svg>
