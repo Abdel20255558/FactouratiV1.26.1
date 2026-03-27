@@ -167,7 +167,7 @@ export default function GuideStockArticle() {
         description="Découvrez comment mieux gérer votre stock, éviter les ruptures et suivre vos produits avec une méthode simple et un logiciel comme Factourati."
         canonicalPath="/blog/comment-gerer-votre-stock-efficacement"
         keywords={keywords.join(', ')}
-        image="/blog-assets/stock.svg"
+        image="/blog-assets/stock.PNG"
         type="article"
       />
       <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
@@ -194,7 +194,7 @@ export default function GuideStockArticle() {
               </p>
             </div>
             <div className="rounded-[2rem] border border-white/10 bg-white/10 p-4 shadow-2xl backdrop-blur">
-              <img src="/blog-assets/stock.svg" alt="gestion de stock produits avec Factourati" className="h-full w-full rounded-[1.5rem] object-cover" />
+              <img src="/blog-assets/stock.PNG" alt="gestion de stock produits avec Factourati" className="h-full w-full rounded-[1.5rem] object-cover" />
             </div>
           </div>
         </div>
