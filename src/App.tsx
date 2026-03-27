@@ -132,7 +132,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/blog" element={<BlogPage />} />
-          <Route path="/blog/logiciel-facturation-maroc" element={<BlogArticlePage />} />
+          <Route path="/blog/:slug" element={<BlogArticlePage />} />
           <Route path="/login" element={<Login />} />
             <Route path="/verify-email" element={<EmailVerificationPage />} /> {/* ⬅️ ajouté */}
         <Route path="/verify-email-success" element={<EmailActionPage />} />
