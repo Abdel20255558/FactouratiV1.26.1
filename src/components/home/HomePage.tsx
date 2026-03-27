@@ -92,6 +92,7 @@ export default function HomePage() {
               <a href="#modules" className="text-gray-800 hover:text-teal-600 font-medium">Modules</a>
               <a href="#tarifs" className="text-gray-800 hover:text-teal-600 font-medium">Tarifs</a>
               <a href="#faq" className="text-gray-800 hover:text-teal-600 font-medium">FAQ</a>
+              <Link to="/blog" className="text-gray-800 hover:text-teal-600 font-medium">Blog</Link>
               {/* Connexion normal */}
               <Link to="/login" className="text-gray-800 hover:text-teal-600 font-medium">Connexion</Link>
             </nav>
@@ -657,6 +658,29 @@ export default function HomePage() {
             </motion.div>
           </div>
         </section>
+
+        <section className="py-16 bg-white">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="rounded-3xl border border-teal-100 bg-gradient-to-r from-teal-50 to-cyan-50 p-8 lg:p-10">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="max-w-2xl">
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Nouveau</p>
+                  <h2 className="mt-3 text-3xl font-bold text-gray-900">Le blog Factourati est en ligne</h2>
+                  <p className="mt-4 text-lg text-gray-700">
+                    Retrouvez nos conseils sur la facturation, la gestion commerciale, le stock et l'organisation des entreprises au Maroc.
+                  </p>
+                </div>
+                <Link
+                  to="/blog"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-6 py-3 font-semibold text-white transition hover:bg-gray-800"
+                >
+                  Voir le blog
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* FOOTER collé en bas */}
@@ -757,6 +781,7 @@ export default function HomePage() {
                 <li><a href="#modules" className="hover:text-white transition-colors">Modules</a></li>
                 <li><a href="#tarifs" className="hover:text-white transition-colors">Tarifs</a></li>
                 <li><a href="#faq" className="hover:text-white transition-colors">FAQ</a></li>
+                <li><Link to="/blog" className="hover:text-white transition-colors">Blog</Link></li>
                 <li><Link to="/login" className="hover:text-white transition-colors">Connexion</Link></li>
               </ul>
             </div>
