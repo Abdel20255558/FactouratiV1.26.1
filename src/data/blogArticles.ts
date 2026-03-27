@@ -96,7 +96,7 @@ export const blogArticles: BlogArticle[] = [
     publishedAt: '27 mars 2026',
     readingTime: '7 min',
     heroLabel: 'Maitriser le stock',
-    image: '/blog-assets/stock.svg',
+    image: '/blog-assets/stock.PNG',
     imageAlt: 'gestion de stock produits avec Factourati',
     keywords: [
       'gerer son stock efficacement',
