@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3 } from 'lucid
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { blogArticles, getBlogArticleBySlug } from '../../data/blogArticles';
 import GuideFacturationArticle from './GuideFacturationArticle';
+import GuideStockArticle from './GuideStockArticle';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
 
@@ -15,6 +16,10 @@ export default function BlogArticlePage() {
 
   if (slug === 'guide-complet-facturation-maroc') {
     return <GuideFacturationArticle />;
+  }
+
+  if (slug === 'comment-gerer-votre-stock-efficacement') {
+    return <GuideStockArticle />;
   }
 
   const relatedArticles = blogArticles.filter((item) => item.slug !== article.slug).slice(0, 3);
