@@ -1,0 +1,12 @@
+<svg width="1400" height="760" viewBox="0 0 1400 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1400" height="760" rx="36" fill="#F8FAFC"/>
+  <rect x="60" y="70" width="1280" height="620" rx="28" fill="#1F2937"/>
+  <rect x="100" y="122" width="1200" height="80" rx="18" fill="#374151"/>
+  <rect x="100" y="240" width="1200" height="120" rx="18" fill="#253041"/>
+  <rect x="100" y="386" width="1200" height="120" rx="18" fill="#253041"/>
+  <rect x="100" y="532" width="1200" height="120" rx="18" fill="#253041"/>
+  <text x="130" y="290" fill="white" font-size="28" font-family="Arial, sans-serif" font-weight="700">Produit</text>
+  <text x="520" y="290" fill="white" font-size="28" font-family="Arial, sans-serif" font-weight="700">Commandes</text>
+  <text x="870" y="290" fill="white" font-size="28" font-family="Arial, sans-serif" font-weight="700">Stock restant</text>
+  <text x="1110" y="290" fill="#FCA5A5" font-size="28" font-family="Arial, sans-serif" font-weight="700">Stock faible</text>
+</svg>
