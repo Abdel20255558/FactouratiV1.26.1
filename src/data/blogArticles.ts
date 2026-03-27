@@ -35,7 +35,7 @@ export const blogArticles: BlogArticle[] = [
     publishedAt: '27 mars 2026',
     readingTime: '9 min',
     heroLabel: 'Piloter la facturation',
-    image: '/blog/facturation-dashboard.png',
+    image: '/blog-assets/facturation-dashboard.png',
     imageAlt: 'logiciel de facturation au Maroc pour PME',
     keywords: [
       'facturation au Maroc',
@@ -96,7 +96,7 @@ export const blogArticles: BlogArticle[] = [
     publishedAt: '27 mars 2026',
     readingTime: '7 min',
     heroLabel: 'Maitriser le stock',
-    image: '/blog/gerer-stock-efficacement.svg',
+    image: '/blog-assets/gerer-stock-efficacement.svg',
     imageAlt: 'Illustration gestion de stock efficace',
     keywords: ['gestion stock maroc', 'suivi stock pme', 'logiciel stock maroc', 'gestion inventaire'],
     intro:
@@ -142,7 +142,7 @@ export const blogArticles: BlogArticle[] = [
     publishedAt: '27 mars 2026',
     readingTime: '8 min',
     heroLabel: 'Vision globale',
-    image: '/blog/erp-pme-marocaines.svg',
+    image: '/blog-assets/erp-pme-marocaines.svg',
     imageAlt: 'Illustration avantages ERP pour PME marocaines',
     keywords: ['erp maroc', 'erp pme maroc', 'logiciel gestion entreprise maroc', 'outil pme marocaine'],
     intro:
@@ -188,7 +188,7 @@ export const blogArticles: BlogArticle[] = [
     publishedAt: '27 mars 2026',
     readingTime: '8 min',
     heroLabel: 'Organisation fiscale',
-    image: '/blog/conformite-fiscale-maroc.svg',
+    image: '/blog-assets/conformite-fiscale-maroc.svg',
     imageAlt: 'Illustration conformite fiscale au Maroc',
     keywords: ['conformite fiscale maroc', 'facturation conforme maroc', 'documents fiscaux maroc', 'gestion fiscale pme'],
     intro:
@@ -234,7 +234,7 @@ export const blogArticles: BlogArticle[] = [
     publishedAt: '27 mars 2026',
     readingTime: '7 min',
     heroLabel: 'Execution claire',
-    image: '/blog/gestion-projet-meilleures-pratiques.svg',
+    image: '/blog-assets/gestion-projet-meilleures-pratiques.svg',
     imageAlt: 'Illustration gestion de projet meilleures pratiques',
     keywords: ['gestion de projet maroc', 'outil projet pme', 'organisation equipe', 'suivi taches entreprise'],
     intro:
@@ -279,7 +279,7 @@ export const blogArticles: BlogArticle[] = [
     publishedAt: '27 mars 2026',
     readingTime: '8 min',
     heroLabel: 'Choisir le bon outil',
-    image: '/blog/logiciel-facturation-maroc.svg',
+    image: '/blog-assets/logiciel-facturation-maroc.svg',
     imageAlt: 'Illustration logiciel de facturation au Maroc',
     keywords: ['logiciel de facturation maroc', 'logiciel facturation maroc', 'erp maroc', 'gestion commerciale maroc'],
     intro:
