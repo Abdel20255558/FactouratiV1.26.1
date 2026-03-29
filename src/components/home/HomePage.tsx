@@ -198,6 +198,20 @@ export default function HomePage() {
                 </a>
               </motion.div>
 
+              <motion.div variants={fadeUp} className="mt-4 flex flex-wrap gap-3 text-sm font-medium text-gray-600">
+                <Link to="/tarifs" className="hover:text-teal-700 transition-colors">
+                  Voir la page tarifs
+                </Link>
+                <span className="text-gray-300">•</span>
+                <Link to="/faq" className="hover:text-teal-700 transition-colors">
+                  Lire la FAQ
+                </Link>
+                <span className="text-gray-300">•</span>
+                <Link to="/blog" className="hover:text-teal-700 transition-colors">
+                  Explorer le blog
+                </Link>
+              </motion.div>
+
               <p className="mt-3 text-sm text-gray-500">Sans carte bancaire • Annulable à tout moment</p>
             </motion.div>
 
