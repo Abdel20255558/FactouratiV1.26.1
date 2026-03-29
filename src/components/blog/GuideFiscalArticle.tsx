@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3 } from 'lucid
 import { Link } from 'react-router-dom';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
+import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
 
 const keywords = [
   'conformite fiscale au Maroc',
@@ -13,6 +14,15 @@ const keywords = [
   'organisation fiscale PME Maroc',
   'teledeclaration Maroc',
   'Factourati conformite fiscale',
+];
+
+const schema = [
+  createBreadcrumbSchema([
+    { name: 'Accueil', url: SITE_URL },
+    { name: 'Blog', url: `${SITE_URL}/blog` },
+    { name: 'Fiscalite', url: `${SITE_URL}/blog/categorie/fiscalite` },
+    { name: 'Conformite fiscale au Maroc avec Factourati', url: `${SITE_URL}/blog/conformite-fiscale-maroc-factourati` },
+  ]),
 ];
 
 const sections = [
@@ -171,6 +181,7 @@ export default function GuideFiscalArticle() {
         keywords={keywords.join(', ')}
         image="/blog-assets/1.PNG"
         type="article"
+        schema={schema}
       />
       <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
 
