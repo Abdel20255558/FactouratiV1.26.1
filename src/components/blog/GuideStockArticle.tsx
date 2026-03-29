@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3 } from 'lucid
 import { Link } from 'react-router-dom';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
+import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
 
 const keywords = [
   'gerer son stock efficacement',
@@ -13,6 +14,15 @@ const keywords = [
   'gestion produits Factourati',
   'stock faible',
   'stock restant',
+];
+
+const schema = [
+  createBreadcrumbSchema([
+    { name: 'Accueil', url: SITE_URL },
+    { name: 'Blog', url: `${SITE_URL}/blog` },
+    { name: 'Stock', url: `${SITE_URL}/blog/categorie/stock` },
+    { name: 'Comment gerer votre stock efficacement', url: `${SITE_URL}/blog/comment-gerer-votre-stock-efficacement` },
+  ]),
 ];
 
 const sections = [
@@ -143,7 +153,7 @@ export default function GuideStockArticle() {
     description:
       'Découvrez comment mieux gérer votre stock, éviter les ruptures et suivre vos produits avec une méthode simple et un logiciel comme Factourati.',
     image: [
-      'https://www.factourati.com/blog-assets/stock.PNG',
+      'https://www.factourati.com/blog-assets/stock.svg',
       'https://www.factourati.com/blog-assets/stock-alerts.svg',
       'https://www.factourati.com/blog-assets/stock-remaining.svg',
       'https://www.factourati.com/blog-assets/stock-search.svg',
@@ -167,8 +177,9 @@ export default function GuideStockArticle() {
         description="Découvrez comment mieux gérer votre stock, éviter les ruptures et suivre vos produits avec une méthode simple et un logiciel comme Factourati."
         canonicalPath="/blog/comment-gerer-votre-stock-efficacement"
         keywords={keywords.join(', ')}
-        image="/blog-assets/stock.PNG"
+        image="/blog-assets/stock.svg"
         type="article"
+        schema={schema}
       />
       <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
 
@@ -194,7 +205,7 @@ export default function GuideStockArticle() {
               </p>
             </div>
             <div className="rounded-[2rem] border border-white/10 bg-white/10 p-4 shadow-2xl backdrop-blur">
-              <img src="/blog-assets/stock.PNG" alt="gestion de stock produits avec Factourati" className="h-full w-full rounded-[1.5rem] object-cover" />
+              <img src="/blog-assets/stock.svg" alt="gestion de stock produits avec Factourati" className="h-full w-full rounded-[1.5rem] object-cover" />
             </div>
           </div>
         </div>
