@@ -1,7 +1,12 @@
-# /public/robots.txt  (placer dans le dossier `public/` de Vite ; sera servi à /robots.txt)
-/* Autoriser Googlebot & co à explorer le site, et annoncer le sitemap */
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /reports
+Disallow: /account-management
+Disallow: /hr-management
+Disallow: /project-management
+Disallow: /stock-management
+Disallow: /supplier-management
 
 Sitemap: https://www.factourati.com/sitemap.xml
-# Fin robots.txt
