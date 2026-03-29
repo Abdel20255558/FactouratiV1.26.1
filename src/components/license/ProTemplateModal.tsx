@@ -166,7 +166,7 @@ export default function ProTemplateModal({ isOpen, onClose, templateName }: ProT
             {/* Prix */}
             <div className="text-center mt-6">
               <p className="text-sm text-gray-500">
-                💳 Seulement <span className="font-bold text-purple-600">299 MAD/mois</span>
+                💳 Seulement <span className="font-bold text-purple-600">199 MAD/mois</span>
               </p>
             </div>
           </div>
