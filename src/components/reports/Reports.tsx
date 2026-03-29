@@ -46,7 +46,7 @@ const Reports: React.FC = () => {
           <button className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200">
             <span className="flex items-center justify-center space-x-2">
               <BarChart3 className="w-5 h-5" />
-              <span>Passer à PRO - 299 MAD/mois</span>
+              <span>Passer à PRO - 199 MAD/mois</span>
             </span>
           </button>
         </div>
