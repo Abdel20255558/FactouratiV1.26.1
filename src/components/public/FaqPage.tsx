@@ -60,13 +60,29 @@ export default function FaqPage() {
               Testez la solution pour centraliser vos devis, factures, relances, produits et activite dans une seule
               interface.
             </p>
-            <Link
-              to="/login?mode=register"
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-slate-900 transition hover:bg-slate-100"
-            >
-              Creer mon compte
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                to="/login?mode=register"
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-slate-900 transition hover:bg-slate-100"
+              >
+                Creer mon compte
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/tarifs"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 font-semibold text-white transition hover:bg-white/15"
+              >
+                Voir les tarifs
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/blog"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 font-semibold text-white transition hover:bg-white/15"
+              >
+                Lire le blog
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
