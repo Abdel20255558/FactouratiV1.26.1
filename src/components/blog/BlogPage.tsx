@@ -9,7 +9,7 @@ const visibleSlugs = [
   'comment-gerer-votre-stock-efficacement',
   'avantages-erp-pme-marocaines',
   'conformite-fiscale-maroc-factourati',
-  'gestion-projet-meilleures-pratiques',
+  'gestion-de-projet-meilleures-pratiques',
 ];
 
 const categories = ['Facturation', 'Stock', 'ERP', 'Fiscalite', 'Gestion', 'PME'];
@@ -31,7 +31,7 @@ const articleOverrides: Record<string, { category: string; excerpt: string }> = 
     category: 'Fiscalite',
     excerpt: "Des conseils concrets pour structurer vos documents, limiter les oublis et garder une gestion plus sereine.",
   },
-  'gestion-projet-meilleures-pratiques': {
+  'gestion-de-projet-meilleures-pratiques': {
     category: 'Gestion',
     excerpt: "Des methodes simples pour clarifier les priorites, mieux suivre les taches et faire avancer vos projets plus efficacement.",
   },
