@@ -1,45 +1,9 @@
 import { ArrowRight, CalendarDays, CheckCircle2, Clock3, FolderKanban, Receipt, Search, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { blogArticles } from '../../data/blogArticles';
+import { blogArticleOverrides, blogCategoryDefinitions, visibleBlogArticles } from '../../data/blogTaxonomy';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
-
-const visibleSlugs = [
-  'guide-complet-facturation-maroc',
-  'comment-gerer-votre-stock-efficacement',
-  'avantages-erp-pme-marocaines',
-  'conformite-fiscale-maroc-factourati',
-  'gestion-de-projet-meilleures-pratiques',
-];
-
-const categories = ['Facturation', 'Stock', 'ERP', 'Fiscalite', 'Gestion', 'PME'];
-
-const articleOverrides: Record<string, { category: string; excerpt: string }> = {
-  'guide-complet-facturation-maroc': {
-    category: 'Facturation',
-    excerpt: "Un guide pratique pour mieux organiser vos devis, vos factures, vos paiements et le suivi client dans votre entreprise.",
-  },
-  'comment-gerer-votre-stock-efficacement': {
-    category: 'Stock',
-    excerpt: "Les bonnes pratiques pour suivre vos produits, anticiper les besoins et garder un stock plus maitrise au quotidien.",
-  },
-  'avantages-erp-pme-marocaines': {
-    category: 'ERP',
-    excerpt: "Pourquoi une solution centralisee aide les PME marocaines a gagner du temps et mieux piloter leur activite.",
-  },
-  'conformite-fiscale-maroc-factourati': {
-    category: 'Fiscalite',
-    excerpt: "Des conseils concrets pour structurer vos documents, limiter les oublis et garder une gestion plus sereine.",
-  },
-  'gestion-de-projet-meilleures-pratiques': {
-    category: 'Gestion',
-    excerpt: "Des methodes simples pour clarifier les priorites, mieux suivre les taches et faire avancer vos projets plus efficacement.",
-  },
-};
-
-const articles = visibleSlugs
-  .map((slug) => blogArticles.find((article) => article.slug === slug))
-  .filter((article): article is NonNullable<typeof article> => Boolean(article));
+const articles = visibleBlogArticles;
 
 const featuredArticle = articles[0];
 const articleCountLabel = `${articles.length} articles a lire`;
@@ -124,13 +88,13 @@ export default function BlogPage() {
                   className="h-72 w-full object-cover"
                 />
                 <div className="absolute left-5 top-5 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-teal-700 shadow-sm">
-                  {articleOverrides[featuredArticle.slug].category}
+                  {blogArticleOverrides[featuredArticle.slug].category}
                 </div>
               </div>
               <div className="p-7 sm:p-8">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Article mis en avant</p>
                 <h2 className="mt-3 text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">{featuredArticle.title}</h2>
-                <p className="mt-4 text-base leading-7 text-slate-600">{articleOverrides[featuredArticle.slug].excerpt}</p>
+                <p className="mt-4 text-base leading-7 text-slate-600">{blogArticleOverrides[featuredArticle.slug].excerpt}</p>
                 <div className="mt-5 flex flex-wrap gap-4 text-sm text-slate-500">
                   <span className="inline-flex items-center gap-2">
                     <CalendarDays className="h-4 w-4" />
@@ -162,13 +126,14 @@ export default function BlogPage() {
               <h2 className="mt-2 text-2xl font-bold text-slate-900">Des sujets utiles pour mieux piloter votre entreprise</h2>
             </div>
             <div className="flex flex-wrap gap-3">
-              {categories.map((category) => (
-                <span
-                  key={category}
+              {blogCategoryDefinitions.map((category) => (
+                <Link
+                  key={category.slug}
+                  to={`/blog/categorie/${category.slug}`}
                   className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                 >
-                  {category}
-                </span>
+                  {category.label}
+                </Link>
               ))}
             </div>
           </div>
@@ -189,7 +154,7 @@ export default function BlogPage() {
 
           <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
             {articles.map((article) => {
-              const override = articleOverrides[article.slug];
+              const override = blogArticleOverrides[article.slug];
 
               return (
                 <article
