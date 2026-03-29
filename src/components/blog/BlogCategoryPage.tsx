@@ -6,6 +6,7 @@ import {
   getBlogCategoryBySlug,
   getVisibleArticlesByCategorySlug,
 } from '../../data/blogTaxonomy';
+import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
 
@@ -20,6 +21,11 @@ export default function BlogCategoryPage() {
   const articles = getVisibleArticlesByCategorySlug(category.slug);
   const featuredImage = articles[0]?.image;
   const otherCategories = blogCategoryDefinitions.filter((item) => item.slug !== category.slug);
+  const schema = createBreadcrumbSchema([
+    { name: 'Accueil', url: SITE_URL },
+    { name: 'Blog', url: `${SITE_URL}/blog` },
+    { name: category.label, url: `${SITE_URL}/blog/categorie/${category.slug}` },
+  ]);
 
   return (
     <PublicSiteChrome>
@@ -30,6 +36,7 @@ export default function BlogCategoryPage() {
         keywords={category.keywords.join(', ')}
         image={featuredImage}
         type="website"
+        schema={schema}
       />
 
       <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(13,148,136,0.14),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(37,99,235,0.12),_transparent_30%),linear-gradient(180deg,_#ffffff_0%,_#f8fbff_100%)]">
@@ -71,6 +78,18 @@ export default function BlogCategoryPage() {
 
       <section className="bg-slate-50 py-16 lg:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-8 rounded-[1.75rem] border border-teal-100 bg-white p-7 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Ce que vous allez trouver ici</p>
+            <h2 className="mt-3 text-2xl font-bold text-slate-900">{category.introTitle}</h2>
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {category.introPoints.map((point) => (
+                <div key={point} className="rounded-2xl bg-slate-50 px-4 py-4 text-sm font-medium leading-6 text-slate-700">
+                  {point}
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="mb-8 flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Selection {category.label}</p>
@@ -127,6 +146,38 @@ export default function BlogCategoryPage() {
                 </article>
               );
             })}
+          </div>
+
+          <div className="mt-12 rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Aller plus loin</p>
+            <h2 className="mt-3 text-2xl font-bold text-slate-900">Explorez les autres pages utiles de Factourati</h2>
+            <p className="mt-3 max-w-2xl text-base leading-8 text-slate-600">
+              Si vous comparez encore les solutions ou si vous voulez mieux comprendre l offre Factourati, vous pouvez
+              continuer avec nos pages publiques les plus importantes.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                to="/tarifs"
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-800"
+              >
+                Voir les tarifs
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/faq"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-700 transition hover:border-teal-300 hover:text-teal-700"
+              >
+                Lire la FAQ
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/blog"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-700 transition hover:border-teal-300 hover:text-teal-700"
+              >
+                Retour au blog
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
