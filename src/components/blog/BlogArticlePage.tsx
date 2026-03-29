@@ -1,13 +1,21 @@
 import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3 } from 'lucide-react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { blogArticles, getBlogArticleBySlug } from '../../data/blogArticles';
+import GuideErpArticle from './GuideErpArticle';
 import GuideFacturationArticle from './GuideFacturationArticle';
+import GuideFiscalArticle from './GuideFiscalArticle';
+import GuideProjectArticle from './GuideProjectArticle';
 import GuideStockArticle from './GuideStockArticle';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
 
 export default function BlogArticlePage() {
   const { slug } = useParams();
+
+  if (slug === 'gestion-projet-meilleures-pratiques') {
+    return <Navigate to="/blog/gestion-de-projet-meilleures-pratiques" replace />;
+  }
+
   const article = getBlogArticleBySlug(slug);
 
   if (!article) {
@@ -20,6 +28,18 @@ export default function BlogArticlePage() {
 
   if (slug === 'comment-gerer-votre-stock-efficacement') {
     return <GuideStockArticle />;
+  }
+
+  if (slug === 'avantages-erp-pme-marocaines') {
+    return <GuideErpArticle />;
+  }
+
+  if (slug === 'conformite-fiscale-maroc-factourati') {
+    return <GuideFiscalArticle />;
+  }
+
+  if (slug === 'gestion-de-projet-meilleures-pratiques') {
+    return <GuideProjectArticle />;
   }
 
   const relatedArticles = blogArticles.filter((item) => item.slug !== article.slug).slice(0, 3);
