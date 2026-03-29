@@ -148,7 +148,7 @@ export default function ExpiredAccountModal({ isOpen, onClose, isAdmin, expiryDa
             {/* Prix */}
             <div className="text-center mt-4">
               <p className="text-sm text-gray-500">
-                💳 Seulement <span className="font-bold text-teal-600">299 MAD/mois</span>
+                💳 Seulement <span className="font-bold text-teal-600">199 MAD/mois</span>
               </p>
             </div>
           </div>
