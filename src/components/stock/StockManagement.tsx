@@ -58,7 +58,7 @@ export default function StockManagement() {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">🔒 Fonctionnalité PRO</h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6">La Gestion de Stock est réservée aux abonnés PRO.</p>
           <button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg font-semibold">
-            Passer à PRO - 299 MAD/mois
+            Passer à PRO - 199 MAD/mois
           </button>
         </div>
       </div>
