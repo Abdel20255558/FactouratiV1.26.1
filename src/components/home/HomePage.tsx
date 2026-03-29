@@ -39,6 +39,8 @@ import {
   Twitter
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import SeoHead from '../seo/SeoHead';
+import { DEFAULT_OG_IMAGE, SITE_URL, createFaqSchema, createLocalBusinessSchema, createOrganizationSchema } from '../../data/publicSeoData';
 
 export default function HomePage() {
   // Animations
@@ -59,10 +61,31 @@ export default function HomePage() {
   const annualMonthlyEquiv = PRICES.annual / 12;
   const sixMonthsSavings = (PRICES.monthly * 6) - PRICES.sixMonths;
   const annualSavings = monthlyTotal - PRICES.annual;
+  const homeSchema = [
+    createOrganizationSchema(),
+    createLocalBusinessSchema(),
+    createFaqSchema(),
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: 'Factourati | Logiciel de facturation et gestion pour PME au Maroc',
+      url: SITE_URL,
+      description: 'Factourati aide les entreprises marocaines a centraliser devis, factures, paiements, stock, fournisseurs et projets.',
+    },
+  ];
 
   return (
     // ⬇ Wrapper sticky footer
     <div className="flex min-h-screen flex-col bg-white">
+      <SeoHead
+        title="Factourati | Logiciel de facturation et gestion pour PME au Maroc"
+        description="Factourati est une solution marocaine pour gerer devis, factures, paiements, stock, fournisseurs et projets dans une seule plateforme."
+        canonicalPath="/"
+        keywords="logiciel facturation maroc, ERP maroc, gestion stock maroc, devis facture maroc, logiciel pme maroc"
+        image={DEFAULT_OG_IMAGE}
+        type="website"
+        schema={homeSchema}
+      />
       {/* Header FIXE */}
       <header className="fixed top-0 inset-x-0 z-50 bg-white/85 backdrop-blur-md shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
