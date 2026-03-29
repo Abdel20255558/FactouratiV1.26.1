@@ -1,6 +1,8 @@
 import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3 } from 'lucide-react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { blogArticles, getBlogArticleBySlug } from '../../data/blogArticles';
+import { blogArticleOverrides } from '../../data/blogTaxonomy';
+import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
 import GuideErpArticle from './GuideErpArticle';
 import GuideFacturationArticle from './GuideFacturationArticle';
 import GuideFiscalArticle from './GuideFiscalArticle';
@@ -43,30 +45,41 @@ export default function BlogArticlePage() {
   }
 
   const relatedArticles = blogArticles.filter((item) => item.slug !== article.slug).slice(0, 3);
+  const articleCategory = blogArticleOverrides[article.slug];
 
-  const articleSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: article.title,
-    description: article.description,
-    image: [`https://www.factourati.com${article.image}`],
-    keywords: article.keywords.join(', '),
-    author: {
-      '@type': 'Organization',
-      name: 'Factourati',
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'Factourati',
-      logo: {
-        '@type': 'ImageObject',
-        url: 'https://www.factourati.com/files_3254075-1761082431431-image.png',
+  const articleSchema = [
+    createBreadcrumbSchema([
+      { name: 'Accueil', url: SITE_URL },
+      { name: 'Blog', url: `${SITE_URL}/blog` },
+      ...(articleCategory
+        ? [{ name: articleCategory.category, url: `${SITE_URL}/blog/categorie/${articleCategory.categorySlug}` }]
+        : []),
+      { name: article.title, url: `${SITE_URL}/blog/${article.slug}` },
+    ]),
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: article.title,
+      description: article.description,
+      image: [`${SITE_URL}${article.image}`],
+      keywords: article.keywords.join(', '),
+      author: {
+        '@type': 'Organization',
+        name: 'Factourati',
       },
+      publisher: {
+        '@type': 'Organization',
+        name: 'Factourati',
+        logo: {
+          '@type': 'ImageObject',
+          url: `${SITE_URL}/files_3254075-1761082431431-image.png`,
+        },
+      },
+      mainEntityOfPage: `${SITE_URL}/blog/${article.slug}`,
+      datePublished: '2026-03-27',
+      dateModified: '2026-03-27',
     },
-    mainEntityOfPage: `https://www.factourati.com/blog/${article.slug}`,
-    datePublished: '2026-03-27',
-    dateModified: '2026-03-27',
-  };
+  ];
 
   return (
     <PublicSiteChrome>
@@ -77,8 +90,8 @@ export default function BlogArticlePage() {
         keywords={article.keywords.join(', ')}
         image={article.image}
         type="article"
+        schema={articleSchema}
       />
-      <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
 
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-teal-900 text-white">
         <div className="pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full bg-teal-400/20 blur-3xl" />
