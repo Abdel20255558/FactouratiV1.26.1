@@ -15,8 +15,10 @@ export default function PaymentModal({ isOpen, onClose, onComplete, isRenewal = 
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const PRICES = { monthly: 499, sixMonths:2499, annual: 4999 } as const;
+  const PRICES = { monthly: 199, sixMonths: 999, annual: 1999 } as const;
   const amount = PRICES[billingPeriod];
+  const billingLabel = billingPeriod === 'monthly' ? 'mensuel' : billingPeriod === 'sixMonths' ? '6 mois' : 'annuel';
+  const billingSuffix = billingPeriod === 'monthly' ? 'mois' : billingPeriod === 'sixMonths' ? '6 mois' : 'an';
 
   const bankInfo = {
     bank: 'CIH',
@@ -34,7 +36,7 @@ export default function PaymentModal({ isOpen, onClose, onComplete, isRenewal = 
 
   const handleWhatsAppRedirect = () => {
     const message = encodeURIComponent(
-      `Bonjour, voici mon reçu pour l'activation ${isRenewal ? 'de renouvellement ' : ''}de mon abonnement PRO (${billingPeriod === 'monthly' ? 'mensuel' : 'annuel'}) — Montant: ${amount} MAD.`
+      `Bonjour, voici mon reçu pour l'activation ${isRenewal ? 'de renouvellement ' : ''}de mon abonnement PRO (${billingLabel}) — Montant: ${amount} MAD.`
     );
     const whatsappUrl = `https://wa.me/212666736446?text=${message}`;
     window.open(whatsappUrl, '_blank');
@@ -66,8 +68,8 @@ export default function PaymentModal({ isOpen, onClose, onComplete, isRenewal = 
                       <h2 className="text-2xl font-bold">💳 Paiement Version Pro</h2>
                       <p className="text-sm opacity-90">
                         {isRenewal
-                          ? `Renouvellement - ${amount} MAD / ${billingPeriod === 'monthly' ? 'mois' : 'an'}`
-                          : `${amount} MAD / ${billingPeriod === 'monthly' ? 'mois' : 'an'}`
+                          ? `Renouvellement - ${amount} MAD / ${billingSuffix}`
+                          : `${amount} MAD / ${billingSuffix}`
                         }
                       </p>
                     </div>
@@ -86,8 +88,8 @@ export default function PaymentModal({ isOpen, onClose, onComplete, isRenewal = 
                   </h3>
                   <p className="text-gray-600">
                     {isRenewal
-                      ? `Effectuez votre virement de renouvellement (${billingPeriod === 'monthly' ? 'mensuel' : 'annuel'}) avec les informations ci-dessous`
-                      : `Effectuez votre virement bancaire (${billingPeriod === 'monthly' ? 'mensuel' : 'annuel'}) avec les informations ci-dessous`
+                      ? `Effectuez votre virement de renouvellement (${billingLabel}) avec les informations ci-dessous`
+                      : `Effectuez votre virement bancaire (${billingLabel}) avec les informations ci-dessous`
                     }
                   </p>
                 </div>
@@ -118,7 +120,7 @@ export default function PaymentModal({ isOpen, onClose, onComplete, isRenewal = 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                   <h4 className="font-semibold text-blue-900 mb-2">📋 Instructions</h4>
                   <ol className="text-sm text-blue-800 space-y-1">
-                    <li>1. Effectuez un virement de <strong>{amount} MAD</strong> {isRenewal && '(renouvellement)'} — {billingPeriod === 'monthly' ? 'mensuel' : 'annuel'}</li>
+                    <li>1. Effectuez un virement de <strong>{amount} MAD</strong> {isRenewal && '(renouvellement)'} — {billingLabel}</li>
                     <li>2. Prenez une capture d'écran du reçu</li>
                     <li>3. Cliquez sur le bouton WhatsApp ci-dessous</li>
                     <li>4. Envoyez-nous votre reçu via WhatsApp</li>
