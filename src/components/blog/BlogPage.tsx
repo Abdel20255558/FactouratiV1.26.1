@@ -1,6 +1,7 @@
 import { ArrowRight, CalendarDays, CheckCircle2, Clock3, FolderKanban, Receipt, Search, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { blogArticleOverrides, blogCategoryDefinitions, visibleBlogArticles } from '../../data/blogTaxonomy';
+import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
 const articles = visibleBlogArticles;
@@ -15,6 +16,21 @@ const conversionPoints = [
 ];
 
 export default function BlogPage() {
+  const schema = [
+    createBreadcrumbSchema([
+      { name: 'Accueil', url: SITE_URL },
+      { name: 'Blog', url: `${SITE_URL}/blog` },
+    ]),
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Blog',
+      name: 'Blog Factourati',
+      url: `${SITE_URL}/blog`,
+      description:
+        'Guides utiles sur la facturation, le stock, la fiscalite, l organisation et la gestion des PME marocaines.',
+    },
+  ];
+
   return (
     <PublicSiteChrome>
       <SeoHead
@@ -24,6 +40,7 @@ export default function BlogPage() {
         keywords="blog facturation maroc, gestion entreprise maroc, stock maroc, fiscalite maroc, ERP PME maroc"
         image={featuredArticle.image}
         type="website"
+        schema={schema}
       />
 
       <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(13,148,136,0.18),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(37,99,235,0.15),_transparent_30%),linear-gradient(135deg,_#f8fffe_0%,_#ffffff_45%,_#f8fbff_100%)]">
@@ -253,6 +270,21 @@ export default function BlogPage() {
                   <p className="text-sm font-semibold text-slate-900">Pilotage global</p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">Suivez plus facilement les sujets qui comptent pour votre entreprise.</p>
                 </div>
+              </div>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link
+                  to="/tarifs"
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-teal-200 hover:text-teal-700"
+                >
+                  Voir les tarifs
+                </Link>
+                <Link
+                  to="/faq"
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-teal-200 hover:text-teal-700"
+                >
+                  Lire la FAQ
+                </Link>
               </div>
             </div>
           </div>
