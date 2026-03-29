@@ -59,7 +59,7 @@ export default function HRManagement() {
           <button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200">
             <span className="flex items-center justify-center space-x-2">
               <Crown className="w-5 h-5" />
-              <span>Passer à PRO - 299 MAD/mois</span>
+              <span>Passer à PRO - 199 MAD/mois</span>
             </span>
           </button>
         </div>
