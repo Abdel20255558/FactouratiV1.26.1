@@ -6,6 +6,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { normalizeCompanyName } from '../../utils/companyNameUtils';
+import SeoHead from '../seo/SeoHead';
 import {
   Lock,
   Mail,
@@ -42,6 +43,16 @@ export default function Login() {
 
   const { login } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+  const seoTitle = showForgotPassword
+    ? 'Mot de passe oublie | Factourati'
+    : showRegister
+      ? 'Creer un compte Factourati'
+      : 'Connexion Factourati | Acces client';
+  const seoDescription = showForgotPassword
+    ? 'Recuperez l acces a votre compte Factourati pour reprendre la gestion de votre entreprise.'
+    : showRegister
+      ? 'Creez votre compte Factourati pour centraliser devis, factures, stock, clients et pilotage de votre activite.'
+      : 'Connectez-vous a Factourati pour gerer devis, factures, paiements, stock et clients dans une seule application.';
 
   const validateLogin = () => {
     const fe: typeof fieldErrors = {};
@@ -101,6 +112,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
+      <SeoHead title={seoTitle} description={seoDescription} canonicalPath="/login" robots="noindex, follow" />
       {/* Bouton retour */}
       <Link
         to="/"
@@ -457,6 +469,12 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
   if (emailSent) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
+        <SeoHead
+          title="Creer un compte Factourati"
+          description="Creez votre compte Factourati pour centraliser la gestion commerciale et administrative de votre entreprise."
+          canonicalPath="/login"
+          robots="noindex, follow"
+        />
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <div className="flex justify-center mb-6">
@@ -493,6 +511,12 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
   // --- Register form UI
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
+      <SeoHead
+        title="Creer un compte Factourati"
+        description="Creez votre compte Factourati pour centraliser la gestion commerciale et administrative de votre entreprise."
+        canonicalPath="/login"
+        robots="noindex, follow"
+      />
       <Link
         to="/"
         className="fixed top-6 left-6 inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 hover:bg-white/80 px-3 py-2 rounded-lg transition-all duration-200 backdrop-blur-sm"
@@ -1033,6 +1057,12 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
   if (emailSent) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
+        <SeoHead
+          title="Mot de passe oublie | Factourati"
+          description="Recuperez l acces a votre compte Factourati pour reprendre la gestion de votre entreprise."
+          canonicalPath="/login"
+          robots="noindex, follow"
+        />
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <div className="flex justify-center mb-6">
@@ -1080,6 +1110,12 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
+      <SeoHead
+        title="Mot de passe oublie | Factourati"
+        description="Recuperez l acces a votre compte Factourati pour reprendre la gestion de votre entreprise."
+        canonicalPath="/login"
+        robots="noindex, follow"
+      />
       <Link
         to="/"
         className="fixed top-6 left-6 inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 hover:bg-white/80 px-3 py-2 rounded-lg transition-all duration-200 backdrop-blur-sm"
