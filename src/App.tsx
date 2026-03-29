@@ -15,7 +15,11 @@ import EmailVerificationBanner from './components/auth/EmailVerificationBanner';
 import HomePage from './components/home/HomePage';
 import BlogPage from './components/blog/BlogPage';
 import BlogArticlePage from './components/blog/BlogArticlePage';
+import BlogCategoryPage from './components/blog/BlogCategoryPage';
 import Login from './components/auth/Login';
+import PricingPage from './components/public/PricingPage';
+import FaqPage from './components/public/FaqPage';
+import NotFoundPage from './components/public/NotFoundPage';
 import Dashboard from './components/dashboard/Dashboard';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
@@ -131,12 +135,15 @@ function AppContent() {
       <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50">
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/tarifs" element={<PricingPage />} />
+          <Route path="/faq" element={<FaqPage />} />
           <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/categorie/:categorySlug" element={<BlogCategoryPage />} />
           <Route path="/blog/:slug" element={<BlogArticlePage />} />
           <Route path="/login" element={<Login />} />
             <Route path="/verify-email" element={<EmailVerificationPage />} /> {/* ⬅️ ajouté */}
         <Route path="/verify-email-success" element={<EmailActionPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </div>
     );
