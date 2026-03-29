@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3 } from 'lucid
 import { Link } from 'react-router-dom';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
+import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
 
 const keywords = [
   'ERP pour PME marocaines',
@@ -12,6 +13,15 @@ const keywords = [
   'solution ERP PME Maroc',
   'digitalisation PME marocaines',
   'logiciel gestion PME Maroc',
+];
+
+const schema = [
+  createBreadcrumbSchema([
+    { name: 'Accueil', url: SITE_URL },
+    { name: 'Blog', url: `${SITE_URL}/blog` },
+    { name: 'ERP', url: `${SITE_URL}/blog/categorie/erp` },
+    { name: "Avantages d'un ERP pour PME marocaines", url: `${SITE_URL}/blog/avantages-erp-pme-marocaines` },
+  ]),
 ];
 
 const sections = [
@@ -162,6 +172,7 @@ export default function GuideErpArticle() {
         keywords={keywords.join(', ')}
         image="/blog-assets/facturation-dashboard1.PNG"
         type="article"
+        schema={schema}
       />
       <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
 
