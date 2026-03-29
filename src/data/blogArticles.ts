@@ -35,7 +35,7 @@ export const blogArticles: BlogArticle[] = [
     publishedAt: '27 mars 2026',
     readingTime: '9 min',
     heroLabel: 'Piloter la facturation',
-    image: '/blog-assets/facturation-dashboard.png',
+    image: '/blog-assets/facturation-dashboard1.PNG',
     imageAlt: 'logiciel de facturation au Maroc pour PME',
     keywords: [
       'facturation au Maroc',
@@ -96,7 +96,7 @@ export const blogArticles: BlogArticle[] = [
     publishedAt: '27 mars 2026',
     readingTime: '7 min',
     heroLabel: 'Maitriser le stock',
-    image: '/blog-assets/stock.PNG',
+    image: '/blog-assets/stock.svg',
     imageAlt: 'gestion de stock produits avec Factourati',
     keywords: [
       'gerer son stock efficacement',
@@ -143,18 +143,27 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: 'avantages-erp-pme-marocaines',
     title: "Avantages d'un ERP pour PME marocaines",
-    seoTitle: "Avantages d'un ERP pour PME marocaines | Blog Factourati",
+    seoTitle: "Avantages d'un ERP pour PME marocaines | Factourati",
     description:
-      "Pourquoi un ERP aide les PME marocaines a mieux structurer leur activite, gagner du temps et centraliser leurs operations.",
+      "Découvrez les avantages d’un ERP pour les PME marocaines : gain de temps, meilleure organisation, suivi du stock, facturation et pilotage simplifié avec Factourati.",
     excerpt:
       "De la facturation au stock en passant par les projets, un ERP peut faire gagner un temps precieux aux PME marocaines.",
     category: 'ERP',
     publishedAt: '27 mars 2026',
     readingTime: '8 min',
     heroLabel: 'Vision globale',
-    image: '/blog-assets/erp-pme-marocaines.svg',
-    imageAlt: 'Illustration avantages ERP pour PME marocaines',
-    keywords: ['erp maroc', 'erp pme maroc', 'logiciel gestion entreprise maroc', 'outil pme marocaine'],
+    image: '/blog-assets/facturation-dashboard1.PNG',
+    imageAlt: 'ERP pour PME marocaines avec Factourati',
+    keywords: [
+      'ERP pour PME marocaines',
+      'avantages ERP PME',
+      'logiciel ERP Maroc',
+      'ERP gestion entreprise Maroc',
+      'ERP facturation stock clients',
+      'solution ERP PME Maroc',
+      'digitalisation PME marocaines',
+      'logiciel gestion PME Maroc',
+    ],
     intro:
       "Beaucoup de PME utilisent plusieurs outils separes: factures dans un fichier, stock dans un autre, projets ailleurs. A mesure que l activite grandit, cette organisation devient fragile.",
     summaryPoints: [
@@ -189,18 +198,28 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: 'conformite-fiscale-maroc-factourati',
     title: 'Conformite fiscale au Maroc avec Factourati',
-    seoTitle: 'Conformite fiscale au Maroc avec Factourati | Blog Factourati',
+    seoTitle: 'Conformite fiscale au Maroc avec Factourati | Guide PME',
     description:
-      'Comment mieux organiser vos documents et votre gestion pour rester plus serein face aux obligations fiscales au Maroc.',
+      'Découvrez comment mieux organiser votre conformité fiscale au Maroc avec Factourati : factures, ICE, suivi des paiements, documents et gestion plus structurée.',
     excerpt:
       "Une approche claire pour mieux preparer vos documents, eviter les oublis et garder une gestion plus propre au quotidien.",
     category: 'Fiscalite',
     publishedAt: '27 mars 2026',
     readingTime: '8 min',
     heroLabel: 'Organisation fiscale',
-    image: '/blog-assets/conformite-fiscale-maroc.svg',
-    imageAlt: 'Illustration conformite fiscale au Maroc',
-    keywords: ['conformite fiscale maroc', 'facturation conforme maroc', 'documents fiscaux maroc', 'gestion fiscale pme'],
+    image: '/blog-assets/1.PNG',
+    imageAlt: 'facture conforme au Maroc avec Factourati',
+    keywords: [
+      'conformite fiscale au Maroc',
+      'conformite fiscale Maroc PME',
+      'logiciel de facturation Maroc conforme',
+      'facture conforme Maroc',
+      'ICE sur facture Maroc',
+      'gestion fiscale entreprise Maroc',
+      'organisation fiscale PME Maroc',
+      'teledeclaration Maroc',
+      'Factourati conformite fiscale',
+    ],
     intro:
       "La conformite n est pas seulement une question de documents. C est aussi une question d organisation, de tracabilite et de rigueur dans la gestion quotidienne.",
     summaryPoints: [
@@ -233,20 +252,29 @@ export const blogArticles: BlogArticle[] = [
     ],
   },
   {
-    slug: 'gestion-projet-meilleures-pratiques',
+    slug: 'gestion-de-projet-meilleures-pratiques',
     title: 'Gestion de projet : meilleures pratiques',
-    seoTitle: 'Gestion de projet : meilleures pratiques | Blog Factourati',
+    seoTitle: 'Gestion de projet : meilleures pratiques pour PME | Factourati',
     description:
-      'Les meilleures pratiques pour organiser vos projets, clarifier les responsabilites et suivre les taches plus efficacement.',
+      'Découvrez les meilleures pratiques de gestion de projet pour mieux organiser vos tâches, délais et équipes avec une méthode claire et Factourati.',
     excerpt:
       "Des habitudes simples pour mieux cadrer vos projets, suivre les taches et garder une bonne cadence d execution.",
     category: 'Projets',
     publishedAt: '27 mars 2026',
     readingTime: '7 min',
     heroLabel: 'Execution claire',
-    image: '/blog-assets/gestion-projet-meilleures-pratiques.svg',
-    imageAlt: 'Illustration gestion de projet meilleures pratiques',
-    keywords: ['gestion de projet maroc', 'outil projet pme', 'organisation equipe', 'suivi taches entreprise'],
+    image: '/blog-assets/5.PNG',
+    imageAlt: 'gestion de projet avec Factourati',
+    keywords: [
+      'gestion de projet meilleures pratiques',
+      'gestion de projet PME Maroc',
+      'logiciel gestion de projet Maroc',
+      'suivi projet entreprise',
+      'organiser projet equipe',
+      'taches delais projet',
+      'pilotage projet PME',
+      'outil gestion de projet Factourati',
+    ],
     intro:
       "Un projet avance mieux quand chacun sait quoi faire, pour quand et avec quel niveau de priorite. Sans cadre, les retards et les blocages deviennent vite frequents.",
     summaryPoints: [
