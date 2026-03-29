@@ -66,7 +66,7 @@ export default function SupplierManagement() {
           <button className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200">
             <span className="flex items-center justify-center space-x-2">
               <Crown className="w-5 h-5" />
-              <span>Passer à PRO - 299 MAD/mois</span>
+              <span>Passer à PRO - 199 MAD/mois</span>
             </span>
           </button>
         </div>
