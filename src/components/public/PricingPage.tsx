@@ -137,6 +137,31 @@ export default function PricingPage() {
               </article>
             ))}
           </div>
+
+          <div className="mt-12 rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Avant de choisir</p>
+            <h2 className="mt-3 text-2xl font-bold text-slate-900">Consultez aussi nos autres pages utiles</h2>
+            <p className="mt-3 max-w-2xl text-base leading-8 text-slate-600">
+              Pour mieux comparer l offre Factourati, vous pouvez lire notre FAQ ou consulter les guides blog sur la
+              facturation, le stock, l ERP et la gestion des PME marocaines.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                to="/faq"
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-800"
+              >
+                Lire la FAQ
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/blog"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-700 transition hover:border-teal-300 hover:text-teal-700"
+              >
+                Voir le blog
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
     </PublicSiteChrome>
