@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3 } from 'lucid
 import { Link } from 'react-router-dom';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
+import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
 
 const keywords = [
   'gestion de projet meilleures pratiques',
@@ -12,6 +13,15 @@ const keywords = [
   'taches delais projet',
   'pilotage projet PME',
   'outil gestion de projet Factourati',
+];
+
+const schema = [
+  createBreadcrumbSchema([
+    { name: 'Accueil', url: SITE_URL },
+    { name: 'Blog', url: `${SITE_URL}/blog` },
+    { name: 'Gestion', url: `${SITE_URL}/blog/categorie/gestion` },
+    { name: 'Gestion de projet : meilleures pratiques', url: `${SITE_URL}/blog/gestion-de-projet-meilleures-pratiques` },
+  ]),
 ];
 
 const sections = [
@@ -176,6 +186,7 @@ export default function GuideProjectArticle() {
         keywords={keywords.join(', ')}
         image="/blog-assets/5.PNG"
         type="article"
+        schema={schema}
       />
       <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
 
