@@ -1,0 +1,22 @@
+{
+  "name": "Factourati",
+  "short_name": "Factourati",
+  "description": "Logiciel marocain de facturation et gestion pour les PME.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f766e",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/files_3254075-1761082431431-image.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/files_3254075-1761082431431-image.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
