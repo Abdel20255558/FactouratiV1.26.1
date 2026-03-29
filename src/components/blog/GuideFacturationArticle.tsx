@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3 } from 'lucid
 import { Link } from 'react-router-dom';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
+import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
 
 const keywords = [
   'facturation au Maroc',
@@ -13,6 +14,15 @@ const keywords = [
   'facture conforme Maroc',
   'relance facture Maroc',
   'suivi paiement client Maroc',
+];
+
+const schema = [
+  createBreadcrumbSchema([
+    { name: 'Accueil', url: SITE_URL },
+    { name: 'Blog', url: `${SITE_URL}/blog` },
+    { name: 'Facturation', url: `${SITE_URL}/blog/categorie/facturation` },
+    { name: 'Guide complet de facturation au Maroc', url: `${SITE_URL}/blog/guide-complet-facturation-maroc` },
+  ]),
 ];
 
 const sections = [
@@ -147,10 +157,10 @@ export default function GuideFacturationArticle() {
     description:
       'Découvrez comment réussir votre facturation au Maroc : mentions utiles, organisation, paiements, relances et outils pour PME avec Factourati.',
     image: [
-      'https://www.factourati.com/blog-assets/facturation-dashboard.png',
+      'https://www.factourati.com/blog-assets/facturation-dashboard1.PNG',
       'https://www.factourati.com/blog-assets/facture-exemple.svg',
       'https://www.factourati.com/blog-assets/suivi-paiements.svg',
-      'https://www.factourati.com/blog-assets/facturation-process.png',
+      'https://www.factourati.com/blog-assets/facturation-process2.PNG',
     ],
     keywords: keywords.join(', '),
     mainEntityOfPage: 'https://www.factourati.com/blog/guide-complet-facturation-maroc',
@@ -171,8 +181,9 @@ export default function GuideFacturationArticle() {
         description="Découvrez comment réussir votre facturation au Maroc : mentions utiles, organisation, paiements, relances et outils pour PME avec Factourati."
         canonicalPath="/blog/guide-complet-facturation-maroc"
         keywords={keywords.join(', ')}
-        image="/blog-assets/facturation-dashboard.png"
+        image="/blog-assets/facturation-dashboard1.PNG"
         type="article"
+        schema={schema}
       />
       <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
 
@@ -198,7 +209,7 @@ export default function GuideFacturationArticle() {
               </p>
             </div>
             <div className="rounded-[2rem] border border-white/10 bg-white/10 p-4 shadow-2xl backdrop-blur">
-              <img src="/blog-assets/facturation-dashboard.png" alt="logiciel de facturation au Maroc pour PME" className="h-full w-full rounded-[1.5rem] object-cover" />
+              <img src="/blog-assets/facturation-dashboard1.PNG" alt="logiciel de facturation au Maroc pour PME" className="h-full w-full rounded-[1.5rem] object-cover" />
             </div>
           </div>
         </div>
@@ -260,7 +271,7 @@ export default function GuideFacturationArticle() {
               ))}
 
               <figure className="overflow-hidden rounded-[1.75rem] border border-gray-200 bg-white shadow-sm">
-                <img src="/blog-assets/facturation-process.png" alt="gestion devis facture paiement avec Factourati" className="w-full object-cover" />
+                <img src="/blog-assets/facturation-process2.PNG" alt="gestion devis facture paiement avec Factourati" className="w-full object-cover" />
               </figure>
 
               <section className="rounded-[1.75rem] border border-teal-100 bg-gradient-to-br from-white to-teal-50 p-8 shadow-sm">
