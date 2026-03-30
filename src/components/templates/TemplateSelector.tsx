@@ -45,6 +45,27 @@ const templates = [
     description: 'Design minimaliste avec accents bleus',
     isPro: true,
     preview: 'https://i.ibb.co/B5m2PLbL/5.png'
+  },
+  {
+    id: 'template6',
+    name: 'Executive Bronze Pro',
+    description: 'Design premium avec tons ardoise et bronze',
+    isPro: true,
+    preview: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='600' viewBox='0 0 900 600'%3E%3Crect width='900' height='600' fill='%23f8fafc'/%3E%3Crect x='40' y='40' width='820' height='120' rx='24' fill='%231f2937'/%3E%3Crect x='610' y='70' width='190' height='60' rx='18' fill='%23475569'/%3E%3Crect x='70' y='210' width='360' height='120' rx='22' fill='%23ffffff' stroke='%23cbd5e1'/%3E%3Crect x='470' y='210' width='360' height='120' rx='22' fill='%23ffffff' stroke='%23cbd5e1'/%3E%3Crect x='70' y='370' width='760' height='90' rx='18' fill='%23ffffff' stroke='%23cbd5e1'/%3E%3Crect x='70' y='490' width='420' height='60' rx='18' fill='%23ffffff' stroke='%23cbd5e1'/%3E%3Crect x='540' y='490' width='290' height='60' rx='18' fill='%23b45309'/%3E%3C/svg%3E"
+  },
+  {
+    id: 'template7',
+    name: 'Atlas Emeraude Pro',
+    description: 'Design premium avec accents emeraude et marine',
+    isPro: true,
+    preview: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='600' viewBox='0 0 900 600'%3E%3Crect width='900' height='600' fill='%23f8fafc'/%3E%3Crect x='40' y='40' width='820' height='120' rx='24' fill='%230f172a'/%3E%3Crect x='600' y='64' width='210' height='72' rx='26' fill='%23065f46'/%3E%3Crect x='70' y='200' width='360' height='132' rx='24' fill='%23ffffff' stroke='%23dbe4ea'/%3E%3Crect x='470' y='200' width='360' height='132' rx='24' fill='%23ecfdf5' stroke='%23dbe4ea'/%3E%3Crect x='70' y='368' width='760' height='102' rx='24' fill='%23ffffff' stroke='%23dbe4ea'/%3E%3Crect x='70' y='500' width='430' height='58' rx='20' fill='%23f8fafc' stroke='%23dbe4ea'/%3E%3Crect x='540' y='492' width='290' height='74' rx='22' fill='%230f766e'/%3E%3C/svg%3E"
+  },
+  {
+    id: 'template8',
+    name: 'Prestige Graphite Pro',
+    description: 'Design avance avec graphite et accents or',
+    isPro: true,
+    preview: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='600' viewBox='0 0 900 600'%3E%3Crect width='900' height='600' fill='%23ffffff'/%3E%3Crect x='40' y='40' width='820' height='118' rx='24' fill='%23111827'/%3E%3Crect x='70' y='62' width='8' height='72' rx='4' fill='%23c0841a'/%3E%3Crect x='610' y='62' width='205' height='78' rx='26' fill='rgba(255,255,255,0.08)'/%3E%3Crect x='70' y='196' width='360' height='128' rx='24' fill='%23f8fafc' stroke='%23e5e7eb'/%3E%3Crect x='470' y='196' width='360' height='128' rx='24' fill='%23fffbeb' stroke='%23e5e7eb'/%3E%3Crect x='70' y='356' width='760' height='108' rx='24' fill='%23ffffff' stroke='%23e5e7eb'/%3E%3Crect x='70' y='494' width='420' height='64' rx='22' fill='%23fffbeb' stroke='%23e5e7eb'/%3E%3Crect x='532' y='486' width='298' height='80' rx='22' fill='%23111827'/%3E%3Crect x='560' y='516' width='242' height='30' rx='14' fill='%23c0841a'/%3E%3C/svg%3E"
   }
 ];
 
