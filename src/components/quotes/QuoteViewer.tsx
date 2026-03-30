@@ -35,6 +35,9 @@ export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps
     { id: 'template3', name: 'Minimaliste', isPro: true },
     { id: 'template4', name: 'Corporate', isPro: true },
     { id: 'template5', name: 'Premium Élégant', isPro: true },
+    { id: 'template6', name: 'Executive Bronze Pro', isPro: true },
+    { id: 'template7', name: 'Atlas Emeraude Pro', isPro: true },
+    { id: 'template8', name: 'Prestige Graphite Pro', isPro: true },
   ] as const;
 
   const getTemplateName = (templateId: string) =>
@@ -163,6 +166,9 @@ export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps
                 <option value="template3">Minimaliste Pro</option>
                 <option value="template4">Corporate Pro</option>
                 <option value="template5">Premium Élégant Pro</option>
+                <option value="template6">Executive Bronze Pro</option>
+                <option value="template7">Atlas Emeraude Pro</option>
+                <option value="template8">Prestige Graphite Pro</option>
               </select>
 
               {/* PDF */}
@@ -269,3 +275,5 @@ export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps
     </div>
   );
 }
+
+
