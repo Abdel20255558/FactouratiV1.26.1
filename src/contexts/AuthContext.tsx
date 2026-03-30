@@ -12,7 +12,7 @@ import {
   onAuthStateChanged,
   ActionCodeSettings,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, query, collection, where, getDocs } from 'firebase/firestore';
+import { addDoc, doc, getDoc, setDoc, updateDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { ManagedUser } from './UserManagementContext';
 
@@ -328,7 +328,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (status.shouldBlockUsers || (companyData.subscription !== 'pro')) {
             throw new Error('ACCOUNT_BLOCKED_EXPIRED');
           }
-          await updateDoc(doc(db, 'managedUsers', managedUser.id), { lastLogin: new Date().toISOString() });
+          const loginAt = new Date().toISOString();
+          await updateDoc(doc(db, 'managedUsers', managedUser.id), { lastLogin: loginAt });
+          await updateDoc(doc(db, 'entreprises', managedUser.entrepriseId), {
+            lastClientAccessAt: loginAt,
+            lastClientAccessByEmail: managedUser.email,
+            updatedAt: loginAt
+          });
           setUser({
             id: managedUser.id,
             name: managedUser.name,
@@ -366,7 +372,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const loginAt = new Date().toISOString();
+      await updateDoc(doc(db, 'entreprises', userCredential.user.uid), {
+        lastClientAccessAt: loginAt,
+        lastClientAccessByEmail: email,
+        updatedAt: loginAt
+      });
       return true;
     } catch (error) {
       console.error('Erreur de connexion:', error);
@@ -495,6 +507,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const companyData = companyDoc.data();
+      await addDoc(collection(db, 'supportAccessLogs'), {
+        adminEmail: user.email,
+        adminName: user.name,
+        companyId,
+        companyName: companyData.name || '',
+        companyOwnerEmail: companyData.ownerEmail || companyData.email || '',
+        openedAt: new Date().toISOString()
+      });
       setPlatformAdminUser(user);
       setUser(buildCompanyAdminUser(companyId, companyData));
       setSupportSession({
