@@ -558,7 +558,7 @@ export default function HomePage() {
                   <li className="flex items-center gap-3"><Check className="w-5 h-5 text-yellow-300" /> Clients illimités</li>
                   <li className="flex items-center gap-3"><Check className="w-5 h-5 text-yellow-300" /> Produits illimités</li>
                   <li className="flex items-center gap-3"><Check className="w-5 h-5 text-yellow-300" /> 6 utilisateurs</li>
-                  <li className="flex items-center gap-3"><Check className="w-5 h-5 text-yellow-300" /> 5 templates</li>
+                  <li className="flex items-center gap-3"><Check className="w-5 h-5 text-yellow-300" /> 8 templates</li>
                   <li className="flex items-center gap-3"><Check className="w-5 h-5 text-yellow-300" /> Signature électronique</li>
                   <li className="flex items-center gap-3"><Check className="w-5 h-5 text-yellow-300" /> Gestion fournisseur</li>
                   <li className="flex items-center gap-3"><Check className="w-5 h-5 text-yellow-300" /> Gestion stock</li>
@@ -849,3 +849,4 @@ export default function HomePage() {
     </div>
   );
 }
+
