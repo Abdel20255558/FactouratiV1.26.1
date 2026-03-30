@@ -292,6 +292,7 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
     | 'password'
     | 'confirmPassword'
     | 'companyName'
+    | 'activity'
     | 'ice'
     | 'if'
     | 'rc'
@@ -318,6 +319,7 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
     password: '',
     confirmPassword: '',
     companyName: '',
+    activity: '',
     ice: '',
     if: '',
     rc: '',
@@ -376,6 +378,7 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
 
     // société
     if (!formData.companyName.trim()) fe.companyName = 'Nom de la société obligatoire.';
+    if (!formData.activity.trim()) fe.activity = 'Activité obligatoire.';
     if (!formData.address.trim()) fe.address = 'Adresse obligatoire.';
     if (!formData.companyEmail.trim()) fe.companyEmail = "Email de l'entreprise obligatoire.";
     else if (!emailRegex.test(formData.companyEmail.trim())) fe.companyEmail = 'Email invalide.';
@@ -440,6 +443,7 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
     try {
       const companyData = {
         name: formData.companyName.trim(),
+        activity: formData.activity.trim(),
         ice: formData.ice.trim(),
         if: formData.if.trim(),
         rc: formData.rc.trim(),
@@ -683,6 +687,28 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
                 )}
                 {!fieldErrors.companyName && formData.companyName.trim() && !isCheckingCompany && (
                   <p className="mt-1 text-xs text-green-600">✓ Nom de société disponible</p>
+                )}
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Activité *</label>
+                <input
+                  type="text"
+                  name="activity"
+                  value={formData.activity}
+                  onChange={(e) => onField('activity', e.target.value)}
+                  required
+                  aria-invalid={!!fieldErrors.activity}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent
+                    ${
+                      fieldErrors.activity
+                        ? 'border-red-300 focus:ring-red-400'
+                        : 'border-gray-300 focus:ring-teal-500'
+                    }`}
+                  placeholder="Ex: Restauration, BTP, Commerce, Services"
+                />
+                {fieldErrors.activity && (
+                  <p className="mt-1 text-xs text-red-600">{fieldErrors.activity}</p>
                 )}
               </div>
 
