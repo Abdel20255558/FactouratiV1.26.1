@@ -35,7 +35,6 @@ import {
   Facebook,
   Instagram,
   Linkedin,
-  Youtube,
   Twitter
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -797,13 +796,13 @@ export default function HomePage() {
                     <Linkedin className="w-5 h-5" />
                   </a>
                   <a
-                    href="https://www.youtube.com"
+                    href="https://fr.pinterest.com/Factourati/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-10 h-10 bg-gray-800 hover:bg-red-600 rounded-lg flex items-center justify-center transition-colors"
-                    aria-label="YouTube"
+                    aria-label="Pinterest"
                   >
-                    <Youtube className="w-5 h-5" />
+                    <span className="text-sm font-bold">P</span>
                   </a>
                 </div>
               </div>
