@@ -42,8 +42,7 @@ export default function Template1Classic({ data, type, includeSignature = false 
               {user?.company.logo && (<img src={user.company.logo} alt="Logo" className="h-20 w-auto" />)}
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">{user?.company.name}</h2>
-                <p className="text-sm text-gray-600">{user?.company.activity}</p>
-                <p className="text-sm text-gray-600">{user?.company.address}</p>
+                <p className="text-sm text-gray-600">{user?.company.activity || '-'}</p>
               </div>
             </div>
             <div className="text-right">
