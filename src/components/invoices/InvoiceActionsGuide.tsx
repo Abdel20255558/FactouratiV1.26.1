@@ -35,7 +35,7 @@ export default function InvoiceActionsGuide() {
       bgColor: 'bg-blue-50 dark:bg-blue-900/20',
       borderColor: 'border-blue-200 dark:border-blue-700',
       features: [
-        '5 templates prêts à l’emploi',
+        '8 templates prêts à l’emploi',
         'Signature électronique (upload ou dessin)',
         'Téléchargement PDF / Impression',
         'Options : inclure la signature'
@@ -276,3 +276,4 @@ function InfoCard({
     </div>
   );
 }
+
