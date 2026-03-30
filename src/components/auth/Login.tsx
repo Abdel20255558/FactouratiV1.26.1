@@ -333,6 +333,8 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
     otherSource: '',
   });
 
+  const keepDigitsOnly = (value: string) => value.replace(/\D/g, '');
+
   const onField = (name: keyof typeof formData, v: string) => {
     setFormData((s) => ({ ...s, [name]: v }));
     if (fieldErrors[name]) setFieldErrors((e) => ({ ...e, [name]: undefined }));
@@ -691,7 +693,7 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
                   type="text"
                   name="ice"
                   value={formData.ice}
-                  onChange={(e) => onField('ice', e.target.value)}
+                  onChange={(e) => onField('ice', keepDigitsOnly(e.target.value))}
                   required
                   maxLength={15}
                   pattern="\d{15}"
@@ -716,7 +718,7 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
                   type="text"
                   name="if"
                   value={formData.if}
-                  onChange={(e) => onField('if', e.target.value)}
+                  onChange={(e) => onField('if', keepDigitsOnly(e.target.value))}
                   required
                   maxLength={8}
                   pattern="\d{8}"
@@ -766,7 +768,7 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
                   type="text"
                   name="cnss"
                   value={formData.cnss}
-                  onChange={(e) => onField('cnss', e.target.value)}
+                  onChange={(e) => onField('cnss', keepDigitsOnly(e.target.value))}
                   required
                   maxLength={7}
                   pattern="\d{7}"
@@ -857,7 +859,7 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
                   type="text"
                   name="patente"
                   value={formData.patente}
-                  onChange={(e) => onField('patente', e.target.value)}
+                  onChange={(e) => onField('patente', keepDigitsOnly(e.target.value))}
                   required
                   maxLength={8}
                   pattern="\d{8}"
