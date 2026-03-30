@@ -10,8 +10,8 @@ const homeLinks = [
   { label: 'Accueil', href: '/#accueil' },
   { label: 'Secteurs', href: '/#secteurs' },
   { label: 'Modules', href: '/#modules' },
-  { label: 'Tarifs', href: '/#tarifs' },
-  { label: 'FAQ', href: '/#faq' },
+  { label: 'Tarifs', href: '/tarifs' },
+  { label: 'FAQ', href: '/faq' },
 ];
 
 export default function PublicSiteChrome({ children }: PublicSiteChromeProps) {
@@ -37,11 +37,17 @@ export default function PublicSiteChrome({ children }: PublicSiteChromeProps) {
             </Link>
 
             <nav className="hidden items-center space-x-8 md:flex">
-              {homeLinks.map((item) => (
-                <a key={item.label} href={item.href} className="font-medium text-gray-800 hover:text-teal-600">
-                  {item.label}
-                </a>
-              ))}
+              {homeLinks.map((item) =>
+                item.href.startsWith('/#') ? (
+                  <a key={item.label} href={item.href} className="font-medium text-gray-800 hover:text-teal-600">
+                    {item.label}
+                  </a>
+                ) : (
+                  <Link key={item.label} to={item.href} className="font-medium text-gray-800 hover:text-teal-600">
+                    {item.label}
+                  </Link>
+                ),
+              )}
               <Link to="/blog" className="font-medium text-teal-700">
                 Blog
               </Link>
@@ -122,9 +128,15 @@ export default function PublicSiteChrome({ children }: PublicSiteChromeProps) {
               <ul className="space-y-2 text-gray-400">
                 {homeLinks.map((item) => (
                   <li key={item.label}>
-                    <a href={item.href} className="transition-colors hover:text-white">
-                      {item.label}
-                    </a>
+                    {item.href.startsWith('/#') ? (
+                      <a href={item.href} className="transition-colors hover:text-white">
+                        {item.label}
+                      </a>
+                    ) : (
+                      <Link to={item.href} className="transition-colors hover:text-white">
+                        {item.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
                 <li>
