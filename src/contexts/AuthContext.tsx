@@ -18,6 +18,7 @@ import { ManagedUser } from './UserManagementContext';
 
 interface Company {
   name: string;
+  activity?: string;
   ice: string;
   if: string;
   rc: string;
@@ -169,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     entrepriseId: companyId,
     company: {
       name: companyData.name,
+      activity: companyData.activity || '',
       ice: companyData.ice,
       if: companyData.if,
       rc: companyData.rc,
@@ -345,6 +347,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             entrepriseId: managedUser.entrepriseId,
             company: {
               name: companyData.name,
+              activity: companyData.activity || '',
               ice: companyData.ice,
               if: companyData.if,
               rc: companyData.rc,
