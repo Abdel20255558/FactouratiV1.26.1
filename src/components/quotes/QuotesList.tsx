@@ -180,7 +180,7 @@ export default function QuotesList() {
   const [localConverted, setLocalConverted] = useState<Set<string>>(new Set());
 
   const isTemplateProOnly = (templateId: string = 'template1') => {
-    const proTemplates = ['template2', 'template3', 'template4', 'template5'];
+    const proTemplates = ['template2', 'template3', 'template4', 'template5', 'template6', 'template7', 'template8'];
     return proTemplates.includes(templateId);
   };
   const getTemplateName = (templateId: string = 'template1') => {
@@ -190,6 +190,9 @@ export default function QuotesList() {
       template3: 'Moderne avec formes vertes Pro',
       template4: 'Bleu Élégant Pro',
       template5: 'Minimal Bleu Pro',
+      template6: 'Executive Bronze Pro',
+      template7: 'Atlas Emeraude Pro',
+      template8: 'Prestige Graphite Pro',
     };
     return m[templateId] || 'Template';
   };
@@ -890,3 +893,5 @@ export default function QuotesList() {
     </div>
   );
 }
+
+
