@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   Building2, 
   Users, 
@@ -12,7 +13,8 @@ import {
   Shield,
   CheckCircle,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  LogIn
 } from 'lucide-react';
 import EditCompanyModal from './EditCompanyModal';
 import ReferralSourceChart from './ReferralSourceChart';
@@ -33,9 +35,11 @@ interface Company {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { startSupportAccess, logout } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [supportLoadingId, setSupportLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadCompanies();
@@ -59,8 +63,24 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
+  };
+
+  const handleSupportAccess = async (company: Company) => {
+    setSupportLoadingId(company.id);
+    try {
+      const ok = await startSupportAccess(company.id);
+      if (ok) {
+        navigate('/dashboard');
+        return;
+      }
+
+      alert("Impossible d'ouvrir cet espace client.");
+    } finally {
+      setSupportLoadingId(null);
+    }
   };
 
   const getStatusBadge = (company: Company) => {
@@ -363,6 +383,14 @@ export default function AdminDashboard() {
                       >
                         <Edit className="w-4 h-4" />
                         <span>Modifier</span>
+                      </button>
+                      <button
+                        onClick={() => handleSupportAccess(company)}
+                        disabled={supportLoadingId === company.id}
+                        className="ml-4 inline-flex items-center space-x-1 text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50"
+                      >
+                        <LogIn className="w-4 h-4" />
+                        <span>{supportLoadingId === company.id ? 'Ouverture...' : 'Acces support'}</span>
                       </button>
                     </td>
                   </tr>
