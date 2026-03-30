@@ -37,7 +37,7 @@ interface SidebarProps {
 export default function Sidebar({ open, setOpen, onUpgrade }: SidebarProps) {
   const { t } = useLanguage();
   const { licenseType } = useLicense();
-  const { user, logout } = useAuth(); // <-- include logout
+  const { user, logout, supportSession } = useAuth(); // <-- include logout
   const navigate = useNavigate();
 
   // Abonnement PRO
@@ -77,7 +77,7 @@ export default function Sidebar({ open, setOpen, onUpgrade }: SidebarProps) {
     try {
       await logout?.();
     } finally {
-      navigate('/login');
+      navigate(supportSession.isActive ? '/admin/dashboard' : '/login');
     }
   };
 
@@ -220,7 +220,7 @@ export default function Sidebar({ open, setOpen, onUpgrade }: SidebarProps) {
             {open && (
               <div>
                 <h1 className="text-lg font-bold text-gray-900 dark:text-white">Factourati</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">ERP Morocco (V.1.26.3)</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">ERP Morocco (V.1.26.4)</p>
               </div>
             )}
           </div>
@@ -351,7 +351,7 @@ export default function Sidebar({ open, setOpen, onUpgrade }: SidebarProps) {
             <motion.div
               whileHover={{ scale: 1.02 }}
               className={`${open ? 'p-2' : 'p-1'} rounded-lg text-center ${open ? 'text-xs' : 'text-[10px]'} ${
-                user.email === 'admin@facture.ma'
+                user.email === 'admin@facturati.ma'
                   ? 'bg-gradient-to-r from-red-500 to-pink-600 text-white shadow-lg'
                   : user.isAdmin
                   ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
@@ -359,12 +359,12 @@ export default function Sidebar({ open, setOpen, onUpgrade }: SidebarProps) {
               }`}
             >
               {open
-                ? user.email === 'admin@facture.ma'
+                ? user.email === 'admin@facturati.ma'
                   ? '🔧 Admin Plateforme'
                   : user.isAdmin
                   ? '👑 Administrateur'
                   : '👤 Utilisateur'
-                : user.email === 'admin@facture.ma'
+                : user.email === 'admin@facturati.ma'
                 ? '🔧'
                 : user.isAdmin
                 ? '👑'
