@@ -46,7 +46,10 @@ export default function CreateInvoice() {
     { id: 'template2', name: 'Noir Classique Pro', isPro: true },
     { id: 'template3', name: 'Moderne avec formes vertes Pro', isPro: true },
     { id: 'template4', name: 'Bleu Élégant Pro', isPro: true },
-    { id: 'template5', name: 'Minimal Bleu Pro', isPro: true }
+    { id: 'template5', name: 'Minimal Bleu Pro', isPro: true },
+    { id: 'template6', name: 'Executive Bronze Pro', isPro: true },
+    { id: 'template7', name: 'Atlas Emeraude Pro', isPro: true },
+    { id: 'template8', name: 'Prestige Graphite Pro', isPro: true }
   ];
 
   const getTemplateName = (templateId: string) => {
@@ -304,7 +307,7 @@ export default function CreateInvoice() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="font-medium text-gray-900 dark:text-gray-100">{user?.company.name}</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{user?.company.address}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{user?.company.activity || '-'}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-300">{user?.company.phone}</p>
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
