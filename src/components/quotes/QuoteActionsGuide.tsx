@@ -35,7 +35,7 @@ export default function QuoteActionsGuide() {
       bgColor: 'bg-blue-50 dark:bg-blue-900/20',
       borderColor: 'border-blue-200 dark:border-blue-700',
       features: [
-        'Jusqu’à 5 templates A4',
+        'Jusqu’à 8 templates A4',
         'Téléchargement PDF',
         'Impression navigateur',
         'Entête & pied fixes multi-pages'
@@ -276,3 +276,4 @@ function InfoCard({
     </div>
   );
 }
+
