@@ -134,7 +134,7 @@ export default function ProTemplateModal({ isOpen, onClose, templateName }: ProT
                   </div>
                   <div className="flex items-center space-x-2">
                     <Sparkles className="w-4 h-4 text-green-500" />
-                    <span className="text-sm">5 templates premium exclusifs</span>
+                    <span className="text-sm">8 templates premium exclusifs</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Crown className="w-4 h-4 text-green-500" />
@@ -184,3 +184,4 @@ export default function ProTemplateModal({ isOpen, onClose, templateName }: ProT
     </div>
   );
 }
+
