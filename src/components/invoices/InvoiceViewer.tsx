@@ -33,7 +33,10 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
     { id: 'template2', name: 'Moderne Coloré', isPro: true },
     { id: 'template3', name: 'Minimaliste', isPro: true },
     { id: 'template4', name: 'Corporate', isPro: true },
-    { id: 'template5', name: 'Premium Élégant', isPro: true }
+    { id: 'template5', name: 'Premium Élégant', isPro: true },
+    { id: 'template6', name: 'Executive Bronze Pro', isPro: true },
+    { id: 'template7', name: 'Atlas Emeraude Pro', isPro: true },
+    { id: 'template8', name: 'Prestige Graphite Pro', isPro: true }
   ];
 
   const getTemplateName = (templateId: string) => templates.find(t => t.id === templateId)?.name || 'Template';
@@ -157,6 +160,9 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
                 <option value="template3">Minimaliste Pro</option>
                 <option value="template4">Corporate Pro</option>
                 <option value="template5">Premium Élégant Pro</option>
+                <option value="template6">Executive Bronze Pro</option>
+                <option value="template7">Atlas Emeraude Pro</option>
+                <option value="template8">Prestige Graphite Pro</option>
               </select>
 
               <button onClick={handleDownloadPDF} className="inline-flex items-center space-x-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm">
@@ -226,3 +232,5 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
     </div>
   );
 }
+
+
