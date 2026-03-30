@@ -25,6 +25,8 @@ interface Company {
   subscription: 'free' | 'pro';
   expiryDate?: string;
   subscriptionDate?: string;
+  lastClientAccessAt?: string;
+  lastClientAccessByEmail?: string;
   ownerEmail: string;
   ice: string;
   createdAt: string;
@@ -33,29 +35,52 @@ interface Company {
   otherSource?: string;
 }
 
+interface SupportAccessLog {
+  id: string;
+  adminEmail: string;
+  adminName?: string;
+  companyId: string;
+  companyName: string;
+  companyOwnerEmail?: string;
+  openedAt: string;
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { startSupportAccess, logout } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [supportLogs, setSupportLogs] = useState<SupportAccessLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [supportLoadingId, setSupportLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadCompanies();
+    loadDashboardData();
   }, [navigate]);
 
-  const loadCompanies = async () => {
+  const loadDashboardData = async () => {
+    setIsLoading(true);
     try {
-      const companiesSnapshot = await getDocs(collection(db, 'entreprises'));
+      const [companiesSnapshot, supportLogsSnapshot] = await Promise.all([
+        getDocs(collection(db, 'entreprises')),
+        getDocs(collection(db, 'supportAccessLogs'))
+      ]);
       const companiesData = companiesSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as Company));
+      const supportLogsData = supportLogsSnapshot.docs
+        .map(logDoc => ({
+          id: logDoc.id,
+          ...logDoc.data()
+        } as SupportAccessLog))
+        .sort((a, b) => new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime())
+        .slice(0, 12);
       
       setCompanies(companiesData.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       ));
+      setSupportLogs(supportLogsData);
     } catch (error) {
       console.error('Erreur lors du chargement des entreprises:', error);
     } finally {
@@ -139,7 +164,7 @@ export default function AdminDashboard() {
       await updateDoc(doc(db, 'entreprises', companyId), updateData);
       
       // Recharger les données
-      await loadCompanies();
+      await loadDashboardData();
       setEditingCompany(null);
     } catch (error) {
       console.error('Erreur lors de la mise à jour:', error);
@@ -273,6 +298,66 @@ export default function AdminDashboard() {
           <ReferralSourceChart data={referralSourceData()} />
         </div>
 
+        <div className="mb-8 bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Historique des accès support</h3>
+              <p className="text-sm text-gray-500 mt-1">Qui a ouvert quel compte client et quand</p>
+            </div>
+            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+              <Shield className="w-5 h-5 text-blue-600" />
+            </div>
+          </div>
+
+          {supportLogs.length === 0 ? (
+            <div className="px-6 py-10 text-center">
+              <p className="text-gray-500">Aucun accès support enregistré pour le moment</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Admin
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Compte client ouvert
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date et heure
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {supportLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{log.adminName || 'Administrateur'}</div>
+                          <div className="text-xs text-gray-500">{log.adminEmail}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{log.companyName}</div>
+                          <div className="text-xs text-gray-500">{log.companyOwnerEmail || log.companyId}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div>{new Date(log.openedAt).toLocaleDateString('fr-FR')}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(log.openedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {/* Liste des entreprises */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -300,6 +385,9 @@ export default function AdminDashboard() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Statut
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Dernier accès client
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -375,6 +463,21 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(company)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {company.lastClientAccessAt ? (
+                        <div>
+                          <div>{new Date(company.lastClientAccessAt).toLocaleDateString('fr-FR')}</div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(company.lastClientAccessAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                          <div className="text-xs text-blue-600 mt-1">
+                            {company.lastClientAccessByEmail || company.ownerEmail}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">Jamais connecté</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <button
