@@ -31,6 +31,7 @@ export default function Settings() {
   // --- Company / invoice / template state ---
   const [companyData, setCompanyData] = useState({
     name: '',
+    activity: '',
     ice: '',
     if: '',
     rc: '',
@@ -78,6 +79,7 @@ export default function Settings() {
     if (user?.company) {
       setCompanyData({
         name: user.company.name || '',
+        activity: user.company.activity || '',
         ice: user.company.ice || '',
         if: user.company.if || '',
         rc: user.company.rc || '',
@@ -219,6 +221,7 @@ export default function Settings() {
     try {
       await updateCompanySettings({
         name: companyData.name,
+        activity: companyData.activity,
         ice: companyData.ice,
         if: companyData.if,
         rc: companyData.rc,
@@ -325,6 +328,19 @@ export default function Settings() {
                   onChange={(e) => handleCompanyDataChange('name', e.target.value)}
                   disabled={!user?.isAdmin}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Activité
+                </label>
+                <input
+                  type="text"
+                  value={companyData.activity}
+                  onChange={(e) => handleCompanyDataChange('activity', e.target.value)}
+                  disabled={!user?.isAdmin}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Ex: Restauration, BTP, Commerce, Services"
                 />
               </div>
               <div>
