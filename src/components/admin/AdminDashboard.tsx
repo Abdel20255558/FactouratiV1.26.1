@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -14,7 +14,8 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  LogIn
+  LogIn,
+  Trash2
 } from 'lucide-react';
 import EditCompanyModal from './EditCompanyModal';
 import ReferralSourceChart from './ReferralSourceChart';
@@ -53,6 +54,7 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [supportLoadingId, setSupportLoadingId] = useState<string | null>(null);
+  const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -105,6 +107,77 @@ export default function AdminDashboard() {
       alert("Impossible d'ouvrir cet espace client.");
     } finally {
       setSupportLoadingId(null);
+    }
+  };
+
+  const deleteDocsByField = async (collectionName: string, fieldName: string, value: string) => {
+    const snapshot = await getDocs(query(collection(db, collectionName), where(fieldName, '==', value)));
+    await Promise.all(snapshot.docs.map((item) => deleteDoc(item.ref)));
+  };
+
+  const deleteCompanyData = async (companyId: string) => {
+    const entrepriseCollections = [
+      'managedUsers',
+      'clients',
+      'products',
+      'invoices',
+      'quotes',
+      'stockMovements',
+      'stockAlerts',
+      'employees',
+      'overtimes',
+      'leaves',
+      'projects',
+      'tasks',
+      'projectComments',
+      'projectFiles',
+      'orders',
+      'suppliers',
+      'supplierProducts',
+      'purchaseOrders',
+      'supplierPayments'
+    ];
+
+    for (const collectionName of entrepriseCollections) {
+      await deleteDocsByField(collectionName, 'entrepriseId', companyId);
+    }
+
+    await deleteDocsByField('supportAccessLogs', 'companyId', companyId);
+    await deleteDoc(doc(db, 'entreprises', companyId));
+  };
+
+  const handleDeleteCompany = async (company: Company) => {
+    const securityCode = window.prompt(
+      `Pour supprimer definitivement ${company.name}, saisissez le code de securite.`
+    );
+
+    if (securityCode === null) {
+      return;
+    }
+
+    if (securityCode.trim() !== '121118') {
+      alert('Code de securite incorrect.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Cette action supprimera definitivement ${company.name} et toutes ses donnees dans Firestore. Voulez-vous continuer ?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleteLoadingId(company.id);
+    try {
+      await deleteCompanyData(company.id);
+      await loadDashboardData();
+      alert('Client supprime definitivement de la base de donnees.');
+    } catch (error) {
+      console.error('Erreur lors de la suppression du client:', error);
+      alert("Impossible de supprimer ce client pour le moment.");
+    } finally {
+      setDeleteLoadingId(null);
     }
   };
 
@@ -494,6 +567,14 @@ export default function AdminDashboard() {
                       >
                         <LogIn className="w-4 h-4" />
                         <span>{supportLoadingId === company.id ? 'Ouverture...' : 'Acces support'}</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCompany(company)}
+                        disabled={deleteLoadingId === company.id}
+                        className="ml-4 inline-flex items-center space-x-1 text-red-700 hover:text-red-800 transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>{deleteLoadingId === company.id ? 'Suppression...' : 'Supprimer'}</span>
                       </button>
                     </td>
                   </tr>
