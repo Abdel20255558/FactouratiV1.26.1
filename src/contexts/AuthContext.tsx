@@ -64,15 +64,25 @@ interface User {
   company: Company;
 }
 
+interface SupportSession {
+  isActive: boolean;
+  companyId: string | null;
+  companyName: string | null;
+  adminEmail: string | null;
+}
+
 interface AuthContextType {
   user: User | null;
   firebaseUser: FirebaseUser | null;
   isAuthenticated: boolean;
+  supportSession: SupportSession;
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, companyData: Company) => Promise<boolean>;
   sendEmailVerification: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   logout: () => Promise<void>;
+  startSupportAccess: (companyId: string) => Promise<boolean>;
+  stopSupportAccess: () => void;
   upgradeSubscription: () => Promise<void>;
   updateCompanySettings: (settings: Partial<Company>) => Promise<void>;
   checkSubscriptionExpiry: () => Promise<void>;
@@ -105,9 +115,16 @@ const getActionCodeSettings = (): ActionCodeSettings => ({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [platformAdminUser, setPlatformAdminUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showExpiryAlert, setShowExpiryAlert] = useState(false);
   const [expiredDate, setExpiredDate] = useState<string | null>(null);
+  const [supportSession, setSupportSession] = useState<SupportSession>({
+    isActive: false,
+    companyId: null,
+    companyName: null,
+    adminEmail: null
+  });
   const [subscriptionStatus, setSubscriptionStatus] = useState({
     isExpired: false,
     isExpiringSoon: false,
@@ -142,6 +159,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       shouldShowNotification
     };
   };
+
+  const buildCompanyAdminUser = (companyId: string, companyData: any, emailOverride?: string, nameOverride?: string): User => ({
+    id: companyId,
+    name: nameOverride || companyData.ownerName || emailOverride?.split('@')[0] || 'Administrateur',
+    email: emailOverride || companyData.ownerEmail || companyData.email || '',
+    role: 'admin',
+    isAdmin: true,
+    entrepriseId: companyId,
+    company: {
+      name: companyData.name,
+      ice: companyData.ice,
+      if: companyData.if,
+      rc: companyData.rc,
+      cnss: companyData.cnss,
+      address: companyData.address,
+      phone: companyData.phone,
+      logo: companyData.logo,
+      email: companyData.email,
+      signature: companyData.signature || '',
+      patente: companyData.patente,
+      website: companyData.website,
+      invoiceNumberingFormat: companyData.invoiceNumberingFormat,
+      invoicePrefix: companyData.invoicePrefix,
+      invoiceCounter: companyData.invoiceCounter,
+      lastInvoiceYear: companyData.lastInvoiceYear,
+      defaultTemplate: companyData.defaultTemplate || 'template1',
+      subscription: companyData.subscription || 'free',
+      subscriptionDate: companyData.subscriptionDate,
+      expiryDate: companyData.expiryDate
+    }
+  });
 
   const checkManagedUser = async (email: string, password: string): Promise<ManagedUser | null> => {
     try {
@@ -210,36 +258,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
             }
 
-            setUser({
-              id: fbUser.uid,
-              name: userData.ownerName || fbUser.email?.split('@')[0] || 'Utilisateur',
-              email: fbUser.email || '',
-              role: 'admin',
-              isAdmin: true,
-              entrepriseId: fbUser.uid,
-              company: {
-                name: userData.name,
-                ice: userData.ice,
-                if: userData.if,
-                rc: userData.rc,
-                cnss: userData.cnss,
-                address: userData.address,
-                phone: userData.phone,
-                logo: userData.logo,
-                email: userData.email,
-                signature: userData.signature || '',
-                patente: userData.patente,
-                website: userData.website,
-                invoiceNumberingFormat: userData.invoiceNumberingFormat,
-                invoicePrefix: userData.invoicePrefix,
-                invoiceCounter: userData.invoiceCounter,
-                lastInvoiceYear: userData.lastInvoiceYear,
-                defaultTemplate: userData.defaultTemplate || 'template1',
-                subscription: userData.subscription || 'free',
-                subscriptionDate: userData.subscriptionDate,
-                expiryDate: userData.expiryDate
-              }
-            });
+            setUser(
+              buildCompanyAdminUser(
+                fbUser.uid,
+                userData,
+                fbUser.email || '',
+                userData.ownerName || fbUser.email?.split('@')[0]
+              )
+            );
             setSubscriptionStatus(calculateSubscriptionStatus(userData));
             await checkSubscriptionExpiry(fbUser.uid, userData);
           }
@@ -258,7 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       if (email === 'admin@facturati.ma' && password === 'Rahma1211?') {
-        setUser({
+        const adminUser: User = {
           id: 'facture-admin',
           name: 'Administrateur Facturati',
           email: 'admin@facturati.ma',
@@ -280,7 +306,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             subscriptionDate: new Date().toISOString(),
             expiryDate: new Date(2030, 11, 31).toISOString()
           }
+        };
+        setFirebaseUser(null);
+        setPlatformAdminUser(adminUser);
+        setSupportSession({
+          isActive: false,
+          companyId: null,
+          companyName: null,
+          adminEmail: adminUser.email
         });
+        setUser(adminUser);
         return true;
       }
 
@@ -448,12 +483,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const startSupportAccess = async (companyId: string): Promise<boolean> => {
+    if (!user || user.email !== 'admin@facturati.ma') {
+      return false;
+    }
+
+    try {
+      const companyDoc = await getDoc(doc(db, 'entreprises', companyId));
+      if (!companyDoc.exists()) {
+        return false;
+      }
+
+      const companyData = companyDoc.data();
+      setPlatformAdminUser(user);
+      setUser(buildCompanyAdminUser(companyId, companyData));
+      setSupportSession({
+        isActive: true,
+        companyId,
+        companyName: companyData.name || null,
+        adminEmail: 'admin@facturati.ma'
+      });
+      setSubscriptionStatus(calculateSubscriptionStatus(companyData));
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de l acces support:', error);
+      return false;
+    }
+  };
+
+  const stopSupportAccess = (): void => {
+    if (!platformAdminUser) {
+      return;
+    }
+
+    setUser(platformAdminUser);
+    setSupportSession({
+      isActive: false,
+      companyId: null,
+      companyName: null,
+      adminEmail: platformAdminUser.email
+    });
+    setSubscriptionStatus({
+      isExpired: false,
+      isExpiringSoon: false,
+      daysRemaining: 0,
+      shouldBlockUsers: false,
+      shouldShowNotification: false
+    });
+  };
+
   const logout = async (): Promise<void> => {
     try {
+      if (supportSession.isActive && platformAdminUser) {
+        stopSupportAccess();
+        return;
+      }
+
       if (user && !user.isAdmin) {
         setUser(null);
         setFirebaseUser(null);
       } else {
+        setPlatformAdminUser(null);
+        setSupportSession({
+          isActive: false,
+          companyId: null,
+          companyName: null,
+          adminEmail: null
+        });
         await signOut(auth);
       }
     } catch (error) {
@@ -465,11 +561,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     firebaseUser,
     isAuthenticated: !!user,
+    supportSession,
     login,
     register,
     sendEmailVerification: sendEmailVerificationManual,
     sendPasswordReset,
     logout,
+    startSupportAccess,
+    stopSupportAccess,
     upgradeSubscription,
     updateCompanySettings,
     checkSubscriptionExpiry: checkSubscriptionExpiryManual,
