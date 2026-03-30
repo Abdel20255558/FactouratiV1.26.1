@@ -205,7 +205,7 @@ export default function GuideStockArticle() {
               </p>
             </div>
             <div className="rounded-[2rem] border border-white/10 bg-white/10 p-4 shadow-2xl backdrop-blur">
-              <img src="/blog-assets/stock.svg" alt="gestion de stock produits avec Factourati" loading="eager" fetchPriority="high" decoding="async" className="h-full w-full rounded-[1.5rem] object-cover" />
+              <img src="/blog-assets/stock.PNG" alt="gestion de stock produits avec Factourati" loading="eager" fetchPriority="high" decoding="async" className="h-full w-full rounded-[1.5rem] object-cover" />
             </div>
           </div>
         </div>
