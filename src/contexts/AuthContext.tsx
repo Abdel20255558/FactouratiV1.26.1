@@ -563,6 +563,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setFirebaseUser(null);
       } else {
+        setUser(null);
+        setFirebaseUser(null);
         setPlatformAdminUser(null);
         setSupportSession({
           isActive: false,
