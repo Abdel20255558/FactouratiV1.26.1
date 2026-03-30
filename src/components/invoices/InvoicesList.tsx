@@ -35,7 +35,7 @@ export default function InvoicesList() {
     setExpandedYears((prev) => ({ ...prev, [year]: !prev[year] }));
 
   const isTemplateProOnly = (templateId: string = 'template1') => {
-    const proTemplates = ['template2', 'template3', 'template4', 'template5'];
+    const proTemplates = ['template2', 'template3', 'template4', 'template5', 'template6', 'template7', 'template8'];
     return proTemplates.includes(templateId);
   };
 
@@ -46,6 +46,9 @@ export default function InvoicesList() {
       template3: 'Moderne avec formes vertes Pro',
       template4: 'Bleu Élégant Pro',
       template5: 'Minimal Bleu Pro',
+      template6: 'Executive Bronze Pro',
+      template7: 'Atlas Emeraude Pro',
+      template8: 'Prestige Graphite Pro',
     };
     return templates[templateId as keyof typeof templates] || 'Template';
   };
@@ -246,6 +249,9 @@ export default function InvoicesList() {
         templateContent = generateTemplate4HTML(invoice);
         break;
       case 'template5':
+      case 'template6':
+      case 'template7':
+      case 'template8':
         templateContent = generateTemplate5HTML(invoice);
         break;
       default:
@@ -739,3 +745,5 @@ export default function InvoicesList() {
     </div>
   );
 }
+
+
