@@ -3,33 +3,48 @@ import { ArrowRight } from 'lucide-react';
 import PublicSiteChrome from './PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
 import {
+  DEFAULT_OG_IMAGE,
   SITE_URL,
   createBreadcrumbSchema,
   createFaqSchema,
   createLocalBusinessSchema,
   createOrganizationSchema,
+  createSiteNavigationSchema,
+  createWebPageSchema,
+  createWebsiteSchema,
   faqItems,
 } from '../../data/publicSeoData';
 
 export default function FaqPage() {
   const pageUrl = `${SITE_URL}/faq`;
+  const pageDescription =
+    "Consultez la FAQ Factourati pour comprendre le fonctionnement du logiciel, les tarifs, l'essai gratuit et les usages pour les PME marocaines.";
   const schema = [
     createOrganizationSchema(),
     createLocalBusinessSchema(),
+    createWebsiteSchema(),
+    createSiteNavigationSchema(),
     createFaqSchema(),
     createBreadcrumbSchema([
       { name: 'Accueil', url: SITE_URL },
       { name: 'FAQ', url: pageUrl },
     ]),
+    createWebPageSchema({
+      name: 'FAQ Factourati | Tarifs, essai gratuit et logiciel de gestion',
+      path: '/faq',
+      description: pageDescription,
+    }),
   ];
 
   return (
     <PublicSiteChrome>
       <SeoHead
-        title="FAQ Factourati | Questions frequentes sur le logiciel de gestion"
-        description="Consultez la FAQ Factourati pour comprendre le fonctionnement du logiciel, les tarifs, l'essai gratuit et les usages pour les PME marocaines."
+        title="FAQ Factourati | Tarifs, essai gratuit et logiciel de gestion"
+        description={pageDescription}
         canonicalPath="/faq"
         keywords="faq factourati, logiciel gestion maroc faq, facturation maroc questions"
+        image={DEFAULT_OG_IMAGE}
+        imageAlt="Questions frequentes sur Factourati"
         type="website"
         schema={schema}
       />
