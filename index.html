@@ -1,171 +1,238 @@
-<!-- /index.html -->
 <!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
 
-    <!-- Favicon / PWA icons -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/files_3254075-1761082431431-image.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/files_3254075-1761082431431-image.png">
-    <link rel="apple-touch-icon" href="/files_3254075-1761082431431-image.png">
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0f766e">
+    <link rel="icon" type="image/png" sizes="32x32" href="/files_3254075-1761082431431-image.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/files_3254075-1761082431431-image.png" />
+    <link rel="apple-touch-icon" href="/files_3254075-1761082431431-image.png" />
+    <link rel="manifest" href="/manifest.json" />
 
+    <meta name="theme-color" content="#0f766e" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="application-name" content="Factourati" />
 
     <title>Factourati | Logiciel de facturation et gestion pour PME au Maroc</title>
-    <meta name="description" content="Factourati aide les PME marocaines à gérer devis, factures, paiements, stock, fournisseurs et projets dans une seule plateforme.">
-    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
-    <link rel="canonical" href="https://www.factourati.com/">
+    <meta
+      name="description"
+      content="Factourati est un logiciel de facturation et de gestion pour PME au Maroc. Essai gratuit, tarifs a partir de 199 DH par mois, blog, FAQ et connexion client."
+    />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="author" content="Factourati" />
+    <link rel="canonical" href="https://www.factourati.com/" />
 
-    <!-- Open Graph / Twitter -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://www.factourati.com/">
-    <meta property="og:title" content="Factourati | Logiciel de facturation et gestion pour PME au Maroc">
-    <meta property="og:description" content="Gérez votre entreprise plus vite avec une solution marocaine pour devis, factures, stock, paiements et projets.">
-    <meta property="og:image" content="https://www.factourati.com/2.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:image:type" content="image/png">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://www.factourati.com/2.png">
-    <meta name="twitter:title" content="Factourati | ERP Maroc">
-    <meta name="twitter:description" content="Gérez votre entreprise plus vite avec une solution marocaine pour devis, factures, stock, paiements et projets.">
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.factourati.com/" />
+    <meta property="og:site_name" content="Factourati" />
+    <meta property="og:locale" content="fr_MA" />
+    <meta property="og:title" content="Factourati | Logiciel de facturation et gestion pour PME au Maroc" />
+    <meta
+      property="og:description"
+      content="Centralisez devis, factures, paiements, stock, fournisseurs et projets. Consultez les tarifs Factourati des 199 DH par mois."
+    />
+    <meta property="og:image" content="https://www.factourati.com/2.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="Interface Factourati pour la gestion des PME au Maroc" />
 
-    <!-- Google site verification -->
-    <meta name="google-site-verification" content="QmkznMauU6MNK9zlJvPak_sAyAOvXH1nZzIs5BZfwu0">
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@FacTourati" />
+    <meta name="twitter:title" content="Factourati | Tarifs et logiciel de gestion pour PME au Maroc" />
+    <meta
+      name="twitter:description"
+      content="Essai gratuit, tarifs a partir de 199 DH/mois, blog, FAQ et connexion client pour gerer votre activite avec Factourati."
+    />
+    <meta name="twitter:image" content="https://www.factourati.com/2.png" />
+    <meta name="twitter:image:alt" content="Interface Factourati pour la gestion des PME au Maroc" />
 
-    <!-- JSON-LD: Organization (affichage du logo) -->
+    <meta name="google-site-verification" content="QmkznMauU6MNK9zlJvPak_sAyAOvXH1nZzIs5BZfwu0" />
+
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "Factourati",
-      "url": "https://www.factourati.com",
-      "logo": "https://www.factourati.com/files_3254075-1761082431431-image.png",
-      "image": "https://www.factourati.com/2.png",
-      "description": "Factourati est une solution marocaine pour gérer devis, factures, stock, clients et projets facilement.",
-      "sameAs": [
-        "https://x.com/FacTourati",
-        "https://www.linkedin.com/company/factourati",
-        "https://www.instagram.com/factourati"
-      ]
-    }
-    </script>
-
-    <!-- JSON-LD: WebSite (sitelinks + recherche de site) -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "Factourati",
-      "url": "https://www.factourati.com",
-      "inLanguage": "fr-MA",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "https://www.factourati.com/recherche?q={query}",
-        "query-input": "required name=query"
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Factourati",
+        "url": "https://www.factourati.com",
+        "logo": "https://www.factourati.com/files_3254075-1761082431431-image.png",
+        "image": "https://www.factourati.com/2.png",
+        "description": "Factourati est un logiciel marocain de facturation et de gestion pour centraliser devis, factures, paiements, stock, fournisseurs et projets.",
+        "sameAs": [
+          "https://x.com/FacTourati",
+          "https://www.linkedin.com/company/factourati",
+          "https://www.instagram.com/factourati"
+        ],
+        "contactPoint": [
+          {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "telephone": "+212666736446",
+            "email": "contact@Factourati.com",
+            "areaServed": "MA",
+            "availableLanguage": ["fr", "ar"]
+          }
+        ]
       }
-    }
     </script>
 
-    <!-- JSON-LD: WebPage avec sections de navigation -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebPage",
-      "name": "Factourati | Logiciel de facturation et gestion pour PME au Maroc",
-      "url": "https://www.factourati.com/",
-      "description": "Factourati aide les entreprises marocaines à centraliser devis, factures, stock et projets.",
-      "isPartOf": { "@type": "WebSite", "url": "https://www.factourati.com" },
-      "mainEntity": {
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Factourati",
+        "alternateName": "Factourati ERP Maroc",
+        "url": "https://www.factourati.com",
+        "inLanguage": "fr-MA",
+        "description": "Factourati est un logiciel de facturation et de gestion pour PME au Maroc.",
+        "hasPart": [
+          { "@type": "WebPage", "name": "Accueil", "url": "https://www.factourati.com/" },
+          { "@type": "WebPage", "name": "Tarifs", "url": "https://www.factourati.com/tarifs" },
+          { "@type": "WebPage", "name": "FAQ", "url": "https://www.factourati.com/faq" },
+          { "@type": "WebPage", "name": "Blog", "url": "https://www.factourati.com/blog" },
+          { "@type": "WebPage", "name": "Connexion", "url": "https://www.factourati.com/login" }
+        ]
+      }
+    </script>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
         "@type": "ItemList",
+        "name": "Navigation Factourati",
         "itemListElement": [
           {
             "@type": "SiteNavigationElement",
             "position": 1,
             "name": "Accueil",
-            "url": "https://www.factourati.com/#accueil"
+            "url": "https://www.factourati.com/"
           },
           {
             "@type": "SiteNavigationElement",
             "position": 2,
-            "name": "Secteurs",
-            "url": "https://www.factourati.com/#secteurs"
+            "name": "Tarifs",
+            "url": "https://www.factourati.com/tarifs"
           },
           {
             "@type": "SiteNavigationElement",
             "position": 3,
-            "name": "Modules",
-            "url": "https://www.factourati.com/#modules"
+            "name": "FAQ",
+            "url": "https://www.factourati.com/faq"
           },
           {
             "@type": "SiteNavigationElement",
             "position": 4,
-            "name": "Tarifs",
-            "url": "https://www.factourati.com/#tarifs"
+            "name": "Blog",
+            "url": "https://www.factourati.com/blog"
           },
           {
             "@type": "SiteNavigationElement",
             "position": 5,
-            "name": "FAQ",
-            "url": "https://www.factourati.com/#faq"
-          },
-          {
-            "@type": "SiteNavigationElement",
-            "position": 6,
             "name": "Connexion",
             "url": "https://www.factourati.com/login"
-          },
-          {
-            "@type": "SiteNavigationElement",
-            "position": 7,
-            "name": "Essai 1 mois gratuit",
-            "url": "https://www.factourati.com/login?mode=register"
           }
         ]
       }
-    }
     </script>
 
-    <!-- JSON-LD: SoftwareApplication pour affichage app -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Factourati",
-      "url": "https://www.factourati.com",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "MAD",
-        "description": "1 mois d'essai gratuit"
-      },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "5",
-        "ratingCount": "1000"
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Factourati",
+        "url": "https://www.factourati.com",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "description": "Logiciel marocain de facturation et de gestion pour PME.",
+        "offers": {
+          "@type": "AggregateOffer",
+          "priceCurrency": "MAD",
+          "lowPrice": "199",
+          "highPrice": "1999",
+          "offerCount": "3"
+        },
+        "featureList": [
+          "Devis et factures",
+          "Suivi des paiements",
+          "Gestion du stock",
+          "Gestion des fournisseurs",
+          "Gestion des projets"
+        ],
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "5",
+          "ratingCount": "1000"
+        }
       }
-    }
     </script>
 
-    <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-TRV6G5ZYDC">
-</script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Factourati | Logiciel de facturation et gestion pour PME au Maroc",
+        "url": "https://www.factourati.com/",
+        "description": "Factourati aide les entreprises marocaines a centraliser devis, factures, paiements, stock, fournisseurs et projets.",
+        "inLanguage": "fr-MA",
+        "significantLink": [
+          "https://www.factourati.com/tarifs",
+          "https://www.factourati.com/faq",
+          "https://www.factourati.com/blog",
+          "https://www.factourati.com/login"
+        ]
+      }
+    </script>
 
-  gtag('config', 'G-TRV6G5ZYDC');
-</script>
-
-    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TRV6G5ZYDC"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag('js', new Date());
+      gtag('config', 'G-TRV6G5ZYDC');
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main
+        style="margin:0 auto;max-width:960px;padding:32px 16px;font-family:Arial,sans-serif;line-height:1.6;color:#0f172a;"
+      >
+        <p style="margin:0 0 12px;font-size:12px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#0f766e;">
+          Factourati
+        </p>
+        <h1 style="margin:0 0 16px;font-size:36px;line-height:1.2;">
+          Logiciel de facturation et gestion pour PME au Maroc
+        </h1>
+        <p style="margin:0 0 12px;font-size:18px;">
+          Centralisez vos devis, factures, paiements, stock, fournisseurs et projets dans une seule plateforme.
+        </p>
+        <p style="margin:0 0 20px;font-size:18px;">
+          <strong>Tarifs :</strong> 199 DH/mois, 999 DH/6 mois et 1999 DH/an. Un mois d essai gratuit est disponible.
+        </p>
+        <p style="margin:0;font-size:16px;">
+          <a href="/tarifs">Voir les tarifs</a>
+          <span> | </span>
+          <a href="/faq">Lire la FAQ</a>
+          <span> | </span>
+          <a href="/blog">Explorer le blog</a>
+          <span> | </span>
+          <a href="/login">Connexion</a>
+        </p>
+      </main>
+    </div>
+
+    <noscript>
+      <div style="padding:16px;font-family:Arial,sans-serif;">
+        JavaScript est desactive. Accedez directement aux pages publiques :
+        <a href="/">Accueil</a>,
+        <a href="/tarifs">Tarifs</a>,
+        <a href="/faq">FAQ</a>,
+        <a href="/blog">Blog</a>,
+        <a href="/login">Connexion</a>.
+      </div>
+    </noscript>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
