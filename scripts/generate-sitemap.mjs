@@ -2,13 +2,14 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
 const SITE_URL = 'https://www.factourati.com';
-const BUILD_DATE = '2026-03-30';
+const BUILD_DATE = new Date().toISOString().slice(0, 10);
 
 const staticRoutes = [
   { path: '/', changefreq: 'weekly', priority: '1.0', lastmod: BUILD_DATE },
   { path: '/tarifs', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
   { path: '/faq', changefreq: 'weekly', priority: '0.7', lastmod: BUILD_DATE },
   { path: '/blog', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
+  { path: '/login', changefreq: 'monthly', priority: '0.6', lastmod: BUILD_DATE },
 ];
 
 const categoryRoutes = [
