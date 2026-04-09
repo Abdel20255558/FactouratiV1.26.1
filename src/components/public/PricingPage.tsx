@@ -3,12 +3,18 @@ import { Link } from 'react-router-dom';
 import PublicSiteChrome from './PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
 import {
-  BRAND_LOGO_URL,
+  DEFAULT_OG_IMAGE,
   SITE_URL,
   createBreadcrumbSchema,
   createLocalBusinessSchema,
+  createOfferCatalogSchema,
   createOrganizationSchema,
+  createPricingFaqSchema,
+  createSiteNavigationSchema,
+  createWebPageSchema,
+  createWebsiteSchema,
   publicPricing,
+  pricingFaqItems,
 } from '../../data/publicSeoData';
 
 const plans = [
@@ -46,38 +52,36 @@ const features = [
 
 export default function PricingPage() {
   const pageUrl = `${SITE_URL}/tarifs`;
+  const pageDescription =
+    'Consultez les tarifs Factourati pour les entreprises marocaines : 199 DH par mois, 999 DH pour 6 mois et 1999 DH par an, avec un mois d essai gratuit.';
 
   const schema = [
     createOrganizationSchema(),
     createLocalBusinessSchema(),
+    createWebsiteSchema(),
+    createSiteNavigationSchema(),
     createBreadcrumbSchema([
       { name: 'Accueil', url: SITE_URL },
       { name: 'Tarifs', url: pageUrl },
     ]),
-    {
-      '@context': 'https://schema.org',
-      '@type': 'OfferCatalog',
-      name: 'Tarifs Factourati',
-      url: pageUrl,
-      itemListElement: plans.map((plan) => ({
-        '@type': 'Offer',
-        name: `Abonnement ${plan.name} Factourati`,
-        price: plan.price,
-        priceCurrency: 'MAD',
-        url: pageUrl,
-        availability: 'https://schema.org/InStock',
-      })),
-    },
+    createWebPageSchema({
+      name: 'Tarifs Factourati au Maroc | Logiciel de gestion pour PME',
+      path: '/tarifs',
+      description: pageDescription,
+    }),
+    createOfferCatalogSchema('/tarifs'),
+    createPricingFaqSchema(),
   ];
 
   return (
     <PublicSiteChrome>
       <SeoHead
-        title="Tarifs Factourati au Maroc | Logiciel de gestion pour PME"
-        description="Consultez les tarifs Factourati pour les entreprises marocaines : 199 DH par mois, 999 DH pour 6 mois et 1999 DH par an."
+        title="Tarifs Factourati | 199 DH/mois, 999 DH/6 mois, 1999 DH/an"
+        description={pageDescription}
         canonicalPath="/tarifs"
         keywords="tarifs factourati, logiciel facturation maroc prix, ERP maroc tarif, abonnement factourati"
-        image={BRAND_LOGO_URL}
+        image={DEFAULT_OG_IMAGE}
+        imageAlt="Tarifs Factourati pour les PME marocaines"
         type="website"
         schema={schema}
       />
@@ -160,6 +164,19 @@ export default function PricingPage() {
                 Voir le blog
                 <ArrowRight className="h-4 w-4" />
               </Link>
+            </div>
+          </div>
+
+          <div className="mt-12 rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">FAQ Tarifs</p>
+            <h2 className="mt-3 text-2xl font-bold text-slate-900">Les reponses utiles avant de choisir votre formule</h2>
+            <div className="mt-6 space-y-4">
+              {pricingFaqItems.map((item) => (
+                <details key={item.question} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <summary className="cursor-pointer text-base font-semibold text-slate-900">{item.question}</summary>
+                  <p className="mt-3 text-sm leading-7 text-slate-700">{item.answer}</p>
+                </details>
+              ))}
             </div>
           </div>
         </div>
