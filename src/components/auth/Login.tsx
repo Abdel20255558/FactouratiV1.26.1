@@ -112,7 +112,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      <SeoHead title={seoTitle} description={seoDescription} canonicalPath="/login" robots="noindex, follow" />
+      <SeoHead title={seoTitle} description={seoDescription} canonicalPath="/login" robots="index, follow" />
       {/* Bouton retour */}
       <Link
         to="/"
@@ -479,7 +479,7 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
           title="Creer un compte Factourati"
           description="Creez votre compte Factourati pour centraliser la gestion commerciale et administrative de votre entreprise."
           canonicalPath="/login"
-          robots="noindex, follow"
+          robots="index, follow"
         />
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
@@ -521,7 +521,7 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
         title="Creer un compte Factourati"
         description="Creez votre compte Factourati pour centraliser la gestion commerciale et administrative de votre entreprise."
         canonicalPath="/login"
-        robots="noindex, follow"
+        robots="index, follow"
       />
       <Link
         to="/"
@@ -1089,7 +1089,7 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
           title="Mot de passe oublie | Factourati"
           description="Recuperez l acces a votre compte Factourati pour reprendre la gestion de votre entreprise."
           canonicalPath="/login"
-          robots="noindex, follow"
+          robots="index, follow"
         />
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
@@ -1142,7 +1142,7 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
         title="Mot de passe oublie | Factourati"
         description="Recuperez l acces a votre compte Factourati pour reprendre la gestion de votre entreprise."
         canonicalPath="/login"
-        robots="noindex, follow"
+        robots="index, follow"
       />
       <Link
         to="/"
