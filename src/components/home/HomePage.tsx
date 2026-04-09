@@ -39,7 +39,16 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SeoHead from '../seo/SeoHead';
-import { DEFAULT_OG_IMAGE, SITE_URL, createFaqSchema, createLocalBusinessSchema, createOrganizationSchema } from '../../data/publicSeoData';
+import {
+  DEFAULT_OG_IMAGE,
+  SITE_URL,
+  createFaqSchema,
+  createLocalBusinessSchema,
+  createOrganizationSchema,
+  createSiteNavigationSchema,
+  createWebPageSchema,
+  createWebsiteSchema,
+} from '../../data/publicSeoData';
 
 export default function HomePage() {
   // Animations
@@ -60,16 +69,44 @@ export default function HomePage() {
   const annualMonthlyEquiv = PRICES.annual / 12;
   const sixMonthsSavings = (PRICES.monthly * 6) - PRICES.sixMonths;
   const annualSavings = monthlyTotal - PRICES.annual;
+  const homeDescription =
+    'Factourati est une solution marocaine pour gerer devis, factures, paiements, stock, fournisseurs et projets dans une seule plateforme. Essai gratuit et tarifs a partir de 199 DH par mois.';
   const homeSchema = [
     createOrganizationSchema(),
     createLocalBusinessSchema(),
+    createWebsiteSchema(),
+    createSiteNavigationSchema(),
     createFaqSchema(),
+    createWebPageSchema({
+      name: 'Factourati | Logiciel de facturation et gestion pour PME au Maroc',
+      path: '/',
+      description:
+        'Factourati aide les entreprises marocaines a centraliser devis, factures, paiements, stock, fournisseurs et projets. Essai gratuit et tarifs des 199 DH par mois.',
+    }),
     {
       '@context': 'https://schema.org',
-      '@type': 'WebPage',
-      name: 'Factourati | Logiciel de facturation et gestion pour PME au Maroc',
-      url: SITE_URL,
-      description: 'Factourati aide les entreprises marocaines a centraliser devis, factures, paiements, stock, fournisseurs et projets.',
+      '@type': 'ItemList',
+      name: 'Tarifs Factourati',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Tarif mensuel',
+          url: `${SITE_URL}/tarifs`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Tarif 6 mois',
+          url: `${SITE_URL}/tarifs`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: 'Tarif annuel',
+          url: `${SITE_URL}/tarifs`,
+        },
+      ],
     },
   ];
 
@@ -78,10 +115,11 @@ export default function HomePage() {
     <div className="flex min-h-screen flex-col bg-white">
       <SeoHead
         title="Factourati | Logiciel de facturation et gestion pour PME au Maroc"
-        description="Factourati est une solution marocaine pour gerer devis, factures, paiements, stock, fournisseurs et projets dans une seule plateforme."
+        description={homeDescription}
         canonicalPath="/"
-        keywords="logiciel facturation maroc, ERP maroc, gestion stock maroc, devis facture maroc, logiciel pme maroc"
+        keywords="logiciel facturation maroc, ERP maroc, gestion stock maroc, devis facture maroc, logiciel pme maroc, tarifs factourati, logiciel facturation maroc prix"
         image={DEFAULT_OG_IMAGE}
+        imageAlt="Interface Factourati pour devis, factures, stock et gestion des PME au Maroc"
         type="website"
         schema={homeSchema}
       />
@@ -112,8 +150,8 @@ export default function HomePage() {
               <a href="#accueil" className="text-gray-800 hover:text-teal-600 font-medium">Accueil</a>
               <a href="#secteurs" className="text-gray-800 hover:text-teal-600 font-medium">Secteurs</a>
               <a href="#modules" className="text-gray-800 hover:text-teal-600 font-medium">Modules</a>
-              <a href="#tarifs" className="text-gray-800 hover:text-teal-600 font-medium">Tarifs</a>
-              <a href="#faq" className="text-gray-800 hover:text-teal-600 font-medium">FAQ</a>
+              <Link to="/tarifs" className="text-gray-800 hover:text-teal-600 font-medium">Tarifs</Link>
+              <Link to="/faq" className="text-gray-800 hover:text-teal-600 font-medium">FAQ</Link>
               <Link to="/blog" className="text-gray-800 hover:text-teal-600 font-medium">Blog</Link>
               {/* Connexion normal */}
               <Link to="/login" className="text-gray-800 hover:text-teal-600 font-medium">Connexion</Link>
@@ -188,13 +226,13 @@ export default function HomePage() {
                   <Gift className="w-5 h-5" />
                   Commencer mon essai (1 mois)
                 </Link>
-                <a
-                  href="#tarifs"
+                <Link
+                  to="/tarifs"
                   className="inline-flex items-center justify-center gap-2 border-2 border-teal-600 text-teal-700 hover:bg-teal-600 hover:text-white px-6 py-3 rounded-lg font-semibold text-lg transition-all duration-200"
                 >
                   <CalendarDays className="w-5 h-5" />
                   Voir les tarifs
-                </a>
+                </Link>
               </motion.div>
 
               <motion.div variants={fadeUp} className="mt-4 flex flex-wrap gap-3 text-sm font-medium text-gray-600">
@@ -815,8 +853,8 @@ export default function HomePage() {
                 <li><a href="#accueil" className="hover:text-white transition-colors">Accueil</a></li>
                 <li><a href="#secteurs" className="hover:text-white transition-colors">Secteurs</a></li>
                 <li><a href="#modules" className="hover:text-white transition-colors">Modules</a></li>
-                <li><a href="#tarifs" className="hover:text-white transition-colors">Tarifs</a></li>
-                <li><a href="#faq" className="hover:text-white transition-colors">FAQ</a></li>
+                <li><Link to="/tarifs" className="hover:text-white transition-colors">Tarifs</Link></li>
+                <li><Link to="/faq" className="hover:text-white transition-colors">FAQ</Link></li>
                 <li><Link to="/blog" className="hover:text-white transition-colors">Blog</Link></li>
                 <li><Link to="/login" className="hover:text-white transition-colors">Connexion</Link></li>
               </ul>
