@@ -1,7 +1,14 @@
 import { ArrowRight, CalendarDays, CheckCircle2, Clock3, FolderKanban, Receipt, Search, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { blogArticleOverrides, blogCategoryDefinitions, visibleBlogArticles } from '../../data/blogTaxonomy';
-import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
+import {
+  SITE_URL,
+  createBreadcrumbSchema,
+  createOrganizationSchema,
+  createSiteNavigationSchema,
+  createWebPageSchema,
+  createWebsiteSchema,
+} from '../../data/publicSeoData';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
 const articles = visibleBlogArticles;
@@ -16,18 +23,27 @@ const conversionPoints = [
 ];
 
 export default function BlogPage() {
+  const pageDescription =
+    'Retrouvez des guides utiles sur la facturation, le stock, la fiscalite, l organisation et la gestion des PME pour piloter votre activite plus sereinement.';
   const schema = [
+    createOrganizationSchema(),
+    createWebsiteSchema(),
+    createSiteNavigationSchema(),
     createBreadcrumbSchema([
       { name: 'Accueil', url: SITE_URL },
       { name: 'Blog', url: `${SITE_URL}/blog` },
     ]),
+    createWebPageSchema({
+      name: 'Blog Factourati | Conseils pratiques pour mieux gerer votre entreprise au Maroc',
+      path: '/blog',
+      description: pageDescription,
+    }),
     {
       '@context': 'https://schema.org',
       '@type': 'Blog',
       name: 'Blog Factourati',
       url: `${SITE_URL}/blog`,
-      description:
-        'Guides utiles sur la facturation, le stock, la fiscalite, l organisation et la gestion des PME marocaines.',
+      description: 'Guides utiles sur la facturation, le stock, la fiscalite, l organisation et la gestion des PME marocaines.',
     },
   ];
 
@@ -35,10 +51,11 @@ export default function BlogPage() {
     <PublicSiteChrome>
       <SeoHead
         title="Blog Factourati | Conseils pratiques pour mieux gerer votre entreprise au Maroc"
-        description="Retrouvez des guides utiles sur la facturation, le stock, la fiscalite, l organisation et la gestion des PME pour piloter votre activite plus sereinement."
+        description={pageDescription}
         canonicalPath="/blog"
         keywords="blog facturation maroc, gestion entreprise maroc, stock maroc, fiscalite maroc, ERP PME maroc"
         image={featuredArticle.image}
+        imageAlt={featuredArticle.imageAlt}
         type="website"
         schema={schema}
       />
