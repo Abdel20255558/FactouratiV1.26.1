@@ -1,7 +1,8 @@
 import { ArrowRight, CalendarDays, CheckCircle2, Clock3, FolderKanban, Receipt, Search, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { blogArticleOverrides, blogCategoryDefinitions, visibleBlogArticles } from '../../data/blogTaxonomy';
+import { blogCategoryDefinitions, getBlogArticleMeta } from '../../data/blogTaxonomy';
 import {
+  DEFAULT_OG_IMAGE,
   SITE_URL,
   createBreadcrumbSchema,
   createOrganizationSchema,
@@ -9,12 +10,9 @@ import {
   createWebPageSchema,
   createWebsiteSchema,
 } from '../../data/publicSeoData';
+import { useBlogArticles } from '../../hooks/useBlogArticles';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
-const articles = visibleBlogArticles;
-
-const featuredArticle = articles[0];
-const articleCountLabel = `${articles.length} articles a lire`;
 
 const conversionPoints = [
   'Gain de temps au quotidien',
@@ -23,6 +21,10 @@ const conversionPoints = [
 ];
 
 export default function BlogPage() {
+  const { articles } = useBlogArticles();
+  const featuredArticle = articles[0];
+  const featuredArticleMeta = featuredArticle ? getBlogArticleMeta(featuredArticle) : null;
+  const articleCountLabel = `${articles.length} articles a lire`;
   const pageDescription =
     'Retrouvez des guides utiles sur la facturation, le stock, la fiscalite, l organisation et la gestion des PME pour piloter votre activite plus sereinement.';
   const schema = [
@@ -54,8 +56,8 @@ export default function BlogPage() {
         description={pageDescription}
         canonicalPath="/blog"
         keywords="blog facturation maroc, gestion entreprise maroc, stock maroc, fiscalite maroc, ERP PME maroc"
-        image={featuredArticle.image}
-        imageAlt={featuredArticle.imageAlt}
+        image={featuredArticle?.image || DEFAULT_OG_IMAGE}
+        imageAlt={featuredArticle?.imageAlt || 'Blog Factourati'}
         type="website"
         schema={schema}
       />
@@ -117,38 +119,46 @@ export default function BlogPage() {
             <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_20px_80px_rgba(15,23,42,0.10)]">
               <div className="relative">
                 <img
-                  src={featuredArticle.image}
-                  alt={featuredArticle.imageAlt}
+                  src={featuredArticle?.image || DEFAULT_OG_IMAGE}
+                  alt={featuredArticle?.imageAlt || 'Blog Factourati'}
                   loading="eager"
                   fetchPriority="high"
                   decoding="async"
                   className="h-72 w-full object-cover"
                 />
-                <div className="absolute left-5 top-5 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-teal-700 shadow-sm">
-                  {blogArticleOverrides[featuredArticle.slug].category}
-                </div>
+                {featuredArticleMeta && (
+                  <div className="absolute left-5 top-5 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-teal-700 shadow-sm">
+                    {featuredArticleMeta.category}
+                  </div>
+                )}
               </div>
               <div className="p-7 sm:p-8">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Article mis en avant</p>
-                <h2 className="mt-3 text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">{featuredArticle.title}</h2>
-                <p className="mt-4 text-base leading-7 text-slate-600">{blogArticleOverrides[featuredArticle.slug].excerpt}</p>
+                <h2 className="mt-3 text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">
+                  {featuredArticle?.title || 'Bientot de nouveaux articles'}
+                </h2>
+                <p className="mt-4 text-base leading-7 text-slate-600">
+                  {featuredArticleMeta?.excerpt || 'Le blog Factourati accueille progressivement de nouveaux guides publies depuis le dashboard admin.'}
+                </p>
                 <div className="mt-5 flex flex-wrap gap-4 text-sm text-slate-500">
                   <span className="inline-flex items-center gap-2">
                     <CalendarDays className="h-4 w-4" />
-                    {featuredArticle.publishedAt}
+                    {featuredArticle?.publishedAt || 'Publication prochaine'}
                   </span>
                   <span className="inline-flex items-center gap-2">
                     <Clock3 className="h-4 w-4" />
-                    {featuredArticle.readingTime}
+                    {featuredArticle?.readingTime || 'Lecture'}
                   </span>
                 </div>
-                <Link
-                  to={`/blog/${featuredArticle.slug}`}
-                  className="mt-7 inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-3 font-semibold text-white transition hover:bg-teal-700"
-                >
-                  Lire l'article
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+                {featuredArticle && (
+                  <Link
+                    to={`/blog/${featuredArticle.slug}`}
+                    className="mt-7 inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-3 font-semibold text-white transition hover:bg-teal-700"
+                  >
+                    Lire l'article
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
               </div>
             </article>
           </div>
@@ -191,7 +201,7 @@ export default function BlogPage() {
 
           <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
             {articles.map((article) => {
-              const override = blogArticleOverrides[article.slug];
+              const override = getBlogArticleMeta(article);
 
               return (
                 <article
