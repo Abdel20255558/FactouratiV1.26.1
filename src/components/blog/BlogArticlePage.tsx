@@ -1,9 +1,9 @@
 import { Suspense, lazy } from 'react';
 import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3 } from 'lucide-react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { blogArticles, getBlogArticleBySlug } from '../../data/blogArticles';
-import { blogArticleOverrides } from '../../data/blogTaxonomy';
+import { getBlogArticleMeta } from '../../data/blogTaxonomy';
 import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
+import { useBlogArticles } from '../../hooks/useBlogArticles';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
 
@@ -25,15 +25,10 @@ function ArticleLoader() {
 
 export default function BlogArticlePage() {
   const { slug } = useParams();
+  const { articles, isLoading } = useBlogArticles({ includeHiddenStatic: true });
 
   if (slug === 'gestion-projet-meilleures-pratiques') {
     return <Navigate to="/blog/gestion-de-projet-meilleures-pratiques" replace />;
-  }
-
-  const article = getBlogArticleBySlug(slug);
-
-  if (!article) {
-    return <Navigate to="/blog" replace />;
   }
 
   if (slug === 'guide-complet-facturation-maroc') {
@@ -76,8 +71,19 @@ export default function BlogArticlePage() {
     );
   }
 
-  const relatedArticles = blogArticles.filter((item) => item.slug !== article.slug).slice(0, 3);
-  const articleCategory = blogArticleOverrides[article.slug];
+  const article = articles.find((item) => item.slug === slug);
+
+  if (!article) {
+    if (isLoading) {
+      return <ArticleLoader />;
+    }
+
+    return <Navigate to="/blog" replace />;
+  }
+
+  const relatedArticles = articles.filter((item) => item.slug !== article.slug).slice(0, 3);
+  const articleCategory = getBlogArticleMeta(article);
+  const articleImageUrl = article.image.startsWith('http') ? article.image : `${SITE_URL}${article.image}`;
 
   const articleSchema = [
     createBreadcrumbSchema([
@@ -93,7 +99,7 @@ export default function BlogArticlePage() {
       '@type': 'BlogPosting',
       headline: article.title,
       description: article.description,
-      image: [`${SITE_URL}${article.image}`],
+      image: [articleImageUrl],
       keywords: article.keywords.join(', '),
       author: {
         '@type': 'Organization',
@@ -108,8 +114,8 @@ export default function BlogArticlePage() {
         },
       },
       mainEntityOfPage: `${SITE_URL}/blog/${article.slug}`,
-      datePublished: '2026-03-27',
-      dateModified: '2026-03-27',
+      datePublished: article.publishedAtISO,
+      dateModified: article.updatedAt || article.publishedAtISO,
     },
   ];
 
@@ -121,6 +127,7 @@ export default function BlogArticlePage() {
         canonicalPath={`/blog/${article.slug}`}
         keywords={article.keywords.join(', ')}
         image={article.image}
+        imageAlt={article.imageAlt}
         type="article"
         schema={articleSchema}
       />
@@ -193,6 +200,17 @@ export default function BlogArticlePage() {
                       <p key={paragraph}>{paragraph}</p>
                     ))}
                   </div>
+                  {section.image && (
+                    <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-gray-200 bg-gray-50 shadow-sm">
+                      <img
+                        src={section.image}
+                        alt={section.imageAlt || section.heading}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  )}
                   {section.bullets && (
                     <ul className="mt-6 grid gap-3 md:grid-cols-2">
                       {section.bullets.map((bullet) => (
@@ -239,7 +257,7 @@ export default function BlogArticlePage() {
               <div className="mt-5 space-y-5">
                 {relatedArticles.map((related) => (
                   <Link key={related.slug} to={`/blog/${related.slug}`} className="block rounded-2xl border border-gray-100 p-4 transition hover:border-teal-200 hover:bg-teal-50">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">{related.category}</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">{getBlogArticleMeta(related).category}</p>
                     <p className="mt-2 text-base font-semibold leading-7 text-gray-900">{related.title}</p>
                   </Link>
                 ))}
