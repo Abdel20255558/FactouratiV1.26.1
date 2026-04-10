@@ -1,26 +1,4 @@
-export type BlogSection = {
-  heading: string;
-  paragraphs: string[];
-  bullets?: string[];
-};
-
-export type BlogArticle = {
-  slug: string;
-  title: string;
-  seoTitle: string;
-  description: string;
-  excerpt: string;
-  category: string;
-  publishedAt: string;
-  readingTime: string;
-  heroLabel: string;
-  image: string;
-  imageAlt: string;
-  keywords: string[];
-  intro: string;
-  summaryPoints: string[];
-  sections: BlogSection[];
-};
+import type { BlogArticle, BlogSection } from '../types/blog';
 
 export const blogArticles: BlogArticle[] = [
   {
