@@ -1,3 +1,4 @@
+import type { BlogArticle } from '../types/blog';
 import { blogArticles, getBlogArticleBySlug } from './blogArticles';
 
 export const visibleBlogSlugs = [
@@ -74,6 +75,19 @@ export const blogCategoryDefinitions = [
     ],
     keywords: ['gestion pme maroc', 'gestion projet maroc', 'organisation entreprise maroc'],
   },
+  {
+    slug: 'logiciel',
+    label: 'Logiciel',
+    description:
+      'Comparatifs, criteres de choix et conseils pour selectionner un logiciel de facturation ou de gestion adapte a votre entreprise.',
+    introTitle: 'Choisir un logiciel adapte a vos objectifs',
+    introPoints: [
+      'Comparer les bonnes fonctions avant de choisir',
+      'Eviter les outils trop complexes pour votre equipe',
+      'Trouver une solution plus claire pour la croissance',
+    ],
+    keywords: ['logiciel facturation maroc', 'logiciel gestion maroc', 'choisir erp maroc'],
+  },
 ] as const;
 
 export const blogArticleOverrides: Record<string, { category: string; categorySlug: string; excerpt: string }> = {
@@ -107,18 +121,59 @@ export const blogArticleOverrides: Record<string, { category: string; categorySl
     excerpt:
       'Des methodes simples pour clarifier les priorites, mieux suivre les taches et faire avancer vos projets plus efficacement.',
   },
+  'logiciel-facturation-maroc': {
+    category: 'Logiciel',
+    categorySlug: 'logiciel',
+    excerpt:
+      'Les criteres essentiels pour choisir un logiciel de facturation au Maroc et structurer une gestion plus simple et plus solide.',
+  },
 };
-
-export const visibleBlogArticles = visibleBlogSlugs
-  .map((slug) => getBlogArticleBySlug(slug))
-  .filter((article): article is NonNullable<typeof article> => Boolean(article));
 
 export function getBlogCategoryBySlug(slug?: string) {
   return blogCategoryDefinitions.find((category) => category.slug === slug);
 }
 
+export function resolveBlogCategorySlug(category?: string, fallbackSlug?: string) {
+  if (fallbackSlug) {
+    return fallbackSlug;
+  }
+
+  const normalizedCategory = (category || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
+  const matchedCategory = blogCategoryDefinitions.find(
+    (entry) => entry.label.toLowerCase() === normalizedCategory || entry.slug === normalizedCategory,
+  );
+
+  return matchedCategory?.slug || 'gestion';
+}
+
+export function getBlogArticleMeta(article: Pick<BlogArticle, 'slug' | 'category' | 'excerpt'> & { categorySlug?: string }) {
+  const override = blogArticleOverrides[article.slug];
+
+  if (override) {
+    return override;
+  }
+
+  const categorySlug = resolveBlogCategorySlug(article.category, article.categorySlug);
+  const category = getBlogCategoryBySlug(categorySlug)?.label || article.category || 'Gestion';
+
+  return {
+    category,
+    categorySlug,
+    excerpt: article.excerpt,
+  };
+}
+
+export const visibleBlogArticles = visibleBlogSlugs
+  .map((slug) => getBlogArticleBySlug(slug))
+  .filter((article): article is NonNullable<typeof article> => Boolean(article));
+
 export function getVisibleArticlesByCategorySlug(categorySlug?: string) {
-  return visibleBlogArticles.filter((article) => blogArticleOverrides[article.slug]?.categorySlug === categorySlug);
+  return visibleBlogArticles.filter((article) => getBlogArticleMeta(article).categorySlug === categorySlug);
 }
 
 export const sitemapBlogArticles = blogArticles;
