@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import EditCompanyModal from './EditCompanyModal';
 import ReferralSourceChart from './ReferralSourceChart';
+import BlogManager from './BlogManager';
 
 interface Company {
   id: string;
@@ -370,6 +371,8 @@ export default function AdminDashboard() {
         <div className="mb-8">
           <ReferralSourceChart data={referralSourceData()} />
         </div>
+
+        <BlogManager />
 
         <div className="mb-8 bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
