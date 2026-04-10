@@ -1,24 +1,25 @@
 import { ArrowLeft, ArrowRight, CalendarDays, Clock3, FolderOpen } from 'lucide-react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
-  blogArticleOverrides,
   blogCategoryDefinitions,
+  getBlogArticleMeta,
   getBlogCategoryBySlug,
-  getVisibleArticlesByCategorySlug,
 } from '../../data/blogTaxonomy';
-import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
+import { DEFAULT_OG_IMAGE, SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
+import { useBlogArticles } from '../../hooks/useBlogArticles';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
 
 export default function BlogCategoryPage() {
   const { categorySlug } = useParams();
   const category = getBlogCategoryBySlug(categorySlug);
+  const { articles: allArticles } = useBlogArticles();
 
   if (!category) {
     return <Navigate to="/blog" replace />;
   }
 
-  const articles = getVisibleArticlesByCategorySlug(category.slug);
+  const articles = allArticles.filter((article) => getBlogArticleMeta(article).categorySlug === category.slug);
   const featuredImage = articles[0]?.image;
   const otherCategories = blogCategoryDefinitions.filter((item) => item.slug !== category.slug);
   const schema = createBreadcrumbSchema([
@@ -34,7 +35,7 @@ export default function BlogCategoryPage() {
         description={category.description}
         canonicalPath={`/blog/categorie/${category.slug}`}
         keywords={category.keywords.join(', ')}
-        image={featuredImage}
+        image={featuredImage || DEFAULT_OG_IMAGE}
         type="website"
         schema={schema}
       />
@@ -102,7 +103,7 @@ export default function BlogCategoryPage() {
 
           <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
             {articles.map((article) => {
-              const override = blogArticleOverrides[article.slug];
+              const override = getBlogArticleMeta(article);
 
               return (
                 <article
