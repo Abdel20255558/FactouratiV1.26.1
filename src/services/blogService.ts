@@ -19,7 +19,14 @@ const BLOG_POSTS_COLLECTION = 'blogPosts';
 const STATIC_PUBLISHED_AT_ISO = '2026-03-27T00:00:00.000Z';
 
 function ensureString(value: unknown, fallback: string = '') {
-  return typeof value === 'string' ? value.trim() : fallback;
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const normalizedValue = value.trim();
+  const invalidValues = new Set(['undefined', 'null', '[object object]']);
+
+  return invalidValues.has(normalizedValue.toLowerCase()) ? fallback : normalizedValue;
 }
 
 function ensureStringArray(value: unknown) {
@@ -32,26 +39,90 @@ function ensureStringArray(value: unknown) {
     .filter(Boolean);
 }
 
-function sanitizeSections(sections: unknown): BlogSection[] {
+function getRecordValue(record: unknown, key: string) {
+  return record && typeof record === 'object' ? (record as Record<string, unknown>)[key] : undefined;
+}
+
+function createGeneratedSectionImageUrl({
+  prompt,
+  seed,
+}: {
+  prompt: string;
+  seed: string;
+}) {
+  const cleanPrompt =
+    ensureString(prompt) || 'Professional Moroccan SME business management software dashboard, realistic editorial image';
+  const encodedPrompt = encodeURIComponent(
+    `${cleanPrompt}, professional realistic editorial blog image, Moroccan SME, business software, no text, no watermark`,
+  );
+  const encodedSeed = encodeURIComponent(seed);
+
+  return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1200&height=800&seed=${encodedSeed}&nologo=true&model=flux`;
+}
+
+function sanitizeSections(sections: unknown, context?: { articleSlug?: string; category?: string }): BlogSection[] {
   if (!Array.isArray(sections)) {
     return [];
   }
 
   return sections
-    .map((section) => ({
-      heading: ensureString(section?.heading),
-      paragraphs: ensureStringArray(section?.paragraphs),
-      bullets: ensureStringArray(section?.bullets),
-      image: ensureString(section?.image),
-      imageAlt: ensureString(section?.imageAlt),
-    }))
+    .map((section, index) => {
+      const heading = ensureString(getRecordValue(section, 'heading'));
+      const imagePrompt =
+        ensureString(getRecordValue(section, 'imagePrompt')) ||
+        ensureString(getRecordValue(section, 'prompt')) ||
+        `${heading} ${context?.category || 'Factourati blog'}`;
+      const image =
+        ensureString(getRecordValue(section, 'image')) ||
+        ensureString(getRecordValue(section, 'imageUrl')) ||
+        ensureString(getRecordValue(section, 'imageURL')) ||
+        createGeneratedSectionImageUrl({
+          prompt: imagePrompt,
+          seed: `${context?.articleSlug || 'factourati-blog'}-${index}`,
+        });
+
+      return {
+        heading,
+        paragraphs: ensureStringArray(getRecordValue(section, 'paragraphs')),
+        bullets: ensureStringArray(getRecordValue(section, 'bullets')),
+        image,
+        imageAlt: ensureString(getRecordValue(section, 'imageAlt')) || heading,
+        imagePrompt,
+      };
+    })
     .filter((section) => section.heading && section.paragraphs.length > 0)
     .map((section) => ({
       ...section,
       bullets: section.bullets.length > 0 ? section.bullets : undefined,
-      image: section.image || undefined,
-      imageAlt: section.imageAlt || undefined,
+      imageAlt: section.imageAlt || section.heading,
+      imagePrompt: section.imagePrompt || undefined,
     }));
+}
+
+function serializeBlogSectionForFirestore(section: BlogSection): BlogSection {
+  const serializedSection: BlogSection = {
+    heading: section.heading,
+    paragraphs: section.paragraphs,
+    imageAlt: section.imageAlt || section.heading,
+  };
+
+  if (section.bullets && section.bullets.length > 0) {
+    serializedSection.bullets = section.bullets;
+  }
+
+  if (section.image) {
+    serializedSection.image = section.image;
+  }
+
+  if (section.imagePrompt) {
+    serializedSection.imagePrompt = section.imagePrompt;
+  }
+
+  return serializedSection;
+}
+
+function serializeBlogSectionsForFirestore(sections: BlogSection[]) {
+  return sections.map(serializeBlogSectionForFirestore);
 }
 
 export function createBlogSlug(title: string) {
@@ -134,7 +205,7 @@ function normalizeFirestoreBlogPost(id: string, data: DocumentData): BlogResolve
   const category = ensureString(data.category) || categorySlug;
   const summaryPoints = ensureStringArray(data.summaryPoints);
   const keywords = ensureStringArray(data.keywords);
-  const sections = sanitizeSections(data.sections);
+  const sections = sanitizeSections(data.sections, { articleSlug: slug, category });
   const publishedAtISO = ensureString(data.publishedAtISO) || ensureString(data.createdAt) || new Date().toISOString();
   const readingTime =
     ensureString(data.readingTime) ||
@@ -236,6 +307,7 @@ export async function createFirestoreBlogPost(
   const payload = {
     ...input,
     categorySlug: resolveBlogCategorySlug(input.category, input.categorySlug),
+    sections: serializeBlogSectionsForFirestore(input.sections),
     readingTime,
     publishedAt: formatBlogPublishedAt(publishedAtISO),
     publishedAtISO,
@@ -252,6 +324,24 @@ export async function createFirestoreBlogPost(
 export async function setFirestoreBlogPostPublished(postId: string, isPublished: boolean) {
   await updateDoc(doc(db, BLOG_POSTS_COLLECTION, postId), {
     isPublished,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+export async function updateFirestoreBlogPostImages(
+  postId: string,
+  input: {
+    image: string;
+    imageAlt: string;
+    sections: BlogSection[];
+    imageStoragePath?: string;
+  },
+) {
+  await updateDoc(doc(db, BLOG_POSTS_COLLECTION, postId), {
+    image: input.image,
+    imageAlt: input.imageAlt,
+    sections: serializeBlogSectionsForFirestore(input.sections),
+    ...(input.imageStoragePath !== undefined ? { imageStoragePath: input.imageStoragePath } : {}),
     updatedAt: new Date().toISOString(),
   });
 }
