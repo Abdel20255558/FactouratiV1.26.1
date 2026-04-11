@@ -33,6 +33,7 @@ export type BlogResolvedArticle = BlogArticle & {
   publishedAtISO: string;
   createdAt?: string;
   updatedAt?: string;
+  
   imageStoragePath?: string;
 };
 
