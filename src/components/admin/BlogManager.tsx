@@ -19,8 +19,10 @@ import {
   createFirestoreBlogPost,
   deleteFirestoreBlogPost,
   setFirestoreBlogPostPublished,
+  updateFirestoreBlogPostImages,
   uploadBlogImage,
 } from '../../services/blogService';
+import type { BlogResolvedArticle, BlogSection } from '../../types/blog';
 
 type SectionFormState = {
   heading: string;
@@ -45,6 +47,24 @@ type BlogFormState = {
   summaryPointsText: string;
   sections: SectionFormState[];
   isPublished: boolean;
+};
+
+type SectionImageEditorState = {
+  heading: string;
+  paragraphs: string[];
+  bullets?: string[];
+  imageUrl: string;
+  imageAlt: string;
+  imagePrompt?: string;
+};
+
+type BlogImageEditorState = {
+  articleId: string;
+  title: string;
+  imageUrl: string;
+  imageAlt: string;
+  imageStoragePath?: string;
+  sections: SectionImageEditorState[];
 };
 
 const createEmptySection = (): SectionFormState => ({
@@ -91,6 +111,8 @@ export default function BlogManager() {
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [imageEditor, setImageEditor] = useState<BlogImageEditorState | null>(null);
+  const [imageEditorFeedback, setImageEditorFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const stats = useMemo(() => {
@@ -299,6 +321,93 @@ export default function BlogManager() {
     } catch (deleteError) {
       console.error('Erreur suppression blog:', deleteError);
       setFeedback({ type: 'error', message: 'Impossible de supprimer cet article.' });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const openImageEditor = (article: BlogResolvedArticle) => {
+    setFeedback(null);
+    setImageEditorFeedback(null);
+    setImageEditor({
+      articleId: article.id,
+      title: article.title,
+      imageUrl: article.image,
+      imageAlt: article.imageAlt,
+      imageStoragePath: article.imageStoragePath,
+      sections: article.sections.map((section) => ({
+        heading: section.heading,
+        paragraphs: section.paragraphs,
+        bullets: section.bullets,
+        imageUrl: section.image || '',
+        imageAlt: section.imageAlt || section.heading,
+        imagePrompt: section.imagePrompt,
+      })),
+    });
+  };
+
+  const handleImageEditorFieldChange = (field: 'imageUrl' | 'imageAlt', value: string) => {
+    setImageEditorFeedback(null);
+    setImageEditor((prev) => (prev ? { ...prev, [field]: value } : prev));
+  };
+
+  const handleImageEditorSectionChange = (
+    index: number,
+    field: 'imageUrl' | 'imageAlt',
+    value: string,
+  ) => {
+    setImageEditorFeedback(null);
+    setImageEditor((prev) =>
+      prev
+        ? {
+            ...prev,
+            sections: prev.sections.map((section, sectionIndex) =>
+              sectionIndex === index ? { ...section, [field]: value } : section,
+            ),
+          }
+        : prev,
+    );
+  };
+
+  const handleSaveImageUrls = async () => {
+    if (!imageEditor) {
+      return;
+    }
+
+    if (!imageEditor.imageUrl.trim() || !imageEditor.imageAlt.trim()) {
+      setImageEditorFeedback({ type: 'error', message: 'Ajoutez une URL et un alt pour l image principale.' });
+      return;
+    }
+
+    setActionLoadingId(imageEditor.articleId);
+    setFeedback(null);
+
+    try {
+      const sections: BlogSection[] = imageEditor.sections.map((section) => ({
+        heading: section.heading,
+        paragraphs: section.paragraphs,
+        bullets: section.bullets && section.bullets.length > 0 ? section.bullets : undefined,
+        image: section.imageUrl.trim() || undefined,
+        imageAlt: section.imageAlt.trim() || section.heading,
+        imagePrompt: section.imagePrompt,
+      }));
+
+      await updateFirestoreBlogPostImages(imageEditor.articleId, {
+        image: imageEditor.imageUrl.trim(),
+        imageAlt: imageEditor.imageAlt.trim(),
+        sections,
+        imageStoragePath: imageEditor.imageStoragePath,
+      });
+
+      await refetch();
+      setImageEditor(null);
+      setFeedback({ type: 'success', message: 'URLs images mises a jour avec succes.' });
+    } catch (updateError) {
+      console.error('Erreur modification images blog:', updateError);
+      setImageEditorFeedback({
+        type: 'error',
+        message: 'Impossible de modifier les images. Verifiez les URLs puis reessayez.',
+      });
     } finally {
       setActionLoadingId(null);
     }
@@ -732,6 +841,16 @@ export default function BlogManager() {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
+                      onClick={() => openImageEditor(article)}
+                      disabled={actionLoadingId === article.id}
+                      className="inline-flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <ImagePlus className="h-4 w-4" />
+                      Images
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => handleTogglePublication(article.id, article.isPublished)}
                       disabled={actionLoadingId === article.id}
                       className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
@@ -766,6 +885,152 @@ export default function BlogManager() {
           </div>
         )}
       </div>
+
+      {imageEditor && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 px-4 py-8">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-5">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Modifier les images du blog</h3>
+                <p className="mt-1 text-sm text-gray-500">{imageEditor.title}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setImageEditor(null);
+                  setImageEditorFeedback(null);
+                }}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                Fermer
+              </button>
+            </div>
+
+            <div className="max-h-[calc(90vh-150px)] space-y-6 overflow-y-auto px-6 py-6">
+              {imageEditorFeedback && (
+                <div
+                  className={`rounded-lg border px-4 py-3 text-sm ${
+                    imageEditorFeedback.type === 'success'
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : 'border-red-200 bg-red-50 text-red-700'
+                  }`}
+                >
+                  {imageEditorFeedback.message}
+                </div>
+              )}
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-900">Image principale</h4>
+                <div className="mt-4 grid gap-4 lg:grid-cols-[220px_1fr]">
+                  <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+                    {imageEditor.imageUrl ? (
+                      <img src={imageEditor.imageUrl} alt={imageEditor.imageAlt} className="h-40 w-full object-cover" />
+                    ) : (
+                      <div className="flex h-40 items-center justify-center text-sm text-gray-400">Aucune image</div>
+                    )}
+                  </div>
+                  <div className="grid gap-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-700">URL image principale *</label>
+                      <input
+                        type="url"
+                        value={imageEditor.imageUrl}
+                        onChange={(event) => handleImageEditorFieldChange('imageUrl', event.target.value)}
+                        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="https://..."
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-700">Alt image principale *</label>
+                      <input
+                        type="text"
+                        value={imageEditor.imageAlt}
+                        onChange={(event) => handleImageEditorFieldChange('imageAlt', event.target.value)}
+                        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Description courte de l image"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-900">Images des sections</h4>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Laissez une URL vide si vous voulez garder l image automatique generee par le site.
+                  </p>
+                </div>
+
+                {imageEditor.sections.map((section, index) => (
+                  <div key={`${section.heading}-${index}`} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+                      <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                        {section.imageUrl ? (
+                          <img src={section.imageUrl} alt={section.imageAlt || section.heading} className="h-40 w-full object-cover" />
+                        ) : (
+                          <div className="flex h-40 items-center justify-center px-4 text-center text-sm text-gray-400">
+                            Image automatique
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">Section {index + 1}</p>
+                          <p className="mt-1 text-sm text-gray-500">{section.heading}</p>
+                        </div>
+                        <div>
+                          <label className="mb-2 block text-sm font-medium text-gray-700">URL image section</label>
+                          <input
+                            type="url"
+                            value={section.imageUrl}
+                            onChange={(event) => handleImageEditorSectionChange(index, 'imageUrl', event.target.value)}
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="https://..."
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 block text-sm font-medium text-gray-700">Alt image section</label>
+                          <input
+                            type="text"
+                            value={section.imageAlt}
+                            onChange={(event) => handleImageEditorSectionChange(index, 'imageAlt', event.target.value)}
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="Description courte de l image"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setImageEditor(null);
+                  setImageEditorFeedback(null);
+                }}
+                className="rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveImageUrls}
+                disabled={actionLoadingId === imageEditor.articleId}
+                className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-2.5 font-semibold text-white transition hover:from-indigo-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {actionLoadingId === imageEditor.articleId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Enregistrer les images
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
