@@ -9,4 +9,4 @@ Disallow: /project-management
 Disallow: /stock-management
 Disallow: /supplier-management
 
-Sitemap: https://www.factourati.com/sitemap.xml
+Sitemap: https://factourati.com/sitemap.xml
