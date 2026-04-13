@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
-const SITE_URL = 'https://www.factourati.com';
+const SITE_URL = 'https://factourati.com';
 const BUILD_DATE = new Date().toISOString().slice(0, 10);
 
 const staticRoutes = [
