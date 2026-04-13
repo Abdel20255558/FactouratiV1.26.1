@@ -6,12 +6,30 @@ interface TemplateProps {
   data: Invoice | Quote;
   type: 'invoice' | 'quote';
   includeSignature?: boolean;
+  companyOverride?: TemplateCompany;
 }
 
-export default function Template1Classic({ data, type, includeSignature = false }: TemplateProps) {
+export type TemplateCompany = Partial<{
+  name: string;
+  activity: string;
+  ice: string;
+  if: string;
+  rc: string;
+  cnss: string;
+  address: string;
+  phone: string;
+  email: string;
+  patente: string;
+  website: string;
+  logo: string;
+  signature: string;
+}>;
+
+export default function Template1Classic({ data, type, includeSignature = false, companyOverride }: TemplateProps) {
   const { user } = useAuth();
+  const company = companyOverride || user?.company;
   const title = type === 'invoice' ? 'FACTURE' : 'DEVIS';
-  const HEADER_H = 160;
+  const HEADER_H = company?.logo ? 150 : 122;
   const FOOTER_H = 100;
 
   // --- format helpers ---
@@ -39,10 +57,10 @@ export default function Template1Classic({ data, type, includeSignature = false 
         <div className="p-8 border-b border-gray-300">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-6">
-              {user?.company.logo && (<img src={user.company.logo} alt="Logo" className="h-20 w-auto" />)}
+              {company?.logo && (<img src={company.logo} alt="Logo" className="h-20 w-auto" />)}
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">{user?.company.name}</h2>
-                <p className="text-sm text-gray-600">{user?.company.activity || '-'}</p>
+                <h2 className="text-2xl font-bold text-gray-900">{company?.name || '-'}</h2>
+                <p className="text-sm text-gray-600">{company?.activity || '-'}</p>
               </div>
             </div>
             <div className="text-right">
@@ -55,7 +73,7 @@ export default function Template1Classic({ data, type, includeSignature = false 
       {/* CONTENU */}
       <div className="pdf-content" style={{ paddingTop: HEADER_H + 16, paddingBottom: FOOTER_H + 16 }}>
         {/* CLIENT + DATES */}
-        <div className="p-8 border-b border-gray-300">
+        <div className="px-8 py-6 border-b border-gray-300">
           <div className="grid grid-cols-2 gap-8">
             <div className="bg-gray-50 p-6 rounded border border-gray-200">
               <h3 className="font-bold text-sm text-gray-900 mb-3 border-b border-gray-300 pb-2 text-center">
@@ -110,9 +128,9 @@ export default function Template1Classic({ data, type, includeSignature = false 
 
         {/* ===== BLOC TOTAUX (seul) ===== */}
         <section className="keep-together p-8">
-          <div className="flex flex-wrap gap-6">
+          <div className="grid grid-cols-2 gap-4">
             {/* Montant en lettres */}
-            <div className="w-[48%] min-w-[280px] bg-gray-50 border border-gray-200 rounded p-2">
+            <div className="min-w-0 bg-gray-50 border border-gray-200 rounded p-2">
               <p className="text-sm font-bold border-b border-gray-300 pb-2 text-center">
                 Arrêtée le présent {type === 'invoice' ? 'facture' : 'devis'} à la somme de :
               </p>
@@ -120,7 +138,7 @@ export default function Template1Classic({ data, type, includeSignature = false 
             </div>
 
             {/* TVA / Totaux */}
-            <div className="w-[48%] min-w-[280px] bg-gray-50 border border-gray-200 rounded p-6">
+            <div className="min-w-0 bg-gray-50 border border-gray-200 rounded p-6">
               <div className="flex justify-between text-sm mb-2">
                 <span>Total HT :</span>
                 <span className="font-medium">{formatAmount(data.subtotal)} MAD</span>
@@ -153,9 +171,9 @@ export default function Template1Classic({ data, type, includeSignature = false 
           <div className="w-60 bg-gray-50 border border-gray-300 rounded p-4 text-center">
             <div className="text-sm font-bold mb-3">Signature</div>
             <div className="border-2 border-gray-400 rounded-sm h-20 flex items-center justify-center">
-              {includeSignature && user?.company?.signature ? (
+              {includeSignature && company?.signature ? (
                 <img
-                  src={user.company.signature}
+                  src={company.signature}
                   alt="Signature"
                   className="max-h-18 max-w-full object-contain"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /* why: éviter image cassée */
@@ -170,7 +188,7 @@ export default function Template1Classic({ data, type, includeSignature = false 
       <div className="pdf-footer pdf-exclude" style={{ position:'absolute', bottom:0, left:0, right:0, height: FOOTER_H }}>
         <div className="bg-white text-black border-t border-gray-300 p-6 text-sm text-center h-full">
           <p>
-            <strong>{user?.company.name}</strong> | {user?.company.address} | <strong>Tél :</strong> {user?.company.phone} | <strong>ICE :</strong> {user?.company.ice} | <strong>IF:</strong> {user?.company.if} | <strong>RC:</strong> {user?.company.rc} | <strong>CNSS:</strong> {user?.company.cnss} | <strong>Patente :</strong> {user?.company.patente} | <strong>EMAIL :</strong> {user?.company.email} | <strong>SITE WEB :</strong> {user?.company.website}
+            <strong>{company?.name || '-'}</strong> | {company?.address || '-'} | <strong>Tél :</strong> {company?.phone || '-'} | <strong>ICE :</strong> {company?.ice || '-'} | <strong>IF:</strong> {company?.if || '-'} | <strong>RC:</strong> {company?.rc || '-'} | <strong>CNSS:</strong> {company?.cnss || '-'} | <strong>Patente :</strong> {company?.patente || '-'} | <strong>EMAIL :</strong> {company?.email || '-'} | <strong>SITE WEB :</strong> {company?.website || '-'}
           </p>
         </div>
       </div>
