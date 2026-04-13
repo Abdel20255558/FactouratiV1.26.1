@@ -15,11 +15,13 @@ import {
   XCircle,
   AlertTriangle,
   LogIn,
-  Trash2
+  Trash2,
+  FileText
 } from 'lucide-react';
 import EditCompanyModal from './EditCompanyModal';
 import ReferralSourceChart from './ReferralSourceChart';
 import BlogManager from './BlogManager';
+import { fetchFreeInvoiceGeneratorStats, type FreeInvoiceGeneratorStats } from '../../services/publicUsageService';
 
 interface Company {
   id: string;
@@ -56,6 +58,15 @@ export default function AdminDashboard() {
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [supportLoadingId, setSupportLoadingId] = useState<string | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
+  const [generatorStats, setGeneratorStats] = useState<FreeInvoiceGeneratorStats>({
+    views: 0,
+    uniqueVisitors: 0,
+    prints: 0,
+    proTemplatePrintAttempts: 0,
+    lastViewedAt: '',
+    lastPrintedAt: '',
+    updatedAt: '',
+  });
 
   useEffect(() => {
     loadDashboardData();
@@ -64,9 +75,13 @@ export default function AdminDashboard() {
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [companiesSnapshot, supportLogsSnapshot] = await Promise.all([
+      const [companiesSnapshot, supportLogsSnapshot, freeInvoiceGeneratorStats] = await Promise.all([
         getDocs(collection(db, 'entreprises')),
-        getDocs(collection(db, 'supportAccessLogs'))
+        getDocs(collection(db, 'supportAccessLogs')),
+        fetchFreeInvoiceGeneratorStats().catch((error) => {
+          console.warn('Statistiques generateur gratuit indisponibles:', error);
+          return null;
+        })
       ]);
       const companiesData = companiesSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -84,6 +99,9 @@ export default function AdminDashboard() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       ));
       setSupportLogs(supportLogsData);
+      if (freeInvoiceGeneratorStats) {
+        setGeneratorStats(freeInvoiceGeneratorStats);
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des entreprises:', error);
     } finally {
@@ -317,7 +335,7 @@ export default function AdminDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
@@ -362,6 +380,21 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-2xl font-bold text-gray-900">{stats.expired}</p>
                 <p className="text-sm text-gray-600">Abonnements Expirés</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{generatorStats.uniqueVisitors.toLocaleString('fr-FR')}</p>
+                <p className="text-sm text-gray-600">Generateur gratuit</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {generatorStats.prints.toLocaleString('fr-FR')} impressions / {generatorStats.views.toLocaleString('fr-FR')} vues
+                </p>
               </div>
             </div>
           </div>
