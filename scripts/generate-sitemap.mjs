@@ -6,6 +6,9 @@ const BUILD_DATE = new Date().toISOString().slice(0, 10);
 
 const staticRoutes = [
   { path: '/', changefreq: 'weekly', priority: '1.0', lastmod: BUILD_DATE },
+  { path: '/generateur-facture', changefreq: 'weekly', priority: '0.9', lastmod: BUILD_DATE },
+  { path: '/secteurs', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
+  { path: '/modules', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
   { path: '/tarifs', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
   { path: '/faq', changefreq: 'weekly', priority: '0.7', lastmod: BUILD_DATE },
   { path: '/blog', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
