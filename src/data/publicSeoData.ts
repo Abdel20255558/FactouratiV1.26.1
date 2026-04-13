@@ -38,9 +38,9 @@ export const pricingPlans = [
 
 export const publicSitePages = [
   { name: 'Accueil', path: '/' },
-  { name: 'Generateur de facture gratuit', path: '/generateur-facture' },
   { name: 'Secteurs', path: '/secteurs' },
   { name: 'Modules', path: '/modules' },
+  { name: 'Generateur de facture gratuit', path: '/generateur-facture' },
   { name: 'Tarifs', path: '/tarifs' },
   { name: 'FAQ', path: '/faq' },
   { name: 'Blog', path: '/blog' },
