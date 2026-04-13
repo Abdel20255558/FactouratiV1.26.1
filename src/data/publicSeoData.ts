@@ -6,6 +6,7 @@ export const BRAND_DESCRIPTION =
   'Factourati est un logiciel marocain de facturation et de gestion pour centraliser devis, factures, paiements, stock, fournisseurs et projets.';
 
 export const SOCIAL_LINKS = [
+  'https://web.facebook.com/profile.php?id=61585975779434',
   'https://x.com/FacTourati',
   'https://www.linkedin.com/company/factourati',
   'https://www.instagram.com/factourati',
@@ -37,6 +38,9 @@ export const pricingPlans = [
 
 export const publicSitePages = [
   { name: 'Accueil', path: '/' },
+  { name: 'Generateur de facture gratuit', path: '/generateur-facture' },
+  { name: 'Secteurs', path: '/secteurs' },
+  { name: 'Modules', path: '/modules' },
   { name: 'Tarifs', path: '/tarifs' },
   { name: 'FAQ', path: '/faq' },
   { name: 'Blog', path: '/blog' },
