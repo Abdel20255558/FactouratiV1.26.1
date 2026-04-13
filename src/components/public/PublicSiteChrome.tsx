@@ -8,9 +8,9 @@ type PublicSiteChromeProps = {
 
 const homeLinks = [
   { label: 'Accueil', href: '/#accueil' },
-  { label: 'Generateur', href: '/generateur-facture' },
   { label: 'Secteurs', href: '/secteurs' },
   { label: 'Modules', href: '/modules' },
+  { label: 'Générateur', href: '/generateur-facture' },
   { label: 'Tarifs', href: '/tarifs' },
   { label: 'FAQ', href: '/faq' },
 ];
