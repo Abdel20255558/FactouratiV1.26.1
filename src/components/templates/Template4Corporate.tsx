@@ -2,15 +2,18 @@
 import React from 'react';
 import { Invoice, Quote } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
+import type { TemplateCompany } from './Template1Classic';
 
 interface TemplateProps {
   data: Invoice | Quote;
   type: 'invoice' | 'quote';
   includeSignature?: boolean;
+  companyOverride?: TemplateCompany;
 }
 
-export default function Template4Corporate({ data, type, includeSignature = false }: TemplateProps) {
+export default function Template4Corporate({ data, type, includeSignature = false, companyOverride }: TemplateProps) {
   const { user } = useAuth();
+  const company = companyOverride || user?.company;
   const title = type === 'invoice' ? 'FACTURE' : 'DEVIS';
   const THEME = '#24445C';
 
@@ -49,14 +52,14 @@ export default function Template4Corporate({ data, type, includeSignature = fals
       <div className="pdf-header pdf-exclude" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_H }}>
         <div className="relative" style={{ background: THEME, color: '#fff' }}>
           <div className="px-8 py-6 flex items-center justify-between">
-            {user?.company.logo ? (
-              <img src={user.company.logo} alt="Logo" className="mx-auto" style={{ height: 120, width: 120, objectFit: 'contain' }} />
+            {company?.logo ? (
+              <img src={company.logo} alt="Logo" className="mx-auto" style={{ height: 120, width: 120, objectFit: 'contain' }} />
             ) : (
               <div style={{ width: 120, height: 120 }} />
             )}
 
             <div className="flex-1 text-center">
-              <h1 className="text-4xl font-extrabold uppercase tracking-wide">{user?.company.name}</h1>
+              <h1 className="text-4xl font-extrabold uppercase tracking-wide">{company?.name || '-'}</h1>
               <h2 className="text-3xl font-semibold mt-4 tracking-widest">{title}</h2>
             </div>
 
@@ -123,9 +126,9 @@ export default function Template4Corporate({ data, type, includeSignature = fals
 
         {/* ===== BLOC TOTAUX (seul, non coupé) ===== */}
         <section className="keep-together p-8">
-          <div className="flex flex-wrap gap-6">
+          <div className="grid grid-cols-2 gap-4">
             {/* Montant en lettres */}
-            <div className="w-[48%] min-w-[280px] bg-gray-50 rounded p-4" style={{ border: `1px solid ${THEME}` }}>
+            <div className="min-w-0 bg-gray-50 rounded p-4" style={{ border: `1px solid ${THEME}` }}>
               <div className="text-sm font-bold pt-1 text-center mb-3" style={{ color: THEME }}>
                 Arrêtée le présent {type === 'invoice' ? 'facture' : 'devis'} à la somme de :
               </div>
@@ -135,7 +138,7 @@ export default function Template4Corporate({ data, type, includeSignature = fals
             </div>
 
             {/* TVA / Totaux */}
-            <div className="w-[48%] min-w-[280px] bg-gray-50 rounded p-4" style={{ border: `1px solid ${THEME}` }}>
+            <div className="min-w-0 bg-gray-50 rounded p-4" style={{ border: `1px solid ${THEME}` }}>
               <div className="flex justify-between mb-2 text-sm">
                 <span>Total HT :</span>
                 <span className="font-medium">{formatAmount(data.subtotal)} MAD</span>
@@ -174,9 +177,9 @@ export default function Template4Corporate({ data, type, includeSignature = fals
           <div className="w-60 bg-gray-50 border rounded p-4 text-center" style={{ borderColor: THEME }}>
             <div className="text-sm font-bold mb-3" style={{ color: THEME }}>Signature</div>
             <div className="border-2 rounded-sm h-20 flex items-center justify-center relative" style={{ borderColor: THEME }}>
-              {includeSignature && user?.company?.signature ? (
+              {includeSignature && company?.signature ? (
                 <img
-                  src={user.company.signature}
+                  src={company.signature}
                   alt="Signature"
                   className="max-h-18 max-w-full object-contain"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} // pourquoi: éviter un bloc cassé si image KO
@@ -198,10 +201,10 @@ export default function Template4Corporate({ data, type, includeSignature = fals
           </svg>
           <div className="pt-10 p-6 text-center text-sm relative z-10">
             <p>
-              <strong>{user?.company.name}</strong> | {user?.company.address} | <strong>Tél :</strong> {user?.company.phone} |
-              <strong> ICE :</strong> {user?.company.ice} | <strong>IF:</strong> {user?.company.if} | <strong>RC:</strong> {user?.company.rc} |
-              <strong> CNSS:</strong> {user?.company.cnss} | <strong>Patente :</strong> {user?.company.patente} |
-              <strong> EMAIL :</strong> {user?.company.email} | <strong>SITE WEB :</strong> {user?.company.website}
+              <strong>{company?.name || '-'}</strong> | {company?.address || '-'} | <strong>Tél :</strong> {company?.phone || '-'} |
+              <strong> ICE :</strong> {company?.ice || '-'} | <strong>IF:</strong> {company?.if || '-'} | <strong>RC:</strong> {company?.rc || '-'} |
+              <strong> CNSS:</strong> {company?.cnss || '-'} | <strong>Patente :</strong> {company?.patente || '-'} |
+              <strong> EMAIL :</strong> {company?.email || '-'} | <strong>SITE WEB :</strong> {company?.website || '-'}
             </p>
           </div>
         </div>
