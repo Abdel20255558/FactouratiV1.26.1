@@ -29,6 +29,70 @@ function ensureString(value: unknown, fallback: string = '') {
   return invalidValues.has(normalizedValue.toLowerCase()) ? fallback : normalizedValue;
 }
 
+function normalizeBlogDateIso(value: unknown) {
+  if (!value) {
+    return '';
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString();
+  }
+
+  if (typeof value === 'string') {
+    const trimmedValue = ensureString(value);
+
+    if (!trimmedValue) {
+      return '';
+    }
+
+    const slashDateMatch = trimmedValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (slashDateMatch) {
+      const [, day, month, year] = slashDateMatch;
+      const parsedDate = new Date(Number(year), Number(month) - 1, Number(day));
+      return Number.isNaN(parsedDate.getTime()) ? '' : parsedDate.toISOString();
+    }
+
+    const parsedDate = new Date(trimmedValue);
+    return Number.isNaN(parsedDate.getTime()) ? '' : parsedDate.toISOString();
+  }
+
+  if (typeof value === 'number') {
+    const parsedDate = new Date(value);
+    return Number.isNaN(parsedDate.getTime()) ? '' : parsedDate.toISOString();
+  }
+
+  if (typeof value === 'object') {
+    const record = value as {
+      seconds?: number;
+      _seconds?: number;
+      nanoseconds?: number;
+      _nanoseconds?: number;
+      toDate?: () => Date;
+    };
+
+    if (typeof record.toDate === 'function') {
+      const parsedDate = record.toDate();
+      return Number.isNaN(parsedDate.getTime()) ? '' : parsedDate.toISOString();
+    }
+
+    const seconds = typeof record.seconds === 'number' ? record.seconds : record._seconds;
+    const nanoseconds = typeof record.nanoseconds === 'number' ? record.nanoseconds : record._nanoseconds || 0;
+
+    if (typeof seconds === 'number') {
+      const parsedDate = new Date(seconds * 1000 + Math.floor(nanoseconds / 1000000));
+      return Number.isNaN(parsedDate.getTime()) ? '' : parsedDate.toISOString();
+    }
+  }
+
+  return '';
+}
+
+function getBlogSortTime(article: Pick<BlogResolvedArticle, 'publishedAtISO' | 'createdAt' | 'updatedAt'>) {
+  const dateIso = normalizeBlogDateIso(article.publishedAtISO) || normalizeBlogDateIso(article.createdAt) || normalizeBlogDateIso(article.updatedAt);
+  const timestamp = dateIso ? new Date(dateIso).getTime() : 0;
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
 function ensureStringArray(value: unknown) {
   if (!Array.isArray(value)) {
     return [] as string[];
@@ -206,7 +270,13 @@ function normalizeFirestoreBlogPost(id: string, data: DocumentData): BlogResolve
   const summaryPoints = ensureStringArray(data.summaryPoints);
   const keywords = ensureStringArray(data.keywords);
   const sections = sanitizeSections(data.sections, { articleSlug: slug, category });
-  const publishedAtISO = ensureString(data.publishedAtISO) || ensureString(data.createdAt) || new Date().toISOString();
+  const publishedAtISO =
+    normalizeBlogDateIso(data.publishedAtISO) ||
+    normalizeBlogDateIso(data.publishedAt) ||
+    normalizeBlogDateIso(data.date) ||
+    normalizeBlogDateIso(data.createdAt) ||
+    normalizeBlogDateIso(data.updatedAt) ||
+    new Date().toISOString();
   const readingTime =
     ensureString(data.readingTime) ||
     estimateBlogReadingTimeFromContent({
@@ -243,8 +313,8 @@ function normalizeFirestoreBlogPost(id: string, data: DocumentData): BlogResolve
     sections,
     isPublished: data.isPublished !== false,
     isVisibleInListings: data.isVisibleInListings !== false,
-    createdAt: ensureString(data.createdAt),
-    updatedAt: ensureString(data.updatedAt),
+    createdAt: normalizeBlogDateIso(data.createdAt),
+    updatedAt: normalizeBlogDateIso(data.updatedAt),
     imageStoragePath: ensureString(data.imageStoragePath),
   };
 }
@@ -259,7 +329,7 @@ export async function fetchFirestoreBlogPosts(options?: { includeUnpublished?: b
     .map((docSnapshot) => normalizeFirestoreBlogPost(docSnapshot.id, docSnapshot.data()))
     .filter((article): article is BlogResolvedArticle => Boolean(article))
     .filter((article) => options?.includeUnpublished || article.isPublished)
-    .sort((a, b) => new Date(b.publishedAtISO).getTime() - new Date(a.publishedAtISO).getTime());
+    .sort((a, b) => getBlogSortTime(b) - getBlogSortTime(a));
 
   return articles;
 }
