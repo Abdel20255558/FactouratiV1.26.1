@@ -24,6 +24,9 @@ const BlogCategoryPage = lazy(() => import('./components/blog/BlogCategoryPage')
 const Login = lazy(() => import('./components/auth/Login'));
 const PricingPage = lazy(() => import('./components/public/PricingPage'));
 const FaqPage = lazy(() => import('./components/public/FaqPage'));
+const FreeInvoiceGeneratorPage = lazy(() => import('./components/public/FreeInvoiceGeneratorPage'));
+const SectorsPage = lazy(() => import('./components/public/SectorsPage'));
+const ModulesPage = lazy(() => import('./components/public/ModulesPage'));
 const NotFoundPage = lazy(() => import('./components/public/NotFoundPage'));
 const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
 const GlobalSearch = lazy(() => import('./components/layout/GlobalSearch'));
@@ -144,6 +147,9 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/tarifs" element={<PricingPage />} />
+            <Route path="/generateur-facture" element={<FreeInvoiceGeneratorPage />} />
+            <Route path="/secteurs" element={<SectorsPage />} />
+            <Route path="/modules" element={<ModulesPage />} />
             <Route path="/faq" element={<FaqPage />} />
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/blog/categorie/:categorySlug" element={<BlogCategoryPage />} />
