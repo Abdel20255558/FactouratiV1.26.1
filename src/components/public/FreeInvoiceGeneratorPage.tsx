@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, FileText, Lock, Plus, Printer, Trash2 } from 'lucide-react';
 import SeoHead from '../seo/SeoHead';
@@ -14,6 +14,11 @@ import {
   createOrganizationSchema,
   createWebPageSchema,
 } from '../../data/publicSeoData';
+import {
+  recordFreeInvoiceGeneratorPrint,
+  recordFreeInvoiceGeneratorProTemplateAttempt,
+  recordFreeInvoiceGeneratorView,
+} from '../../services/publicUsageService';
 
 type PublicCompanyForm = {
   name: string;
@@ -87,6 +92,12 @@ export default function FreeInvoiceGeneratorPage() {
       total: 1200,
     },
   ]);
+
+  useEffect(() => {
+    recordFreeInvoiceGeneratorView().catch((error) => {
+      console.warn('Compteur generateur gratuit indisponible:', error);
+    });
+  }, []);
 
   const computedItems = useMemo(
     () =>
@@ -291,6 +302,9 @@ export default function FreeInvoiceGeneratorPage() {
 
   const handlePrint = async () => {
     if (isSelectedTemplateLocked) {
+      recordFreeInvoiceGeneratorProTemplateAttempt().catch((error) => {
+        console.warn('Compteur template Pro indisponible:', error);
+      });
       navigate('/login?mode=register');
       return;
     }
@@ -298,6 +312,9 @@ export default function FreeInvoiceGeneratorPage() {
     setIsPreparingPrint(true);
     try {
       await renderPdfWithHeaderFooter();
+      recordFreeInvoiceGeneratorPrint().catch((error) => {
+        console.warn('Compteur impression generateur indisponible:', error);
+      });
     } catch (error) {
       console.error(error);
       alert("Erreur pendant la preparation du PDF.");
