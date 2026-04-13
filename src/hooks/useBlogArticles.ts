@@ -7,6 +7,11 @@ type UseBlogArticlesOptions = {
   includeHiddenStatic?: boolean;
 };
 
+function getArticleSortTime(article: BlogResolvedArticle) {
+  const timestamp = new Date(article.publishedAtISO || article.createdAt || article.updatedAt || '').getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
 export function useBlogArticles(options?: UseBlogArticlesOptions) {
   const [firestoreArticles, setFirestoreArticles] = useState<BlogResolvedArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,7 +50,7 @@ export function useBlogArticles(options?: UseBlogArticlesOptions) {
 
   const articles = useMemo(() => {
     const mergedArticles = [...firestoreArticles, ...filteredStaticArticles].sort(
-      (a, b) => new Date(b.publishedAtISO).getTime() - new Date(a.publishedAtISO).getTime(),
+      (a, b) => getArticleSortTime(b) - getArticleSortTime(a),
     );
 
     const uniqueArticles = new Map<string, BlogResolvedArticle>();
