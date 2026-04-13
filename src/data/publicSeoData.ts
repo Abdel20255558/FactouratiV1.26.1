@@ -1,4 +1,4 @@
-export const SITE_URL = 'https://www.factourati.com';
+export const SITE_URL = 'https://factourati.com';
 export const BRAND_NAME = 'Factourati';
 export const BRAND_LOGO_URL = `${SITE_URL}/files_3254075-1761082431431-image.png`;
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/2.png`;
