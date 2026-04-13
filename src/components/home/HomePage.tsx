@@ -148,8 +148,9 @@ export default function HomePage() {
 
             <nav className="hidden md:flex items-center space-x-8">
               <a href="#accueil" className="text-gray-800 hover:text-teal-600 font-medium">Accueil</a>
-              <a href="#secteurs" className="text-gray-800 hover:text-teal-600 font-medium">Secteurs</a>
-              <a href="#modules" className="text-gray-800 hover:text-teal-600 font-medium">Modules</a>
+              <Link to="/secteurs" className="text-gray-800 hover:text-teal-600 font-medium">Secteurs</Link>
+              <Link to="/modules" className="text-gray-800 hover:text-teal-600 font-medium">Modules</Link>
+              <Link to="/generateur-facture" className="text-gray-800 hover:text-teal-600 font-medium">Générateur</Link>
               <Link to="/tarifs" className="text-gray-800 hover:text-teal-600 font-medium">Tarifs</Link>
               <Link to="/faq" className="text-gray-800 hover:text-teal-600 font-medium">FAQ</Link>
               <Link to="/blog" className="text-gray-800 hover:text-teal-600 font-medium">Blog</Link>
@@ -798,7 +799,7 @@ export default function HomePage() {
                 <h4 className="font-semibold mb-3 text-white">Suivez-nous</h4>
                 <div className="flex items-center space-x-4">
                   <a
-                    href="https://www.facebook.com"
+                    href="https://web.facebook.com/profile.php?id=61585975779434"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-10 h-10 bg-gray-800 hover:bg-blue-600 rounded-lg flex items-center justify-center transition-colors"
@@ -851,8 +852,9 @@ export default function HomePage() {
               <h4 className="font-semibold mb-4">Liens rapides</h4>
               <ul className="space-y-2 text-gray-400">
                 <li><a href="#accueil" className="hover:text-white transition-colors">Accueil</a></li>
-                <li><a href="#secteurs" className="hover:text-white transition-colors">Secteurs</a></li>
-                <li><a href="#modules" className="hover:text-white transition-colors">Modules</a></li>
+                <li><Link to="/secteurs" className="hover:text-white transition-colors">Secteurs</Link></li>
+                <li><Link to="/modules" className="hover:text-white transition-colors">Modules</Link></li>
+                <li><Link to="/generateur-facture" className="hover:text-white transition-colors">Générateur facture</Link></li>
                 <li><Link to="/tarifs" className="hover:text-white transition-colors">Tarifs</Link></li>
                 <li><Link to="/faq" className="hover:text-white transition-colors">FAQ</Link></li>
                 <li><Link to="/blog" className="hover:text-white transition-colors">Blog</Link></li>
