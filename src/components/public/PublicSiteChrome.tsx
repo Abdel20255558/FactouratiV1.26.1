@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Facebook, Instagram, Linkedin, Mail, MapPin, Phone, Twitter, Youtube } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 type PublicSiteChromeProps = {
   children: ReactNode;
@@ -8,13 +8,18 @@ type PublicSiteChromeProps = {
 
 const homeLinks = [
   { label: 'Accueil', href: '/#accueil' },
-  { label: 'Secteurs', href: '/#secteurs' },
-  { label: 'Modules', href: '/#modules' },
+  { label: 'Generateur', href: '/generateur-facture' },
+  { label: 'Secteurs', href: '/secteurs' },
+  { label: 'Modules', href: '/modules' },
   { label: 'Tarifs', href: '/tarifs' },
   { label: 'FAQ', href: '/faq' },
 ];
 
 export default function PublicSiteChrome({ children }: PublicSiteChromeProps) {
+  const { pathname } = useLocation();
+  const linkClass = (href: string) =>
+    `font-medium transition-colors ${pathname === href ? 'text-teal-700' : 'text-gray-800 hover:text-teal-600'}`;
+
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-gray-200 bg-white/85 shadow-sm backdrop-blur-md">
@@ -39,16 +44,16 @@ export default function PublicSiteChrome({ children }: PublicSiteChromeProps) {
             <nav className="hidden items-center space-x-8 md:flex">
               {homeLinks.map((item) =>
                 item.href.startsWith('/#') ? (
-                  <a key={item.label} href={item.href} className="font-medium text-gray-800 hover:text-teal-600">
+                  <a key={item.label} href={item.href} className="font-medium text-gray-800 transition-colors hover:text-teal-600">
                     {item.label}
                   </a>
                 ) : (
-                  <Link key={item.label} to={item.href} className="font-medium text-gray-800 hover:text-teal-600">
+                  <Link key={item.label} to={item.href} className={linkClass(item.href)}>
                     {item.label}
                   </Link>
                 ),
               )}
-              <Link to="/blog" className="font-medium text-teal-700">
+              <Link to="/blog" className={`font-medium transition-colors ${pathname.startsWith('/blog') ? 'text-teal-700' : 'text-gray-800 hover:text-teal-600'}`}>
                 Blog
               </Link>
               <Link to="/login" className="font-medium text-gray-800 hover:text-teal-600">
@@ -104,7 +109,7 @@ export default function PublicSiteChrome({ children }: PublicSiteChromeProps) {
               <div>
                 <h4 className="mb-3 font-semibold text-white">Suivez-nous</h4>
                 <div className="flex items-center space-x-4">
-                  <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-800 transition-colors hover:bg-blue-600" aria-label="Facebook">
+                  <a href="https://web.facebook.com/profile.php?id=61585975779434" target="_blank" rel="noopener noreferrer" className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-800 transition-colors hover:bg-blue-600" aria-label="Facebook">
                     <Facebook className="h-5 w-5" />
                   </a>
                   <a href="https://www.instagram.com/factourati/" target="_blank" rel="noopener noreferrer" className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-800 transition-colors hover:bg-pink-600" aria-label="Instagram">
