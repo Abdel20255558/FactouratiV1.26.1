@@ -1,15 +1,18 @@
 import React from 'react';
 import { Invoice, Quote } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
+import type { TemplateCompany } from './Template1Classic';
 
 interface TemplateProps {
   data: Invoice | Quote;
   type: 'invoice' | 'quote';
   includeSignature?: boolean;
+  companyOverride?: TemplateCompany;
 }
 
-export default function Template7Atlas({ data, type, includeSignature = false }: TemplateProps) {
+export default function Template7Atlas({ data, type, includeSignature = false, companyOverride }: TemplateProps) {
   const { user } = useAuth();
+  const company = companyOverride || user?.company;
   const title = type === 'invoice' ? 'FACTURE' : 'DEVIS';
   const INK = '#0f172a';
   const PRIMARY = '#065f46';
@@ -57,15 +60,15 @@ export default function Template7Atlas({ data, type, includeSignature = false }:
         >
           <div className="flex h-full items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              {user?.company.logo ? (
+              {company?.logo ? (
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 p-2 shadow-sm">
-                  <img src={user.company.logo} alt="Logo" className="h-full w-full object-contain" />
+                  <img src={company.logo} alt="Logo" className="h-full w-full object-contain" />
                 </div>
               ) : null}
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70">Entreprise</p>
-                <h1 className="mt-1 text-[28px] font-extrabold leading-none">{user?.company.name}</h1>
-                <p className="mt-2 text-sm text-white/80">{user?.company.activity || 'Gestion et facturation professionnelle'}</p>
+                <h1 className="mt-1 text-[28px] font-extrabold leading-none">{company?.name || '-'}</h1>
+                <p className="mt-2 text-sm text-white/80">{company?.activity || 'Gestion et facturation professionnelle'}</p>
               </div>
             </div>
 
@@ -143,7 +146,7 @@ export default function Template7Atlas({ data, type, includeSignature = false }:
         </div>
 
         <section className="keep-together px-8 pb-6">
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid grid-cols-[1.1fr_0.9fr] gap-4">
             <div className="rounded-3xl border p-5" style={{ borderColor: BORDER, background: SURFACE }}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ color: ACCENT }}>
                 Arretee a la somme de
@@ -181,9 +184,9 @@ export default function Template7Atlas({ data, type, includeSignature = false }:
               Signature
             </p>
             <div className="mt-3 flex h-20 items-center justify-center rounded-2xl border border-dashed bg-white" style={{ borderColor: BORDER }}>
-              {includeSignature && user?.company?.signature ? (
+              {includeSignature && company?.signature ? (
                 <img
-                  src={user.company.signature}
+                  src={company.signature}
                   alt="Signature"
                   className="max-h-16 max-w-full object-contain"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
@@ -203,10 +206,10 @@ export default function Template7Atlas({ data, type, includeSignature = false }:
         <div className="h-full border-t bg-white px-8 py-4" style={{ borderColor: BORDER }}>
           <div className="text-[10px] leading-5 text-slate-600">
             <p>
-              <strong>{user?.company.name}</strong> | Activite: {user?.company.activity || '-'} | Adresse: {user?.company.address || '-'} |
-              {' '}ICE: {user?.company.ice} | IF: {user?.company.if} | RC: {user?.company.rc} | CNSS: {user?.company.cnss} |
-              {' '}Patente: {user?.company.patente} | Tel: {user?.company.phone} | Email: {user?.company.email}
-              {user?.company.website ? ` | Site web: ${user.company.website}` : ''}
+              <strong>{company?.name || '-'}</strong> | Activite: {company?.activity || '-'} | Adresse: {company?.address || '-'} |
+              {' '}ICE: {company?.ice || '-'} | IF: {company?.if || '-'} | RC: {company?.rc || '-'} | CNSS: {company?.cnss || '-'} |
+              {' '}Patente: {company?.patente || '-'} | Tel: {company?.phone || '-'} | Email: {company?.email || '-'}
+              {company?.website ? ` | Site web: ${company.website}` : ''}
             </p>
           </div>
         </div>
