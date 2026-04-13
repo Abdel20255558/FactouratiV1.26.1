@@ -1,15 +1,18 @@
 import React from 'react';
 import { Invoice, Quote } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
+import type { TemplateCompany } from './Template1Classic';
 
 interface TemplateProps {
   data: Invoice | Quote;
   type: 'invoice' | 'quote';
   includeSignature?: boolean;
+  companyOverride?: TemplateCompany;
 }
 
-export default function Template2Modern({ data, type, includeSignature = false }: TemplateProps) {
+export default function Template2Modern({ data, type, includeSignature = false, companyOverride }: TemplateProps) {
   const { user } = useAuth();
+  const company = companyOverride || user?.company;
   const title = type === 'invoice' ? 'FACTURE' : 'DEVIS';
   const HEADER_H = 130;
   const FOOTER_H = 100;
@@ -38,9 +41,9 @@ export default function Template2Modern({ data, type, includeSignature = false }
       <div className="pdf-header pdf-exclude" style={{ position:'absolute', top:0, left:0, right:0, height: HEADER_H }}>
         <div className="p-8 border-b border-black bg-black text-white text-center h-full">
           <div className="flex items-center justify-between h-full">
-            {user?.company.logo && (<img src={user.company.logo} alt="Logo" className="h-24 w-auto" />)}
+            {company?.logo && (<img src={company.logo} alt="Logo" className="h-24 w-auto" />)}
             <div className="flex-1 text-center">
-              <h2 className="text-4xl font-extrabold">{user?.company.name}</h2>
+              <h2 className="text-4xl font-extrabold">{company?.name || '-'}</h2>
               <h1 className="text-2xl font-bold mt-2">{title}</h1>
             </div>
             <div className="w-10" />
@@ -102,8 +105,8 @@ export default function Template2Modern({ data, type, includeSignature = false }
 
         {/* ===== BLOC TOTAUX (seul) ===== */}
         <section className="keep-together p-8">
-          <div className="flex flex-wrap gap-6">
-            <div className="border border-black rounded p-2 bg-gray-50 w-[48%] min-w-[280px]">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="min-w-0 border border-black rounded p-2 bg-gray-50">
               <div className="text-sm font-bold pt-3 text-center pb-4 border-b border-black">
                 <p>Arrêtée le présent {type === 'invoice' ? 'facture' : 'devis'} à la somme de :</p>
               </div>
@@ -112,7 +115,7 @@ export default function Template2Modern({ data, type, includeSignature = false }
               </div>
             </div>
 
-            <div className="border border-black rounded p-6 bg-gray-50 w-[48%] min-w-[280px]">
+            <div className="min-w-0 border border-black rounded p-6 bg-gray-50">
               <div className="flex justify-between text-sm mb-2">
                 <span>Total HT :</span><span className="font-medium">{formatAmount(data.subtotal)} MAD</span>
               </div>
@@ -140,9 +143,9 @@ export default function Template2Modern({ data, type, includeSignature = false }
           <div className="w-60 bg-gray-50 border border-black rounded p-4 text-center">
             <div className="text-sm font-bold mb-3">Signature</div>
             <div className="border-2 border-black rounded-sm h-20 flex items-center justify-center relative">
-              {includeSignature && user?.company?.signature ? (
+              {includeSignature && company?.signature ? (
                 <img
-                  src={user.company.signature}
+                  src={company.signature}
                   alt="Signature"
                   className="max-h-18 max-w-full object-contain"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /* why: éviter image cassée */
@@ -157,7 +160,7 @@ export default function Template2Modern({ data, type, includeSignature = false }
       <div className="pdf-footer pdf-exclude" style={{ position:'absolute', bottom:0, left:0, right:0, height: FOOTER_H }}>
         <div className="bg-black text-white border-t-2 border-white p-6 text-sm text-center h-full">
           <p>
-            <strong>{user?.company.name}</strong> | {user?.company.address} | <strong>Tél :</strong> {user?.company.phone} | <strong>ICE :</strong> {user?.company.ice} | <strong>IF:</strong> {user?.company.if} | <strong>RC:</strong> {user?.company.rc} | <strong>CNSS:</strong> {user?.company.cnss} | <strong>Patente :</strong> {user?.company.patente} | <strong>EMAIL :</strong> {user?.company.email} | <strong>SITE WEB :</strong> {user?.company.website}
+            <strong>{company?.name || '-'}</strong> | {company?.address || '-'} | <strong>Tél :</strong> {company?.phone || '-'} | <strong>ICE :</strong> {company?.ice || '-'} | <strong>IF:</strong> {company?.if || '-'} | <strong>RC:</strong> {company?.rc || '-'} | <strong>CNSS:</strong> {company?.cnss || '-'} | <strong>Patente :</strong> {company?.patente || '-'} | <strong>EMAIL :</strong> {company?.email || '-'} | <strong>SITE WEB :</strong> {company?.website || '-'}
           </p>
         </div>
       </div>
