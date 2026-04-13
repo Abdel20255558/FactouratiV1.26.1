@@ -2,15 +2,18 @@
 import React from 'react';
 import { Invoice, Quote } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
+import type { TemplateCompany } from './Template1Classic';
 
 interface TemplateProps {
   data: Invoice | Quote;
   type: 'invoice' | 'quote';
   includeSignature?: boolean;
+  companyOverride?: TemplateCompany;
 }
 
-export default function Template5Premium({ data, type, includeSignature = false }: TemplateProps) {
+export default function Template5Premium({ data, type, includeSignature = false, companyOverride }: TemplateProps) {
   const { user } = useAuth();
+  const company = companyOverride || user?.company;
   const title = type === 'invoice' ? 'FACTURE' : 'DEVIS';
   const THEME = '#0a1f44';
   const ACCENT = '#c1121f';
@@ -48,13 +51,13 @@ export default function Template5Premium({ data, type, includeSignature = false 
       <div className="pdf-header pdf-exclude" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_H }}>
         <div className="relative" style={{ background: THEME, color: '#fff', height: '100%' }}>
           <div className="h-full flex items-center justify-between px-8">
-            {user?.company.logo ? (
-              <img src={user.company.logo} alt="Logo" className="mx-auto" style={{ height: 120, width: 120, objectFit: 'contain' }} />
+            {company?.logo ? (
+              <img src={company.logo} alt="Logo" className="mx-auto" style={{ height: 120, width: 120, objectFit: 'contain' }} />
             ) : (
               <div style={{ width: 160 }} />
             )}
             <div className="flex-1 text-center">
-              <h1 className="text-4xl font-extrabold">{user?.company.name}</h1>
+              <h1 className="text-4xl font-extrabold">{company?.name || '-'}</h1>
               <h2 className="text-3xl font-bold mt-6 uppercase tracking-wide">{title}</h2>
             </div>
             <div className="w-5" />
@@ -111,9 +114,9 @@ export default function Template5Premium({ data, type, includeSignature = false 
 
         {/* ===== BLOC TOTAUX (seul) ===== */}
         <section className="keep-together p-8">
-          <div className="flex flex-wrap justify-between gap-6">
+          <div className="grid grid-cols-2 gap-4">
             {/* Montant en lettres */}
-            <div className="w-[48%] min-w-[280px] bg-gray-50 rounded border p-4" style={{ borderColor: THEME }}>
+            <div className="min-w-0 bg-gray-50 rounded border p-4" style={{ borderColor: THEME }}>
               <div className="text-sm font-bold text-center">
                 Arrêtée le présent {type === 'invoice' ? 'facture' : 'devis'} à la somme de :
               </div>
@@ -122,7 +125,7 @@ export default function Template5Premium({ data, type, includeSignature = false 
             </div>
 
             {/* TVA / Totaux */}
-            <div className="w-[48%] min-w-[280px] bg-gray-50 rounded border p-4" style={{ borderColor: THEME }}>
+            <div className="min-w-0 bg-gray-50 rounded border p-4" style={{ borderColor: THEME }}>
               <div className="flex justify-between mb-2 text-sm">
                 <span>Total HT :</span>
                 <span className="font-medium">{formatAmount(data.subtotal)} MAD</span>
@@ -155,9 +158,9 @@ export default function Template5Premium({ data, type, includeSignature = false 
           <div className="w-60 bg-gray-50 border rounded p-4 text-center" style={{ borderColor: THEME }}>
             <div className="text-sm font-bold mb-3">Signature</div>
             <div className="border-2 rounded-sm h-20 flex items-center justify-center relative" style={{ borderColor: THEME }}>
-              {includeSignature && user?.company?.signature ? (
+              {includeSignature && company?.signature ? (
                 <img
-                  src={user.company.signature}
+                  src={company.signature}
                   alt="Signature"
                   className="max-h-18 max-w-full object-contain"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /* pourquoi: éviter image cassée */
@@ -176,10 +179,10 @@ export default function Template5Premium({ data, type, includeSignature = false 
          
           <div className="pt-10 p-6 text-center text-sm relative z-10">
             <p>
-              <strong>{user?.company.name}</strong> | {user?.company.address} | <strong>Tél :</strong> {user?.company.phone} |
-              <strong> ICE :</strong> {user?.company.ice} | <strong>IF:</strong> {user?.company.if} | <strong>RC:</strong> {user?.company.rc} |
-              <strong> CNSS:</strong> {user?.company.cnss} | <strong>Patente :</strong> {user?.company.patente} |
-              <strong> EMAIL :</strong> {user?.company.email} | <strong>SITE WEB :</strong> {user?.company.website}
+              <strong>{company?.name || '-'}</strong> | {company?.address || '-'} | <strong>Tél :</strong> {company?.phone || '-'} |
+              <strong> ICE :</strong> {company?.ice || '-'} | <strong>IF:</strong> {company?.if || '-'} | <strong>RC:</strong> {company?.rc || '-'} |
+              <strong> CNSS:</strong> {company?.cnss || '-'} | <strong>Patente :</strong> {company?.patente || '-'} |
+              <strong> EMAIL :</strong> {company?.email || '-'} | <strong>SITE WEB :</strong> {company?.website || '-'}
             </p>
           </div>
         </div>
