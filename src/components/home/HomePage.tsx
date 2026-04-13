@@ -42,8 +42,10 @@ import SeoHead from '../seo/SeoHead';
 import {
   DEFAULT_OG_IMAGE,
   SITE_URL,
+  createBreadcrumbSchema,
   createFaqSchema,
   createLocalBusinessSchema,
+  createOfferCatalogSchema,
   createOrganizationSchema,
   createSiteNavigationSchema,
   createWebPageSchema,
@@ -70,18 +72,20 @@ export default function HomePage() {
   const sixMonthsSavings = (PRICES.monthly * 6) - PRICES.sixMonths;
   const annualSavings = monthlyTotal - PRICES.annual;
   const homeDescription =
-    'Factourati est une solution marocaine pour gerer devis, factures, paiements, stock, fournisseurs et projets dans une seule plateforme. Essai gratuit et tarifs a partir de 199 DH par mois.';
+    'Factourati est un logiciel marocain de facturation et gestion pour gerer devis, factures, paiements, stock, fournisseurs et projets. Essai gratuit, generateur de facture et tarifs a partir de 199 DH par mois.';
   const homeSchema = [
     createOrganizationSchema(),
     createLocalBusinessSchema(),
     createWebsiteSchema(),
     createSiteNavigationSchema(),
+    createBreadcrumbSchema([{ name: 'Accueil', url: SITE_URL }]),
+    createOfferCatalogSchema('/tarifs'),
     createFaqSchema(),
     createWebPageSchema({
       name: 'Factourati | Logiciel de facturation et gestion pour PME au Maroc',
       path: '/',
       description:
-        'Factourati aide les entreprises marocaines a centraliser devis, factures, paiements, stock, fournisseurs et projets. Essai gratuit et tarifs des 199 DH par mois.',
+        'Factourati aide les entreprises marocaines a centraliser devis, factures, paiements, stock, fournisseurs et projets. Essai gratuit, generateur de facture et tarifs des 199 DH par mois.',
     }),
     {
       '@context': 'https://schema.org',
@@ -114,10 +118,10 @@ export default function HomePage() {
     // ⬇ Wrapper sticky footer
     <div className="flex min-h-screen flex-col bg-white">
       <SeoHead
-        title="Factourati | Logiciel de facturation et gestion pour PME au Maroc"
+        title="Factourati | Logiciel de facturation Maroc - Tarifs des 199 DH"
         description={homeDescription}
         canonicalPath="/"
-        keywords="logiciel facturation maroc, ERP maroc, gestion stock maroc, devis facture maroc, logiciel pme maroc, tarifs factourati, logiciel facturation maroc prix"
+        keywords="logiciel facturation maroc, logiciel facture maroc, ERP maroc, gestion stock maroc, devis facture maroc, logiciel pme maroc, tarifs factourati, logiciel facturation maroc prix, generateur facture gratuit maroc"
         image={DEFAULT_OG_IMAGE}
         imageAlt="Interface Factourati pour devis, factures, stock et gestion des PME au Maroc"
         type="website"
@@ -147,7 +151,7 @@ export default function HomePage() {
             </div>
 
             <nav className="hidden md:flex items-center space-x-8">
-              <a href="#accueil" className="text-gray-800 hover:text-teal-600 font-medium">Accueil</a>
+              <Link to="/" className="text-gray-800 hover:text-teal-600 font-medium">Accueil</Link>
               <Link to="/secteurs" className="text-gray-800 hover:text-teal-600 font-medium">Secteurs</Link>
               <Link to="/modules" className="text-gray-800 hover:text-teal-600 font-medium">Modules</Link>
               <Link to="/generateur-facture" className="text-gray-800 hover:text-teal-600 font-medium">Générateur</Link>
@@ -851,7 +855,7 @@ export default function HomePage() {
             <div>
               <h4 className="font-semibold mb-4">Liens rapides</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#accueil" className="hover:text-white transition-colors">Accueil</a></li>
+                <li><Link to="/" className="hover:text-white transition-colors">Accueil</Link></li>
                 <li><Link to="/secteurs" className="hover:text-white transition-colors">Secteurs</Link></li>
                 <li><Link to="/modules" className="hover:text-white transition-colors">Modules</Link></li>
                 <li><Link to="/generateur-facture" className="hover:text-white transition-colors">Générateur facture</Link></li>
