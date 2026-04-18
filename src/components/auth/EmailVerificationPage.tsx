@@ -9,6 +9,40 @@ import { sendEmailVerification as fbSendEmailVerification } from 'firebase/auth'
 const LOGO =
   'https://i.ibb.co/kgVKRM9z/20250915-1327-Conception-Logo-Color-remix-01k56ne0szey2vndspbkzvezyp-1.png';
 
+function getVerificationEmailErrorMessage(error: unknown) {
+  const code = (error as { code?: string })?.code;
+
+  if (code === 'auth/network-request-failed') {
+    return "Connexion impossible avec Firebase. Verifiez internet puis reessayez.";
+  }
+
+  if (code === 'auth/too-many-requests') {
+    return "Trop de tentatives. Attendez quelques minutes puis reessayez.";
+  }
+
+  if (code === 'auth/quota-exceeded') {
+    return "Quota d'envoi Firebase depasse. Reessayez plus tard ou contactez le support.";
+  }
+
+  if (code === 'auth/operation-not-allowed') {
+    return "L'envoi d'emails Firebase n'est pas active. Activez Email/Password dans Firebase Auth.";
+  }
+
+  if (code === 'auth/user-token-expired' || code === 'auth/invalid-user-token') {
+    return "Votre session a expire. Reconnectez-vous puis renvoyez l'email.";
+  }
+
+  if (code === 'auth/unauthorized-domain' || code === 'auth/unauthorized-continue-uri' || code === 'auth/invalid-continue-uri') {
+    return "Le domaine de verification n'est pas autorise dans Firebase.";
+  }
+
+  if (code) {
+    return `Erreur Firebase ${code}. Reconnectez-vous puis reessayez.`;
+  }
+
+  return (error as { message?: string })?.message || "Impossible d'envoyer l'email de verification.";
+}
+
 // --- Confetti minimal sans dépendances
 const COLORS = ['#10b981', '#0ea5e9', '#f59e0b', '#ef4444', '#a855f7', '#22c55e'];
 function ConfettiBurst({ pieces = 90 }: { pieces?: number }) {
@@ -74,16 +108,13 @@ export default function EmailVerificationPage() {
       if (typeof ctxSendEmailVerification === 'function') {
         await ctxSendEmailVerification();
       } else if (auth.currentUser) {
-        await fbSendEmailVerification(auth.currentUser, {
-          url: `${window.location.origin}/verify-email`,
-          handleCodeInApp: true,
-        });
+        await fbSendEmailVerification(auth.currentUser);
       } else {
         throw new Error("Aucun utilisateur connecté pour renvoyer l'email.");
       }
       setSent(true);
     } catch (e: any) {
-      setError(e?.message || "Impossible d'envoyer l'email de vérification.");
+      setError(getVerificationEmailErrorMessage(e));
     } finally {
       setSending(false);
     }
