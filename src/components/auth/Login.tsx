@@ -17,7 +17,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { sendPasswordResetEmail, signOut } from 'firebase/auth';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -25,6 +25,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function Login() {
   // --- Lire le query param
   const location = useLocation();
+  const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
   const openRegister = params.get('mode') === 'register'; // true si ?mode=register
 
@@ -86,7 +87,7 @@ export default function Login() {
         const user = auth.currentUser;
         if (user && !user.emailVerified) {
           // on évite de laisser l’utilisateur connecté
-          await signOut(auth);
+          navigate(`/verify-email?email=${encodeURIComponent(user.email || email.trim())}`, { replace: true });
           setBannerError(
             "Votre email n'est pas encore vérifié. Veuillez vérifier votre boîte de réception et cliquer sur le lien de vérification."
           );
