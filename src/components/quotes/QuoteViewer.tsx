@@ -9,6 +9,7 @@ import ProTemplateModal from '../license/ProTemplateModal';
 import { X, Download, Edit, Printer } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import html2canvas from 'html2canvas';
+import { prepareImagesForPdf } from '../../utils/pdfImageUtils';
 
 interface QuoteViewerProps {
   quote: Quote;
@@ -65,6 +66,8 @@ export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps
     }
 
     // réduire le padding top/bottom pendant l’export (les marges PDF remplacent le header/footer)
+    const restoreImages = await prepareImagesForPdf(root);
+
     root.classList.add('exporting');
 
     const headerEl = root.querySelector('.pdf-header') as HTMLElement | null;
@@ -79,12 +82,24 @@ export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps
         { w: 0, h: 0 },
       ];
       if (headerEl) {
-        const c = await html2canvas(headerEl, { scale: 2, useCORS: true, backgroundColor: null });
+        const c = await html2canvas(headerEl, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          backgroundColor: null,
+        });
         res[0] = c.toDataURL('image/png');
         res[1] = { w: c.width, h: c.height };
       }
       if (footerEl) {
-        const c = await html2canvas(footerEl, { scale: 2, useCORS: true, backgroundColor: null });
+        const c = await html2canvas(footerEl, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          backgroundColor: null,
+        });
         res[2] = c.toDataURL('image/png');
         res[3] = { w: c.width, h: c.height };
       }
@@ -135,6 +150,7 @@ export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps
       alert('Erreur lors de la génération du PDF');
     } finally {
       root.classList.remove('exporting');
+      restoreImages();
     }
   };
 
