@@ -21,7 +21,12 @@ import {
 import EditCompanyModal from './EditCompanyModal';
 import ReferralSourceChart from './ReferralSourceChart';
 import BlogManager from './BlogManager';
-import { fetchFreeInvoiceGeneratorStats, type FreeInvoiceGeneratorStats } from '../../services/publicUsageService';
+import {
+  fetchFreeInvoiceGeneratorLeads,
+  fetchFreeInvoiceGeneratorStats,
+  type FreeInvoiceGeneratorLead,
+  type FreeInvoiceGeneratorStats,
+} from '../../services/publicUsageService';
 
 interface Company {
   id: string;
@@ -58,10 +63,12 @@ export default function AdminDashboard() {
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [supportLoadingId, setSupportLoadingId] = useState<string | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
+  const [generatorLeads, setGeneratorLeads] = useState<FreeInvoiceGeneratorLead[]>([]);
   const [generatorStats, setGeneratorStats] = useState<FreeInvoiceGeneratorStats>({
     views: 0,
     uniqueVisitors: 0,
     prints: 0,
+    leads: 0,
     proTemplatePrintAttempts: 0,
     lastViewedAt: '',
     lastPrintedAt: '',
@@ -75,12 +82,16 @@ export default function AdminDashboard() {
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [companiesSnapshot, supportLogsSnapshot, freeInvoiceGeneratorStats] = await Promise.all([
+      const [companiesSnapshot, supportLogsSnapshot, freeInvoiceGeneratorStats, freeInvoiceGeneratorLeads] = await Promise.all([
         getDocs(collection(db, 'entreprises')),
         getDocs(collection(db, 'supportAccessLogs')),
         fetchFreeInvoiceGeneratorStats().catch((error) => {
           console.warn('Statistiques generateur gratuit indisponibles:', error);
           return null;
+        }),
+        fetchFreeInvoiceGeneratorLeads(12).catch((error) => {
+          console.warn('Prospects generateur gratuit indisponibles:', error);
+          return [];
         })
       ]);
       const companiesData = companiesSnapshot.docs.map(doc => ({
@@ -102,6 +113,7 @@ export default function AdminDashboard() {
       if (freeInvoiceGeneratorStats) {
         setGeneratorStats(freeInvoiceGeneratorStats);
       }
+      setGeneratorLeads(freeInvoiceGeneratorLeads);
     } catch (error) {
       console.error('Erreur lors du chargement des entreprises:', error);
     } finally {
@@ -289,6 +301,31 @@ export default function AdminDashboard() {
     }));
   };
 
+  const getLeadSourceLabel = (sourceAction: FreeInvoiceGeneratorLead['sourceAction']) => {
+    switch (sourceAction) {
+      case 'after_print':
+        return 'Apres impression';
+      case 'pro_template':
+        return 'Template Pro';
+      case 'save_invoice':
+      default:
+        return 'Sauvegarde facture';
+    }
+  };
+
+  const formatLeadDate = (dateIso: string) => {
+    if (!dateIso) {
+      return '-';
+    }
+
+    const date = new Date(dateIso);
+    if (Number.isNaN(date.getTime())) {
+      return '-';
+    }
+
+    return `${date.toLocaleDateString('fr-FR')} ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -393,7 +430,7 @@ export default function AdminDashboard() {
                 <p className="text-2xl font-bold text-gray-900">{generatorStats.uniqueVisitors.toLocaleString('fr-FR')}</p>
                 <p className="text-sm text-gray-600">Generateur gratuit</p>
                 <p className="mt-1 text-xs text-gray-500">
-                  {generatorStats.prints.toLocaleString('fr-FR')} impressions / {generatorStats.views.toLocaleString('fr-FR')} vues
+                  {generatorStats.leads.toLocaleString('fr-FR')} prospects / {generatorStats.prints.toLocaleString('fr-FR')} impressions
                 </p>
               </div>
             </div>
@@ -403,6 +440,78 @@ export default function AdminDashboard() {
         {/* Diagramme des sources d'acquisition */}
         <div className="mb-8">
           <ReferralSourceChart data={referralSourceData()} />
+        </div>
+
+        <div className="mb-8 bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Prospects du generateur gratuit</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Les personnes qui ont laisse leurs coordonnees depuis la page generateur.
+              </p>
+            </div>
+            <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
+              <FileText className="w-5 h-5 text-teal-600" />
+            </div>
+          </div>
+
+          {generatorLeads.length === 0 ? (
+            <div className="px-6 py-10 text-center">
+              <p className="text-gray-500">Aucun prospect generateur pour le moment</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Prospect
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contact
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Facture
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Source
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {generatorLeads.map((lead) => (
+                    <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">{lead.companyName || 'Entreprise non renseignee'}</div>
+                        <div className="mt-1 text-xs text-gray-500">{lead.message || 'Aucun message'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div>{lead.phone || '-'}</div>
+                        <div className="text-xs text-gray-500">{lead.email || '-'}</div>
+                        <div className="mt-1 text-xs font-medium text-teal-700">Prefere : {lead.preferredContact}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="font-medium">{lead.invoiceNumber || '-'}</div>
+                        <div className="text-xs text-gray-500">{lead.totalTTC.toLocaleString('fr-FR')} MAD</div>
+                        <div className="text-xs text-gray-500">{lead.templateName || lead.templateId}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                          {getLeadSourceLabel(lead.sourceAction)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatLeadDate(lead.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <BlogManager />
