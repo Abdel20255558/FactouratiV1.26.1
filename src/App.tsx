@@ -217,6 +217,8 @@ function AppContent() {
                 <Route path="/commandes/:id/modifier" element={<EditOrder />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/verify-email" element={<EmailVerificationPage />} />
+                <Route path="/verify-email-success" element={<EmailActionPage />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </Suspense>
