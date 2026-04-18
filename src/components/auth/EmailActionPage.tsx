@@ -7,7 +7,8 @@ import {
   verifyPasswordResetCode,
   confirmPasswordReset
 } from 'firebase/auth';
-import { auth } from '../../config/firebase';
+import { auth, db } from '../../config/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { CheckCircle, AlertTriangle, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 type Mode = 'verifyEmail' | 'resetPassword' | string | null;
@@ -36,7 +37,18 @@ export default function EmailActionPage() {
 
     const run = async () => {
       if (!oobCode || !mode) {
-        setStep('invalid');
+        await auth.currentUser?.reload().catch((reloadError) => {
+          console.warn('Reload utilisateur apres verification impossible:', reloadError);
+        });
+        if (auth.currentUser?.uid && auth.currentUser.emailVerified) {
+          await updateDoc(doc(db, 'entreprises', auth.currentUser.uid), {
+            emailVerified: true,
+            updatedAt: new Date().toISOString(),
+          }).catch((syncError) => {
+            console.warn('Sync emailVerified Firestore impossible:', syncError);
+          });
+        }
+        setStep('verify-success');
         setLoading(false);
         return;
       }
@@ -44,6 +56,15 @@ export default function EmailActionPage() {
       try {
         if (mode === 'verifyEmail') {
           await applyActionCode(auth, oobCode);
+          await auth.currentUser?.reload();
+          if (auth.currentUser?.uid) {
+            await updateDoc(doc(db, 'entreprises', auth.currentUser.uid), {
+              emailVerified: true,
+              updatedAt: new Date().toISOString(),
+            }).catch((syncError) => {
+              console.warn('Sync emailVerified Firestore impossible:', syncError);
+            });
+          }
           if (!active) return;
           setStep('verify-success');
         } else if (mode === 'resetPassword') {
