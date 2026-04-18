@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, Download, Edit, Printer } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import html2canvas from 'html2canvas';
+import { prepareImagesForPdf } from '../../utils/pdfImageUtils';
 
 interface InvoiceViewerProps {
   invoice: Invoice;
@@ -53,7 +54,13 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
 
   const captureHF = async (el: HTMLElement | null) => {
     if (!el) return { dataUrl: null as string | null, w: 0, h: 0 };
-    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: null });
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      logging: false,
+      backgroundColor: null,
+    });
     return { dataUrl: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height };
   };
 
@@ -75,18 +82,20 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
 
   const renderPdfWithHF = async (action: 'download' | 'print') => {
     const { root, header, footer } = findHeaderFooter();
-
-    
-    // capture header/footer pour les repeindre
-    const [hImg, fImg] = await Promise.all([captureHF(header), captureHF(footer)]);
-    const PAGE_W_MM = 210;
-    const headerMM = hImg.dataUrl ? (hImg.h / hImg.w) * PAGE_W_MM : 0;
-    const footerMM = fImg.dataUrl ? (fImg.h / fImg.w) * PAGE_W_MM : 0;
-
-    const options = buildOptions(`Facture_${invoice.number}.pdf`, headerMM, footerMM);
+    const restoreImages = await prepareImagesForPdf(root);
 
     root.classList.add('exporting'); // pourquoi: on laisse la marge au moteur PDF
     try {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+      // capture header/footer pour les repeindre
+      const [hImg, fImg] = await Promise.all([captureHF(header), captureHF(footer)]);
+      const PAGE_W_MM = 210;
+      const headerMM = hImg.dataUrl ? (hImg.h / hImg.w) * PAGE_W_MM : 0;
+      const footerMM = fImg.dataUrl ? (fImg.h / fImg.w) * PAGE_W_MM : 0;
+
+      const options = buildOptions(`Facture_${invoice.number}.pdf`, headerMM, footerMM);
+
       // construit le pdf sans header/footer (exclus)
       const worker: any = (html2pdf() as any).set(options).from(root).toPdf();
       const pdf: any = await worker.get('pdf');
@@ -124,6 +133,7 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
       }
     } finally {
       root.classList.remove('exporting');
+      restoreImages();
     }
   };
 
