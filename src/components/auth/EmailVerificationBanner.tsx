@@ -1,12 +1,43 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, X, RefreshCw, CheckCircle } from 'lucide-react';
+import { Mail, X, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
+
+function getVerificationEmailErrorMessage(error: unknown) {
+  const code = (error as { code?: string })?.code;
+
+  if (code === 'auth/network-request-failed') {
+    return "Connexion impossible avec Firebase. Verifiez internet puis reessayez.";
+  }
+
+  if (code === 'auth/too-many-requests') {
+    return "Trop de tentatives. Attendez quelques minutes puis reessayez.";
+  }
+
+  if (code === 'auth/quota-exceeded') {
+    return "Quota d'envoi Firebase depasse. Reessayez plus tard ou contactez le support.";
+  }
+
+  if (code === 'auth/user-token-expired' || code === 'auth/invalid-user-token') {
+    return "Votre session a expire. Reconnectez-vous puis renvoyez l'email.";
+  }
+
+  if (code === 'auth/unauthorized-domain' || code === 'auth/unauthorized-continue-uri' || code === 'auth/invalid-continue-uri') {
+    return "Le domaine de verification n'est pas autorise dans Firebase.";
+  }
+
+  if (code) {
+    return `Erreur Firebase ${code}. Reconnectez-vous puis reessayez.`;
+  }
+
+  return "Erreur lors de l'envoi de l'email. Reessayez ou reconnectez-vous.";
+}
 
 export default function EmailVerificationBanner() {
   const { user, firebaseUser, sendEmailVerification } = useAuth();
   const [isVisible, setIsVisible] = useState(true);
   const [isResending, setIsResending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [error, setError] = useState('');
 
   // Ne pas afficher si l'email est déjà vérifié ou si l'utilisateur n'est pas connecté via Firebase
   if (!firebaseUser || firebaseUser.emailVerified || !isVisible || user?.email === 'admin@Factourati.ma') {
@@ -15,12 +46,14 @@ export default function EmailVerificationBanner() {
 
   const handleResendEmail = async () => {
     setIsResending(true);
+    setError('');
     try {
       await sendEmailVerification();
       setEmailSent(true);
       setTimeout(() => setEmailSent(false), 3000);
     } catch (error) {
       console.error('Erreur lors du renvoi de l\'email:', error);
+      setError(getVerificationEmailErrorMessage(error));
     } finally {
       setIsResending(false);
     }
@@ -52,6 +85,18 @@ export default function EmailVerificationBanner() {
             <div className="inline-flex items-center space-x-2 bg-green-500/20 text-green-100 px-4 py-2 rounded-lg">
               <CheckCircle className="w-4 h-4" />
               <span>Email envoyé !</span>
+            </div>
+          ) : error ? (
+            <div className="inline-flex max-w-md items-center space-x-2 rounded-lg bg-red-500/20 px-4 py-2 text-sm text-red-50">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <span>{error}</span>
+              <button
+                onClick={handleResendEmail}
+                disabled={isResending}
+                className="rounded-md bg-white/20 px-2 py-1 text-xs font-semibold transition hover:bg-white/30 disabled:opacity-50"
+              >
+                Reessayer
+              </button>
             </div>
           ) : (
             <button
