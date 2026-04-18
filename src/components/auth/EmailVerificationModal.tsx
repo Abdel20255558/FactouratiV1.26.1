@@ -7,6 +7,40 @@ interface EmailVerificationModalProps {
   onClose: () => void;
 }
 
+function getVerificationEmailErrorMessage(error: unknown) {
+  const code = (error as { code?: string })?.code;
+
+  if (code === 'auth/network-request-failed') {
+    return "Connexion impossible avec Firebase. Verifiez internet puis reessayez.";
+  }
+
+  if (code === 'auth/too-many-requests') {
+    return "Trop de tentatives. Attendez quelques minutes puis reessayez.";
+  }
+
+  if (code === 'auth/quota-exceeded') {
+    return "Quota d'envoi Firebase depasse. Reessayez plus tard ou contactez le support.";
+  }
+
+  if (code === 'auth/operation-not-allowed') {
+    return "L'envoi d'emails Firebase n'est pas active. Activez Email/Password dans Firebase Auth.";
+  }
+
+  if (code === 'auth/user-token-expired' || code === 'auth/invalid-user-token') {
+    return "Votre session a expire. Reconnectez-vous puis renvoyez l'email.";
+  }
+
+  if (code === 'auth/unauthorized-domain' || code === 'auth/unauthorized-continue-uri' || code === 'auth/invalid-continue-uri') {
+    return "Le domaine de verification n'est pas autorise dans Firebase.";
+  }
+
+  if (code) {
+    return `Erreur Firebase ${code}. Reconnectez-vous puis reessayez.`;
+  }
+
+  return "Erreur lors de l'envoi de l'email. Reessayez ou reconnectez-vous.";
+}
+
 export default function EmailVerificationModal({ isOpen, onClose }: EmailVerificationModalProps) {
   const { user, firebaseUser, sendEmailVerification } = useAuth();
   const [isResending, setIsResending] = useState(false);
@@ -24,7 +58,7 @@ export default function EmailVerificationModal({ isOpen, onClose }: EmailVerific
       setEmailSent(true);
       setTimeout(() => setEmailSent(false), 5000);
     } catch (err: any) {
-      setError('Erreur lors de l\'envoi de l\'email');
+      setError(getVerificationEmailErrorMessage(err));
     } finally {
       setIsResending(false);
     }
