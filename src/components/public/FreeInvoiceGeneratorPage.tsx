@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, FileText, Lock, Plus, Printer, Trash2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, FileText, Lock, Mail, Phone, Plus, Printer, Send, Trash2 } from 'lucide-react';
 import SeoHead from '../seo/SeoHead';
 import PublicSiteChrome from './PublicSiteChrome';
 import TemplateRenderer from '../templates/TemplateRenderer';
@@ -15,10 +15,12 @@ import {
   createWebPageSchema,
 } from '../../data/publicSeoData';
 import {
+  createFreeInvoiceGeneratorLead,
   recordFreeInvoiceGeneratorPrint,
   recordFreeInvoiceGeneratorProTemplateAttempt,
   recordFreeInvoiceGeneratorView,
 } from '../../services/publicUsageService';
+import { prepareImagesForPdf } from '../../utils/pdfImageUtils';
 
 type PublicCompanyForm = {
   name: string;
@@ -41,6 +43,16 @@ type PublicClientForm = {
   ice: string;
 };
 
+type LeadForm = {
+  companyName: string;
+  phone: string;
+  email: string;
+  preferredContact: 'phone' | 'whatsapp' | 'email';
+  message: string;
+};
+
+type LeadSourceAction = 'save_invoice' | 'after_print' | 'pro_template';
+
 const templateOptions = [
   { id: 'template1', name: 'Classic Free', label: 'Gratuit', isLocked: false },
   { id: 'template2', name: 'Noir Classique', label: 'Pro', isLocked: true },
@@ -60,6 +72,10 @@ export default function FreeInvoiceGeneratorPage() {
   const currentYear = new Date().getFullYear();
   const [selectedTemplate, setSelectedTemplate] = useState('template1');
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
+  const [showLeadCapture, setShowLeadCapture] = useState(false);
+  const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+  const [leadSuccess, setLeadSuccess] = useState(false);
+  const [leadSourceAction, setLeadSourceAction] = useState<LeadSourceAction>('save_invoice');
   const [company, setCompany] = useState<PublicCompanyForm>({
     name: 'Votre Entreprise SARL',
     activity: 'Services et commerce',
@@ -92,6 +108,13 @@ export default function FreeInvoiceGeneratorPage() {
       total: 1200,
     },
   ]);
+  const [leadForm, setLeadForm] = useState<LeadForm>({
+    companyName: company.name,
+    phone: company.phone,
+    email: company.email,
+    preferredContact: 'whatsapp',
+    message: '',
+  });
 
   useEffect(() => {
     recordFreeInvoiceGeneratorView().catch((error) => {
@@ -164,6 +187,61 @@ export default function FreeInvoiceGeneratorPage() {
   const selectedTemplateMeta = templateOptions.find((template) => template.id === selectedTemplate) || templateOptions[0];
   const isSelectedTemplateLocked = selectedTemplateMeta.isLocked;
 
+  const openLeadCapture = (sourceAction: LeadSourceAction) => {
+    setLeadSourceAction(sourceAction);
+    setLeadSuccess(false);
+    setLeadForm((prev) => ({
+      ...prev,
+      companyName: prev.companyName || company.name,
+      phone: prev.phone || company.phone,
+      email: prev.email || company.email,
+      message:
+        prev.message ||
+        (sourceAction === 'pro_template'
+          ? `Je veux utiliser le template ${selectedTemplateMeta.name} et sauvegarder mes factures.`
+          : 'Je veux etre contacte pour sauvegarder mes factures et tester Factourati.'),
+    }));
+    setShowLeadCapture(true);
+  };
+
+  const updateLeadForm = <K extends keyof LeadForm>(field: K, value: LeadForm[K]) => {
+    setLeadForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleLeadSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!leadForm.phone.trim() && !leadForm.email.trim()) {
+      alert('Ajoutez au moins un telephone ou un email pour vous contacter.');
+      return;
+    }
+
+    setIsSubmittingLead(true);
+    try {
+      await createFreeInvoiceGeneratorLead({
+        companyName: leadForm.companyName.trim() || company.name,
+        phone: leadForm.phone.trim(),
+        email: leadForm.email.trim(),
+        preferredContact: leadForm.preferredContact,
+        message: leadForm.message.trim(),
+        invoiceNumber: invoice.number,
+        invoiceDate: invoice.date,
+        templateId: selectedTemplate,
+        templateName: selectedTemplateMeta.name,
+        totalTTC: invoice.totalTTC,
+        itemsCount: invoice.items.length,
+        clientName: invoice.client?.name || '',
+        sourceAction: leadSourceAction,
+      });
+      setLeadSuccess(true);
+    } catch (error) {
+      console.error(error);
+      alert("Impossible d'enregistrer votre demande pour le moment.");
+    } finally {
+      setIsSubmittingLead(false);
+    }
+  };
+
   const updateCompany = (field: keyof PublicCompanyForm, value: string) => {
     setCompany((prev) => ({ ...prev, [field]: value }));
   };
@@ -213,39 +291,46 @@ export default function FreeInvoiceGeneratorPage() {
       import('html2pdf.js'),
       import('html2canvas'),
     ]);
+    const restoreImages = await prepareImagesForPdf(root);
 
     const captureElement = async (element: HTMLElement | null) => {
       if (!element) return { dataUrl: null as string | null, width: 0, height: 0 };
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: null });
-      return { dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height };
-    };
-
-    const header = root.querySelector('.pdf-header') as HTMLElement | null;
-    const footer = root.querySelector('.pdf-footer') as HTMLElement | null;
-    const [headerImage, footerImage] = await Promise.all([captureElement(header), captureElement(footer)]);
-    const pageWidthMM = 210;
-    const headerMM = headerImage.dataUrl ? (headerImage.height / headerImage.width) * pageWidthMM : 0;
-    const footerMM = footerImage.dataUrl ? (footerImage.height / footerImage.width) * pageWidthMM : 0;
-
-    const options = {
-      margin: [headerMM, 8, footerMM, 8],
-      filename: `Facture_${invoice.number}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      pagebreak: { mode: ['css', 'legacy'], avoid: ['.avoid-break'] },
-      html2canvas: {
+      const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         allowTaint: false,
         logging: false,
-        backgroundColor: '#ffffff',
-        ignoreElements: (element: Element) => (element as HTMLElement).classList?.contains('pdf-exclude'),
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        backgroundColor: null,
+      });
+      return { dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height };
     };
 
     root.classList.add('exporting');
     try {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const header = root.querySelector('.pdf-header') as HTMLElement | null;
+      const footer = root.querySelector('.pdf-footer') as HTMLElement | null;
+      const [headerImage, footerImage] = await Promise.all([captureElement(header), captureElement(footer)]);
+      const pageWidthMM = 210;
+      const headerMM = headerImage.dataUrl ? (headerImage.height / headerImage.width) * pageWidthMM : 0;
+      const footerMM = footerImage.dataUrl ? (footerImage.height / footerImage.width) * pageWidthMM : 0;
+
+      const options = {
+        margin: [headerMM, 8, footerMM, 8],
+        filename: `Facture_${invoice.number}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.avoid-break'] },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          backgroundColor: '#ffffff',
+          ignoreElements: (element: Element) => (element as HTMLElement).classList?.contains('pdf-exclude'),
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      };
+
       const contentElement = root.querySelector('.pdf-content') as HTMLElement | null;
       const rootRect = root.getBoundingClientRect();
       const contentRect = contentElement?.getBoundingClientRect();
@@ -297,6 +382,7 @@ export default function FreeInvoiceGeneratorPage() {
       printWindow.document.close();
     } finally {
       root.classList.remove('exporting');
+      restoreImages();
     }
   };
 
@@ -305,6 +391,7 @@ export default function FreeInvoiceGeneratorPage() {
       recordFreeInvoiceGeneratorProTemplateAttempt().catch((error) => {
         console.warn('Compteur template Pro indisponible:', error);
       });
+      openLeadCapture('pro_template');
       navigate('/login?mode=register');
       return;
     }
@@ -315,6 +402,7 @@ export default function FreeInvoiceGeneratorPage() {
       recordFreeInvoiceGeneratorPrint().catch((error) => {
         console.warn('Compteur impression generateur indisponible:', error);
       });
+      openLeadCapture('after_print');
     } catch (error) {
       console.error(error);
       alert("Erreur pendant la preparation du PDF.");
@@ -601,6 +689,20 @@ export default function FreeInvoiceGeneratorPage() {
                   </Link>
                 </div>
               </div>
+              <div className="mt-4 rounded-2xl border border-teal-100 bg-teal-50 p-4 text-sm text-teal-950">
+                <p className="font-bold">Vous voulez sauvegarder cette facture ou etre rappele ?</p>
+                <p className="mt-1 text-teal-800">
+                  Laissez vos coordonnees, on vous aide a passer du generateur gratuit au compte complet.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openLeadCapture(isSelectedTemplateLocked ? 'pro_template' : 'save_invoice')}
+                  className="mt-3 inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2 font-bold text-white transition hover:bg-teal-800"
+                >
+                  <Send className="h-4 w-4" />
+                  Enregistrer ma demande
+                </button>
+              </div>
             </div>
 
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-xl">
@@ -611,6 +713,126 @@ export default function FreeInvoiceGeneratorPage() {
           </div>
         </div>
       </section>
+
+      {showLeadCapture && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.18em] text-teal-700">Prospect Factourati</p>
+                <h2 className="mt-2 text-2xl font-black text-slate-950">Sauvegarder ou continuer avec Factourati</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  On garde vos coordonnees dans le dashboard admin pour vous rappeler et vous aider a sauvegarder vos factures.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLeadCapture(false)}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+              >
+                Fermer
+              </button>
+            </div>
+
+            {leadSuccess ? (
+              <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
+                <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+                <p className="mt-3 text-lg font-bold">Demande enregistree avec succes.</p>
+                <p className="mt-1 text-sm">Votre prospect apparait maintenant dans le dashboard admin.</p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Link
+                    to="/login?mode=register"
+                    className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
+                  >
+                    Creer un compte
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setShowLeadCapture(false)}
+                    className="rounded-xl border border-emerald-200 px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100"
+                  >
+                    Continuer
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleLeadSubmit} className="mt-6 space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="text-sm font-bold text-slate-700">
+                    Nom entreprise
+                    <input
+                      value={leadForm.companyName}
+                      onChange={(e) => updateLeadForm('companyName', e.target.value)}
+                      className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none ring-teal-500 focus:ring-2"
+                    />
+                  </label>
+                  <label className="text-sm font-bold text-slate-700">
+                    Telephone / WhatsApp
+                    <input
+                      value={leadForm.phone}
+                      onChange={(e) => updateLeadForm('phone', e.target.value)}
+                      className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none ring-teal-500 focus:ring-2"
+                    />
+                  </label>
+                  <label className="text-sm font-bold text-slate-700">
+                    Email
+                    <input
+                      type="email"
+                      value={leadForm.email}
+                      onChange={(e) => updateLeadForm('email', e.target.value)}
+                      className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none ring-teal-500 focus:ring-2"
+                    />
+                  </label>
+                  <label className="text-sm font-bold text-slate-700">
+                    Contact prefere
+                    <select
+                      value={leadForm.preferredContact}
+                      onChange={(e) => updateLeadForm('preferredContact', e.target.value as LeadForm['preferredContact'])}
+                      className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none ring-teal-500 focus:ring-2"
+                    >
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="phone">Telephone</option>
+                      <option value="email">Email</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label className="block text-sm font-bold text-slate-700">
+                  Message
+                  <textarea
+                    value={leadForm.message}
+                    onChange={(e) => updateLeadForm('message', e.target.value)}
+                    rows={3}
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none ring-teal-500 focus:ring-2"
+                  />
+                </label>
+
+                <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
+                  <p>
+                    Facture : <strong>{invoice.number}</strong> | Total : <strong>{invoice.totalTTC.toLocaleString('fr-FR')} MAD</strong>
+                  </p>
+                  <p className="mt-1">Template essaye : {selectedTemplateMeta.name}</p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap gap-3 text-xs font-semibold text-slate-500">
+                    <span className="inline-flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> Rappel</span>
+                    <span className="inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> Email</span>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingLead}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 font-bold text-white transition hover:bg-teal-800 disabled:opacity-60"
+                  >
+                    <Send className="h-4 w-4" />
+                    {isSubmittingLead ? 'Enregistrement...' : 'Envoyer la demande'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </PublicSiteChrome>
   );
 }
