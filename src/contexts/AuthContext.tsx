@@ -103,15 +103,70 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /** Base URL pour la redirection après vérif email */
-const BASE_URL =
-  import.meta.env.VITE_PUBLIC_BASE_URL ||
-  'https://www.factourati.com/';
+const DEFAULT_PUBLIC_BASE_URL = 'https://factourati.com';
+
+const normalizePublicBaseUrl = (value: string) => {
+  const cleanValue = value.trim().replace(/\/+$/, '');
+
+  if (cleanValue === 'https://www.factourati.com') {
+    return DEFAULT_PUBLIC_BASE_URL;
+  }
+
+  return cleanValue || DEFAULT_PUBLIC_BASE_URL;
+};
+
+const getPublicBaseUrl = () =>
+  normalizePublicBaseUrl(
+    import.meta.env.VITE_PUBLIC_BASE_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : '') ||
+      DEFAULT_PUBLIC_BASE_URL,
+  );
 
 
 const getActionCodeSettings = (): ActionCodeSettings => ({
-  url: `${BASE_URL}/verify-email-success?mode=verifyEmail`,
-  handleCodeInApp: true,
+  url: `${getPublicBaseUrl()}/verify-email-success`,
 });
+
+const shouldUseCustomEmailActionUrl = () => import.meta.env.VITE_USE_CUSTOM_EMAIL_ACTION_URL === 'true';
+
+const shouldRetryVerificationWithoutCustomUrl = (error: unknown) => {
+  const code = (error as { code?: string })?.code;
+  return [
+    'auth/unauthorized-domain',
+    'auth/unauthorized-continue-uri',
+    'auth/invalid-continue-uri',
+    'auth/missing-continue-uri',
+    'auth/invalid-dynamic-link-domain',
+  ].includes(code || '');
+};
+
+const sendVerificationEmailWithFallback = async (targetUser: FirebaseUser) => {
+  auth.languageCode = 'fr';
+
+  await targetUser.reload().catch((reloadError) => {
+    console.warn('Reload utilisateur avant email verification impossible:', reloadError);
+  });
+
+  if (targetUser.emailVerified) {
+    return;
+  }
+
+  if (!shouldUseCustomEmailActionUrl()) {
+    await fbSendEmailVerification(targetUser);
+    return;
+  }
+
+  try {
+    await fbSendEmailVerification(targetUser, getActionCodeSettings());
+  } catch (error) {
+    if (!shouldRetryVerificationWithoutCustomUrl(error)) {
+      throw error;
+    }
+
+    console.warn('URL de verification personnalisee refusee, envoi Firebase standard:', error);
+    await fbSendEmailVerification(targetUser);
+  }
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -407,9 +462,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userId = userCredential.user.uid;
 
       // envoyer la vérification avec redirection personnalisée
-      auth.languageCode = 'fr';
-      await fbSendEmailVerification(userCredential.user, getActionCodeSettings());
-
       // 1 mois pro offert
       const now = new Date();
       const expiry = new Date(now);
@@ -425,8 +477,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         expiryDate: expiry.toISOString(),
         createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
-        verificationEmailSentAt: now.toISOString(),
+        verificationEmailSentAt: '',
       });
+
+      try {
+        await sendVerificationEmailWithFallback(userCredential.user);
+        await updateDoc(doc(db, 'entreprises', userId), {
+          verificationEmailSentAt: new Date().toISOString(),
+          verificationEmailLastError: '',
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error('Erreur envoi email verification inscription:', error);
+        await updateDoc(doc(db, 'entreprises', userId), {
+          verificationEmailLastError: (error as { code?: string; message?: string })?.code || (error as Error)?.message || 'unknown',
+          updatedAt: new Date().toISOString(),
+        });
+      }
 
       try { localStorage.setItem('welcomeProPending', '1'); } catch {}
 
@@ -444,6 +511,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fbSendEmailVerification(firebaseUser, getActionCodeSettings());
     } catch (error) {
       console.error('Erreur envoi email vérification:', error);
+      throw error;
+    }
+  };
+
+  const sendEmailVerificationManualSafe = async (): Promise<void> => {
+    const targetUser = auth.currentUser || firebaseUser;
+    if (!targetUser) throw new Error('Aucun utilisateur connecte');
+
+    try {
+      await sendVerificationEmailWithFallback(targetUser);
+      try {
+        await updateDoc(doc(db, 'entreprises', targetUser.uid), {
+          verificationEmailSentAt: new Date().toISOString(),
+          verificationEmailLastError: '',
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (syncError) {
+        console.warn('Email verification envoye, sync Firestore impossible:', syncError);
+      }
+    } catch (error) {
+      console.error('Erreur envoi email verification:', error);
       throw error;
     }
   };
@@ -589,7 +677,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supportSession,
     login,
     register,
-    sendEmailVerification: sendEmailVerificationManual,
+    sendEmailVerification: sendEmailVerificationManualSafe,
     sendPasswordReset,
     logout,
     startSupportAccess,
