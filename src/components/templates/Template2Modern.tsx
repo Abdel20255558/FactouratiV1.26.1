@@ -41,7 +41,7 @@ export default function Template2Modern({ data, type, includeSignature = false, 
       <div className="pdf-header pdf-exclude" style={{ position:'absolute', top:0, left:0, right:0, height: HEADER_H }}>
         <div className="p-8 border-b border-black bg-black text-white text-center h-full">
           <div className="flex items-center justify-between h-full">
-            {company?.logo && (<img src={company.logo} alt="Logo" className="h-24 w-auto" />)}
+            {company?.logo && (<img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="h-24 w-auto" />)}
             <div className="flex-1 text-center">
               <h2 className="text-4xl font-extrabold">{company?.name || '-'}</h2>
               <h1 className="text-2xl font-bold mt-2">{title}</h1>
@@ -147,6 +147,8 @@ export default function Template2Modern({ data, type, includeSignature = false, 
                 <img
                   src={company.signature}
                   alt="Signature"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
                   className="max-h-18 max-w-full object-contain"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /* why: éviter image cassée */
                 />
