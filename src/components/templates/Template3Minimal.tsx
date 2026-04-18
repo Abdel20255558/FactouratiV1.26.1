@@ -44,7 +44,7 @@ export default function Template3Minimal({ data, type, includeSignature = false,
       <div className="pdf-header pdf-exclude" style={{ position:'absolute', top:0, left:0, right:0, height: HEADER_H }}>
        
         <div className="p-5 text-center relative">
-          {company?.logo && <img src={company.logo} alt="Logo" className="mx-auto" style={{ height: 85, width: 85, objectFit:'contain' }} />}
+          {company?.logo && <img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="mx-auto" style={{ height: 85, width: 85, objectFit:'contain' }} />}
           <h1 className="text-3xl font-extrabold" style={{ color: THEME }}>{company?.name || '-'}</h1>
           <h2 className="text-2xl font-semibold mt-4 uppercase tracking-wide" style={{ color: THEME }}>
             {type === 'invoice' ? 'FACTURE' : 'DEVIS'}
@@ -147,6 +147,8 @@ export default function Template3Minimal({ data, type, includeSignature = false,
                 <img
                   src={company.signature}
                   alt="Signature"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
                   className="max-h-18 max-w-full object-contain"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /* why: éviter image cassée */
                 />
