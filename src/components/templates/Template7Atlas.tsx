@@ -62,7 +62,7 @@ export default function Template7Atlas({ data, type, includeSignature = false, c
             <div className="flex items-center gap-4">
               {company?.logo ? (
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 p-2 shadow-sm">
-                  <img src={company.logo} alt="Logo" className="h-full w-full object-contain" />
+                  <img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="h-full w-full object-contain" />
                 </div>
               ) : null}
               <div>
@@ -188,6 +188,8 @@ export default function Template7Atlas({ data, type, includeSignature = false, c
                 <img
                   src={company.signature}
                   alt="Signature"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
                   className="max-h-16 max-w-full object-contain"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
