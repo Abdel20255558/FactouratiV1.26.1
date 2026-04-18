@@ -13,6 +13,7 @@ import InvoiceActionsGuide from './InvoiceActionsGuide';
 import ProTemplateModal from '../license/ProTemplateModal';
 import { Plus, Search, Filter, Eye, CreditCard as Edit, Trash2, Crown, CreditCard, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import { prepareImagesForPdf } from '../../utils/pdfImageUtils';
 
 export default function InvoicesList() {
   const { t } = useLanguage();
@@ -159,7 +160,7 @@ export default function InvoicesList() {
     }
   };
 
-  const downloadInvoicePDF = (invoice: any, templateId: string = 'template1') => {
+  const downloadInvoicePDF = async (invoice: any, templateId: string = 'template1') => {
     const tempDiv = document.createElement('div');
     tempDiv.style.position = 'fixed';
     tempDiv.style.top = '0';
@@ -188,16 +189,21 @@ export default function InvoicesList() {
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     };
 
-    html2pdf()
-      .set(options)
-      .from(tempDiv)
-      .save()
-      .then(() => document.body.removeChild(tempDiv))
-      .catch((error) => {
+    let restoreImages = () => {};
+
+    try {
+      restoreImages = await prepareImagesForPdf(tempDiv);
+      await html2pdf()
+        .set(options)
+        .from(tempDiv)
+        .save();
+    } catch (error) {
         console.error('Erreur lors de la génération du PDF:', error);
-        if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv);
         alert('Erreur lors de la génération du PDF');
-      });
+    } finally {
+      restoreImages();
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv);
+    }
   };
 
   const handleEditInvoice = (id: string) => setEditingInvoice(id);
@@ -338,6 +344,11 @@ export default function InvoicesList() {
     return `
       <div style="padding:20px;font-family:Arial,sans-serif;background:white;width:100%;min-height:297mm;">
         <div style="text-align:center;margin-bottom:30px;border-bottom:2px solid #059669;padding-bottom:20px;">
+          ${
+            user?.company?.logo
+              ? `<img src="${user.company.logo}" alt="Logo" crossorigin="anonymous" referrerpolicy="no-referrer" style="max-height:90px;max-width:160px;object-fit:contain;margin:0 auto 12px;display:block;" />`
+              : ''
+          }
           <h1 style="font-size:32px;color:#059669;margin:0;font-weight:bold;">FACTURE</h1>
           <h2 style="font-size:24px;color:#1f2937;margin:10px 0;font-weight:bold;">${user?.company?.name || ''}</h2>
           <p style="font-size:14px;color:#6b7280;margin:5px 0;">${user?.company?.address || ''}</p>
@@ -410,7 +421,7 @@ export default function InvoicesList() {
             <div style="flex:1;"><p style="margin:0;font-size:12px;color:#92400e;"><strong>Conditions:</strong> Règlement à 30 jours. Merci de votre confiance.</p></div>
             ${
               includeSignature && user?.company?.signature
-                ? `<div style="width:120px;height:80px;border:1px solid #f59e0b;border-radius:4px;display:flex;align-items:center;justify-content:center;background:white;"><img src="${user.company.signature}" alt="Signature" style="max-height:70px;max-width:110px;object-fit:contain;" /></div>`
+                ? `<div style="width:120px;height:80px;border:1px solid #f59e0b;border-radius:4px;display:flex;align-items:center;justify-content:center;background:white;"><img src="${user.company.signature}" alt="Signature" crossorigin="anonymous" referrerpolicy="no-referrer" style="max-height:70px;max-width:110px;object-fit:contain;" /></div>`
                 : ``
             }
           </div>
