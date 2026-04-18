@@ -52,7 +52,7 @@ export default function Template5Premium({ data, type, includeSignature = false,
         <div className="relative" style={{ background: THEME, color: '#fff', height: '100%' }}>
           <div className="h-full flex items-center justify-between px-8">
             {company?.logo ? (
-              <img src={company.logo} alt="Logo" className="mx-auto" style={{ height: 120, width: 120, objectFit: 'contain' }} />
+              <img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="mx-auto" style={{ height: 120, width: 120, objectFit: 'contain' }} />
             ) : (
               <div style={{ width: 160 }} />
             )}
@@ -162,6 +162,8 @@ export default function Template5Premium({ data, type, includeSignature = false,
                 <img
                   src={company.signature}
                   alt="Signature"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
                   className="max-h-18 max-w-full object-contain"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /* pourquoi: éviter image cassée */
                 />
