@@ -57,7 +57,7 @@ export default function Template1Classic({ data, type, includeSignature = false,
         <div className="p-8 border-b border-gray-300">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-6">
-              {company?.logo && (<img src={company.logo} alt="Logo" className="h-20 w-auto" />)}
+              {company?.logo && (<img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="h-20 w-auto" />)}
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">{company?.name || '-'}</h2>
                 <p className="text-sm text-gray-600">{company?.activity || '-'}</p>
@@ -175,6 +175,8 @@ export default function Template1Classic({ data, type, includeSignature = false,
                 <img
                   src={company.signature}
                   alt="Signature"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
                   className="max-h-18 max-w-full object-contain"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /* why: éviter image cassée */
                 />
