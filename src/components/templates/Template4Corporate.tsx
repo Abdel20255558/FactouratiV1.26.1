@@ -53,7 +53,7 @@ export default function Template4Corporate({ data, type, includeSignature = fals
         <div className="relative" style={{ background: THEME, color: '#fff' }}>
           <div className="px-8 py-6 flex items-center justify-between">
             {company?.logo ? (
-              <img src={company.logo} alt="Logo" className="mx-auto" style={{ height: 120, width: 120, objectFit: 'contain' }} />
+              <img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="mx-auto" style={{ height: 120, width: 120, objectFit: 'contain' }} />
             ) : (
               <div style={{ width: 120, height: 120 }} />
             )}
@@ -181,6 +181,8 @@ export default function Template4Corporate({ data, type, includeSignature = fals
                 <img
                   src={company.signature}
                   alt="Signature"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
                   className="max-h-18 max-w-full object-contain"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} // pourquoi: éviter un bloc cassé si image KO
                 />
