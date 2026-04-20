@@ -52,6 +52,27 @@ const sectors = [
   },
 ] as const;
 
+const sectorSeoGuides = [
+  {
+    title: 'Logiciel de facturation pour BTP et chantiers au Maroc',
+    body: 'Les entreprises BTP doivent suivre les devis, les achats, les avances, les situations de chantier et les factures clients. Factourati aide a garder une trace claire des documents commerciaux et des projets pour eviter les informations dispersees entre Excel, WhatsApp et dossiers PDF.',
+    link: '/blog/guide-complet-facturation-maroc',
+    linkLabel: 'Lire le guide facturation',
+  },
+  {
+    title: 'ERP pour distribution, commerce et grossistes',
+    body: 'Pour un distributeur ou un commerce, la priorite est de connaitre les ventes, les produits, les commandes, les fournisseurs et les paiements. Un outil centralise permet de mieux suivre les marges, les ruptures de stock et les clients qui doivent encore regler.',
+    link: '/modules',
+    linkLabel: 'Voir les modules',
+  },
+  {
+    title: 'Gestion pour services, agences et independants',
+    body: 'Les prestataires de services ont besoin de transformer rapidement une demande client en devis, puis en facture. Factourati aide a professionnaliser les documents, suivre les relances et garder un historique par client pour mieux piloter l activite.',
+    link: '/generateur-facture',
+    linkLabel: 'Tester une facture gratuite',
+  },
+];
+
 export default function SectorsPage() {
   const pageUrl = `${SITE_URL}/secteurs`;
   const pageDescription =
@@ -153,6 +174,59 @@ export default function SectorsPage() {
                 </article>
               );
             })}
+          </div>
+
+          <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            {sectorSeoGuides.map((guide) => (
+              <article key={guide.title} className="rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Guide secteur</p>
+                <h2 className="mt-3 text-xl font-bold leading-8 text-slate-950">{guide.title}</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{guide.body}</p>
+                <Link
+                  to={guide.link}
+                  className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-teal-700 transition hover:text-teal-800"
+                >
+                  {guide.linkLabel}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-12 rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-sm lg:p-10">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">SEO local Maroc</p>
+            <h2 className="mt-3 text-3xl font-bold text-slate-950">
+              Pourquoi choisir un logiciel adapte au contexte marocain ?
+            </h2>
+            <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              <p className="text-base leading-8 text-slate-600">
+                Une PME marocaine ne cherche pas seulement a imprimer une facture. Elle veut souvent suivre l ICE du
+                client, les informations legales de l entreprise, les paiements, le stock, les fournisseurs, les projets
+                et les rapports dans une interface simple. C est pour cela que Factourati met la facturation au centre,
+                puis connecte les autres modules autour.
+              </p>
+              <p className="text-base leading-8 text-slate-600">
+                Cette approche convient aux activites qui veulent une solution progressive : commencer avec devis et
+                factures, ajouter le suivi des produits, puis utiliser les rapports et les modules avances quand
+                l entreprise grandit. Le but est de rendre la gestion quotidienne plus lisible, sans complexite inutile.
+              </p>
+            </div>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link
+                to="/tarifs"
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 font-bold text-white transition hover:bg-slate-800"
+              >
+                Comparer les tarifs
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/faq"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700 transition hover:border-teal-300 hover:text-teal-700"
+              >
+                Lire la FAQ
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
 
           <div className="mt-12 rounded-[1.75rem] border border-teal-100 bg-white p-8 shadow-sm lg:p-10">
