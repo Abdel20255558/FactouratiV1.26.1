@@ -60,6 +60,34 @@ export default function FaqPage() {
             marocaines.
           </p>
 
+          <div className="mt-10 rounded-[1.75rem] border border-teal-100 bg-teal-50 p-6">
+            <h2 className="text-2xl font-bold text-slate-900">
+              Une FAQ pour comprendre Factourati avant de creer un compte
+            </h2>
+            <p className="mt-4 text-base leading-8 text-slate-700">
+              Cette page repond aux principales recherches autour du logiciel de facturation au Maroc : prix,
+              essai gratuit, generation de facture, suivi des paiements, gestion du stock, modules disponibles et
+              adaptation aux petites entreprises. Elle aide aussi a choisir entre le generateur gratuit et le compte
+              complet Factourati.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link
+                to="/generateur-facture"
+                className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white transition hover:bg-teal-800"
+              >
+                Tester le generateur gratuit
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/modules"
+                className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-white px-5 py-3 font-semibold text-teal-800 transition hover:border-teal-300"
+              >
+                Voir les modules
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+
           <div className="mt-12 space-y-4">
             {faqItems.map((item) => (
               <details key={item.question} className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
@@ -98,6 +126,30 @@ export default function FaqPage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
+          </div>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            <article className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-6">
+              <h2 className="text-xl font-bold text-slate-900">Pour qui ?</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                Factourati convient aux PME, TPE, commerces, prestataires, agences, distributeurs et entreprises qui
+                veulent mieux organiser leurs documents commerciaux.
+              </p>
+            </article>
+            <article className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-6">
+              <h2 className="text-xl font-bold text-slate-900">Pourquoi maintenant ?</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                Plus l entreprise grandit, plus les fichiers se dispersent. Un outil centralise aide a retrouver les
+                factures, suivre les paiements et comprendre l activite.
+              </p>
+            </article>
+            <article className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-6">
+              <h2 className="text-xl font-bold text-slate-900">Comment tester ?</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                Vous pouvez commencer par le generateur gratuit, puis creer un compte pour sauvegarder les documents et
+                utiliser les modules complets.
+              </p>
+            </article>
           </div>
         </div>
       </section>
