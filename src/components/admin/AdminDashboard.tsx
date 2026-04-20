@@ -16,7 +16,8 @@ import {
   AlertTriangle,
   LogIn,
   Trash2,
-  FileText
+  FileText,
+  Search
 } from 'lucide-react';
 import EditCompanyModal from './EditCompanyModal';
 import ReferralSourceChart from './ReferralSourceChart';
@@ -513,6 +514,40 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
+
+        <section id="seo-organization" className="mb-8 overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white shadow-sm">
+          <div className="grid gap-6 px-6 py-6 lg:grid-cols-[1fr_1.2fr] lg:items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-indigo-100">
+                <Search className="h-4 w-4" />
+                SEO blog
+              </div>
+              <h3 className="mt-4 text-2xl font-black">Organisation SEO et contenu blog</h3>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-indigo-100">
+                Centralisez la creation d articles, le score SEO, les remarques d optimisation et les priorites
+                d indexation sans quitter le dashboard Factourati.
+              </p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <a href="#blog-editor" className="rounded-2xl border border-white/15 bg-white/10 p-4 transition hover:-translate-y-0.5 hover:bg-white/15">
+                <FileText className="h-5 w-5 text-indigo-200" />
+                <p className="mt-3 font-bold">Creer ou modifier</p>
+                <p className="mt-1 text-xs leading-5 text-indigo-100">Formulaire blog avec champs SEO complets.</p>
+              </a>
+              <a href="#blog-list" className="rounded-2xl border border-white/15 bg-white/10 p-4 transition hover:-translate-y-0.5 hover:bg-white/15">
+                <CheckCircle className="h-5 w-5 text-emerald-200" />
+                <p className="mt-3 font-bold">Optimisation SEO</p>
+                <p className="mt-1 text-xs leading-5 text-indigo-100">Cliquez sur Editer un article pour ouvrir le panneau SEO complet.</p>
+              </a>
+              <a href="#blog-list" className="rounded-2xl border border-white/15 bg-white/10 p-4 transition hover:-translate-y-0.5 hover:bg-white/15">
+                <Shield className="h-5 w-5 text-cyan-200" />
+                <p className="mt-3 font-bold">Priorites SEO</p>
+                <p className="mt-1 text-xs leading-5 text-indigo-100">Filtres score faible, noindex et champs manquants.</p>
+              </a>
+            </div>
+          </div>
+        </section>
 
         <BlogManager />
 
