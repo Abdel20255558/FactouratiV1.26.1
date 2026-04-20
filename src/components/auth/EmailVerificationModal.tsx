@@ -108,6 +108,14 @@ export default function EmailVerificationModal({ isOpen, onClose }: EmailVerific
                 <p className="font-medium text-blue-900">{user?.email}</p>
               </div>
 
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-left">
+                <p className="text-sm font-medium text-yellow-900">Email introuvable ?</p>
+                <p className="mt-1 text-sm text-yellow-800">
+                  Verifiez aussi votre dossier Spam, Courrier indesirable ou Promotions. Le mail peut prendre quelques
+                  minutes a arriver.
+                </p>
+              </div>
+
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
                 <div className="flex items-start space-x-2">
                   <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -133,7 +141,7 @@ export default function EmailVerificationModal({ isOpen, onClose }: EmailVerific
             {emailSent && (
               <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 flex items-center space-x-2">
                 <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                <span>Email de vérification envoyé ! Vérifiez votre boîte mail.</span>
+                <span>Email de verification envoye ! Verifiez votre boite mail et le dossier spam.</span>
               </div>
             )}
 
