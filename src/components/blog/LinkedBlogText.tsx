@@ -29,15 +29,42 @@ function cleanHref(value: string) {
 
 function getFallbackLabel(href: string) {
   if (href.startsWith('/')) {
-    return 'Lien interne';
+    return `factourati.com${href}`;
   }
 
   try {
     const url = new URL(href);
-    return url.hostname.includes('factourati.com') ? 'Lien interne' : 'Lien externe';
+    return `${url.hostname}${url.pathname === '/' ? '' : url.pathname}`;
   } catch {
-    return 'Lien';
+    return href;
   }
+}
+
+function cleanLinkLabel(label: string, href: string) {
+  const cleanedLabel = label.replace(/\s*:\s*Lien\s+(?:interne|externe)\s*$/i, '').trim();
+  return cleanedLabel || getFallbackLabel(href);
+}
+
+function getTitleBeforeLabeledUrl(text: string, offset: number) {
+  const beforeMatch = text.slice(0, offset);
+  const lineStart = Math.max(
+    beforeMatch.lastIndexOf('\n') + 1,
+    beforeMatch.lastIndexOf('.') + 1,
+    beforeMatch.lastIndexOf('!') + 1,
+    beforeMatch.lastIndexOf('?') + 1,
+  );
+  const linePrefix = beforeMatch.slice(lineStart);
+  const title = linePrefix.replace(/\s*:\s*$/, '').trim();
+
+  if (!title || title.length > 160 || /https?:\/\//i.test(title)) {
+    return null;
+  }
+
+  const titleOffset = linePrefix.search(/\S/);
+  return {
+    index: lineStart + (titleOffset < 0 ? 0 : titleOffset),
+    label: title,
+  };
 }
 
 function collectMatches(text: string) {
@@ -48,7 +75,7 @@ function collectMatches(text: string) {
     matches.push({
       index: offset,
       end: offset + match.length,
-      label,
+      label: cleanLinkLabel(label, cleaned.href),
       href: cleaned.href,
       trailingText: cleaned.trailingText,
     });
@@ -57,10 +84,12 @@ function collectMatches(text: string) {
 
   text.replace(labeledUrlPattern, (match, label: string, href: string, offset: number) => {
     const cleaned = cleanHref(href);
+    const titleBeforeLink = getTitleBeforeLabeledUrl(text, offset);
+
     matches.push({
-      index: offset,
+      index: titleBeforeLink?.index ?? offset,
       end: offset + match.length,
-      label: label.replace(/\s*:\s*$/, ''),
+      label: titleBeforeLink?.label ?? cleanLinkLabel(label.replace(/\s*:\s*$/, ''), cleaned.href),
       href: cleaned.href,
       trailingText: cleaned.trailingText,
     });
