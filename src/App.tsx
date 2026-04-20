@@ -171,6 +171,9 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<AdminDashboard />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/blog" element={<BlogPage />} />
+            <Route path="/blog/categorie/:categorySlug" element={<BlogCategoryPage />} />
+            <Route path="/blog/:slug" element={<BlogArticlePage />} />
             <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
           </Routes>
         </Suspense>
