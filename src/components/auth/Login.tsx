@@ -89,7 +89,7 @@ export default function Login() {
           // on évite de laisser l’utilisateur connecté
           navigate(`/verify-email?email=${encodeURIComponent(user.email || email.trim())}`, { replace: true });
           setBannerError(
-            "Votre email n'est pas encore vérifié. Veuillez vérifier votre boîte de réception et cliquer sur le lien de vérification."
+            "Votre email n'est pas encore vérifié. Vérifiez votre boîte de réception et aussi Spam / Courrier indésirable / Promotions."
           );
           return;
         }
