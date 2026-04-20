@@ -20,6 +20,24 @@ const conversionPoints = [
   "Gestion plus fluide de votre entreprise",
 ];
 
+const blogSeoThemes = [
+  {
+    title: 'Guides facturation au Maroc',
+    text: 'Articles pour comprendre les mentions utiles, organiser les devis, creer des factures propres et suivre les paiements sans perdre les informations client.',
+    link: '/blog/categorie/facturation',
+  },
+  {
+    title: 'Conseils stock et fournisseurs',
+    text: 'Contenus pour mieux suivre les produits, anticiper les ruptures, structurer les mouvements de stock et garder une relation fournisseur plus claire.',
+    link: '/blog/categorie/stock',
+  },
+  {
+    title: 'Organisation et pilotage PME',
+    text: 'Ressources pour passer d une gestion dispersee a un suivi plus centralise avec rapports, projets, clients, paiements et indicateurs simples.',
+    link: '/blog/categorie/gestion',
+  },
+];
+
 export default function BlogPage() {
   const { articles } = useBlogArticles();
   const featuredArticle = articles[0];
@@ -247,6 +265,45 @@ export default function BlogPage() {
                 </article>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white py-16 lg:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Centre de ressources PME</p>
+              <h2 className="mt-3 text-3xl font-bold leading-tight text-slate-900">
+                Un blog pour repondre aux recherches des entrepreneurs marocains
+              </h2>
+              <p className="mt-4 text-base leading-8 text-slate-600">
+                Les articles Factourati sont construits autour de questions concretes : comment creer une facture
+                professionnelle, comment suivre les impayes, comment gerer le stock, comment organiser les fournisseurs
+                ou comment choisir un logiciel de gestion au Maroc. Chaque contenu relie la theorie a une action simple
+                dans l entreprise.
+              </p>
+              <p className="mt-4 text-base leading-8 text-slate-600">
+                Pour Google, cette page sert de hub editorial : elle relie les categories, les guides pratiques, les
+                pages modules, les tarifs et le generateur de facture gratuit afin de mieux comprendre l univers
+                Factourati.
+              </p>
+            </div>
+            <div className="grid gap-5 md:grid-cols-3">
+              {blogSeoThemes.map((theme) => (
+                <article key={theme.title} className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-6">
+                  <h3 className="text-lg font-bold leading-7 text-slate-900">{theme.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">{theme.text}</p>
+                  <Link
+                    to={theme.link}
+                    className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-teal-700 transition hover:text-teal-800"
+                  >
+                    Explorer
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       </section>
