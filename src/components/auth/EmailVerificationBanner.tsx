@@ -77,6 +77,9 @@ export default function EmailVerificationBanner() {
             <p className="text-sm opacity-90">
               Veuillez vérifier votre adresse email <strong>{user?.email}</strong> pour sécuriser votre compte.
             </p>
+            <p className="text-xs opacity-90">
+              Si vous ne recevez pas l'email, verifiez aussi Spam, Courrier indesirable ou Promotions.
+            </p>
           </div>
         </div>
         
@@ -84,7 +87,7 @@ export default function EmailVerificationBanner() {
           {emailSent ? (
             <div className="inline-flex items-center space-x-2 bg-green-500/20 text-green-100 px-4 py-2 rounded-lg">
               <CheckCircle className="w-4 h-4" />
-              <span>Email envoyé !</span>
+              <span>Email envoye ! Pensez a verifier les spams.</span>
             </div>
           ) : error ? (
             <div className="inline-flex max-w-md items-center space-x-2 rounded-lg bg-red-500/20 px-4 py-2 text-sm text-red-50">
