@@ -12,7 +12,9 @@ import {
   createBreadcrumbSchema,
   createLocalBusinessSchema,
   createOrganizationSchema,
+  createSiteNavigationSchema,
   createWebPageSchema,
+  createWebsiteSchema,
 } from '../../data/publicSeoData';
 import {
   createFreeInvoiceGeneratorLead,
@@ -62,6 +64,47 @@ const templateOptions = [
   { id: 'template6', name: 'Executive Bronze', label: 'Pro', isLocked: true },
   { id: 'template7', name: 'Atlas Emeraude', label: 'Pro', isLocked: true },
   { id: 'template8', name: 'Prestige Graphite', label: 'Pro', isLocked: true },
+];
+
+const generatorPageDescription =
+  'Creez gratuitement une facture professionnelle au Maroc avec numero, date, client, ICE, articles, TVA, total HT et total TTC. Imprimez votre facture en PDF sans compte.';
+
+const generatorUseCases = [
+  {
+    title: 'Creer une facture rapidement',
+    text: 'Le generateur gratuit permet de preparer une facture simple avec vos informations entreprise, les donnees client, les articles, la TVA et le total TTC.',
+  },
+  {
+    title: 'Tester un modele avant inscription',
+    text: 'Vous pouvez essayer le template Classic Free sans carte bancaire. Si vous voulez sauvegarder vos factures et utiliser les templates Pro, le compte Factourati prend le relais.',
+  },
+  {
+    title: 'Passer du PDF a une vraie gestion',
+    text: 'Une facture PDF suffit pour demarrer. Quand l activite grandit, Factourati ajoute l historique client, les paiements, les relances, le stock, les fournisseurs et les rapports.',
+  },
+];
+
+const generatorFaqItems = [
+  {
+    question: 'Le generateur de facture est-il gratuit ?',
+    answer:
+      'Oui. Vous pouvez creer une facture avec le template gratuit Classic Free et l imprimer sans creer de compte.',
+  },
+  {
+    question: 'Puis-je sauvegarder mes factures gratuites ?',
+    answer:
+      'Le generateur gratuit sert a creer et imprimer une facture. Pour sauvegarder l historique, retrouver les clients et suivre les paiements, il faut creer un compte Factourati.',
+  },
+  {
+    question: 'Quelles informations peut-on mettre sur la facture ?',
+    answer:
+      'Vous pouvez renseigner le numero, la date, les informations entreprise, ICE, IF, RC, CNSS, patente, client, articles, quantites, prix HT, TVA et total TTC.',
+  },
+  {
+    question: 'Pourquoi utiliser Factourati apres le generateur gratuit ?',
+    answer:
+      'Factourati ajoute les templates Pro, la sauvegarde, les devis, les paiements, le stock, les fournisseurs, les projets et les rapports de gestion.',
+  },
 ];
 
 const numberInput = (value: string) => Number.parseFloat(value) || 0;
@@ -173,15 +216,29 @@ export default function FreeInvoiceGeneratorPage() {
   const schema = [
     createOrganizationSchema(),
     createLocalBusinessSchema(),
+    createWebsiteSchema(),
+    createSiteNavigationSchema(),
     createWebPageSchema({
-      name: 'Generateur de facture gratuit au Maroc',
+      name: 'Generateur de facture gratuit au Maroc | Facture PDF',
       path: '/generateur-facture',
-      description: 'Creez gratuitement une facture professionnelle au Maroc avec le template gratuit Factourati.',
+      description: generatorPageDescription,
     }),
     createBreadcrumbSchema([
       { name: 'Accueil', url: SITE_URL },
       { name: 'Generateur de facture gratuit', url: `${SITE_URL}/generateur-facture` },
     ]),
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: generatorFaqItems.map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.answer,
+        },
+      })),
+    },
   ];
 
   const selectedTemplateMeta = templateOptions.find((template) => template.id === selectedTemplate) || templateOptions[0];
@@ -415,10 +472,11 @@ export default function FreeInvoiceGeneratorPage() {
     <PublicSiteChrome>
       <SeoHead
         title="Generateur de facture gratuit au Maroc | Factourati"
-        description="Creez une facture professionnelle gratuitement avec le template gratuit Factourati. Pour sauvegarder vos factures et utiliser les templates Pro, creez un compte."
+        description={generatorPageDescription}
         canonicalPath="/generateur-facture"
-        keywords="generateur facture gratuit maroc, modele facture maroc, facture professionnelle maroc, logiciel facturation maroc"
+        keywords="generateur facture gratuit maroc, creer facture maroc, modele facture maroc, facture PDF maroc, facture professionnelle maroc, logiciel facturation maroc"
         image={DEFAULT_OG_IMAGE}
+        imageAlt="Generateur de facture gratuit Factourati au Maroc"
         type="website"
         schema={schema}
       />
@@ -708,6 +766,97 @@ export default function FreeInvoiceGeneratorPage() {
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-xl">
               <div id="public-invoice-print" className="bg-white p-5">
                 <TemplateRenderer templateId={selectedTemplate} data={invoice} type="invoice" companyOverride={company} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white py-16 lg:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Facture gratuite Maroc</p>
+              <h2 className="mt-3 text-3xl font-black leading-tight text-slate-950">
+                Un generateur de facture pour demarrer vite, puis une plateforme pour mieux gerer
+              </h2>
+              <p className="mt-4 text-base leading-8 text-slate-600">
+                Cette page est faite pour les entrepreneurs, freelances, commerces et PME qui veulent creer une facture
+                professionnelle rapidement. Le formulaire calcule les totaux HT, la TVA et le total TTC, puis affiche un
+                apercu imprimable avec les informations utiles au Maroc.
+              </p>
+              <p className="mt-4 text-base leading-8 text-slate-600">
+                Si vous cherchez seulement un modele de facture PDF, le generateur gratuit peut suffire. Si vous voulez
+                conserver vos documents, retrouver vos clients, suivre les paiements et gerer le stock, les modules
+                Factourati permettent d aller plus loin.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  to="/modules"
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 font-bold text-white transition hover:bg-slate-800"
+                >
+                  Voir les modules
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  to="/tarifs"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700 transition hover:border-teal-300 hover:text-teal-700"
+                >
+                  Comparer les tarifs
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-3 lg:grid-cols-1">
+              {generatorUseCases.map((useCase) => (
+                <article key={useCase.title} className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-6">
+                  <CheckCircle2 className="h-6 w-6 text-teal-600" />
+                  <h3 className="mt-4 text-lg font-bold text-slate-950">{useCase.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">{useCase.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-12 rounded-[1.75rem] border border-slate-200 bg-slate-50 p-8 lg:p-10">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Questions frequentes</p>
+            <h2 className="mt-3 text-2xl font-bold text-slate-950">FAQ du generateur de facture gratuit</h2>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {generatorFaqItems.map((item) => (
+                <details key={item.question} className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <summary className="cursor-pointer text-base font-bold text-slate-900">{item.question}</summary>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">{item.answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-12 rounded-[1.75rem] bg-slate-950 p-8 text-white shadow-xl lg:p-10">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-300">Maillage interne</p>
+                <h2 className="mt-3 text-3xl font-bold">Continuez avec les guides et les pages utiles Factourati</h2>
+                <p className="mt-4 text-slate-300">
+                  Pour mieux comprendre la facturation, les prix et les usages PME, consultez aussi la FAQ, le blog et
+                  les secteurs couverts par Factourati.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link
+                  to="/faq"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-slate-950 transition hover:bg-slate-100"
+                >
+                  Lire la FAQ
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  to="/blog"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 font-bold text-white transition hover:bg-white/15"
+                >
+                  Voir le blog
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
             </div>
           </div>
