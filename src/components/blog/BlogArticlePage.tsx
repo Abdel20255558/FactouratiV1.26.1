@@ -26,10 +26,7 @@ function ArticleLoader() {
 }
 
 function splitReadableText(text: string) {
-  const withLinkBreaks = text
-    .replace(/\s+(Lien\s+interne\s*:)/gi, '\n\n$1')
-    .replace(/\s+(Lien\s+externe\s*:)/gi, '\n\n$1');
-  const blocks = withLinkBreaks
+  const blocks = text
     .split(/\n{2,}/)
     .map((block) => block.trim())
     .filter(Boolean);
