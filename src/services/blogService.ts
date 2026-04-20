@@ -13,7 +13,8 @@ import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage
 import { db, storage } from '../config/firebase';
 import { blogArticles } from '../data/blogArticles';
 import { getBlogArticleMeta, resolveBlogCategorySlug, visibleBlogSlugs } from '../data/blogTaxonomy';
-import type { BlogResolvedArticle, BlogSection, FirestoreBlogPostInput } from '../types/blog';
+import type { BlogResolvedArticle, BlogSchemaType, BlogSection, FirestoreBlogPostInput } from '../types/blog';
+import { evaluateBlogSeo, resolveBlogSeoFallbacks } from '../utils/blogSeo';
 
 const BLOG_POSTS_COLLECTION = 'blogPosts';
 const STATIC_PUBLISHED_AT_ISO = '2026-03-27T00:00:00.000Z';
@@ -189,6 +190,103 @@ function serializeBlogSectionsForFirestore(sections: BlogSection[]) {
   return sections.map(serializeBlogSectionForFirestore);
 }
 
+function ensureBlogSchemaType(value: unknown): BlogSchemaType {
+  return value === 'Article' || value === 'FAQPage' || value === 'None' || value === 'BlogPosting'
+    ? value
+    : 'BlogPosting';
+}
+
+function normalizeSeoMetadata(data: DocumentData | Record<string, unknown>, article: {
+  title: string;
+  slug: string;
+  seoTitle: string;
+  description: string;
+  excerpt: string;
+  intro: string;
+  image: string;
+  imageAlt: string;
+  sections: BlogSection[];
+}) {
+  const rawSeo = getRecordValue(data, 'seo') && typeof getRecordValue(data, 'seo') === 'object'
+    ? (getRecordValue(data, 'seo') as Record<string, unknown>)
+    : {};
+  const metadata = resolveBlogSeoFallbacks({
+    focusKeyword: ensureString(rawSeo.focusKeyword) || ensureString(getRecordValue(data, 'focusKeyword')),
+    seoTitle: ensureString(rawSeo.seoTitle) || article.seoTitle,
+    metaDescription: ensureString(rawSeo.metaDescription) || article.description,
+    slug: ensureString(rawSeo.slug) || article.slug,
+    canonicalUrl: ensureString(rawSeo.canonicalUrl),
+    robotsIndex: rawSeo.robotsIndex === 'noindex' ? 'noindex' : 'index',
+    robotsFollow: rawSeo.robotsFollow === 'nofollow' ? 'nofollow' : 'follow',
+    ogTitle: ensureString(rawSeo.ogTitle),
+    ogDescription: ensureString(rawSeo.ogDescription),
+    ogImage: ensureString(rawSeo.ogImage),
+    twitterTitle: ensureString(rawSeo.twitterTitle),
+    twitterDescription: ensureString(rawSeo.twitterDescription),
+    twitterImage: ensureString(rawSeo.twitterImage),
+    schemaType: ensureBlogSchemaType(rawSeo.schemaType),
+    title: article.title,
+    excerpt: article.excerpt,
+    intro: article.intro,
+    image: article.image,
+    imageAlt: article.imageAlt,
+    sections: article.sections,
+  });
+  const evaluation = evaluateBlogSeo({
+    title: article.title,
+    slug: metadata.slug || article.slug,
+    seoTitle: metadata.seoTitle,
+    metaDescription: metadata.metaDescription,
+    excerpt: article.excerpt,
+    intro: article.intro,
+    focusKeyword: metadata.focusKeyword,
+    canonicalUrl: metadata.canonicalUrl,
+    image: article.image,
+    imageAlt: article.imageAlt,
+    sections: article.sections,
+  });
+
+  return {
+    ...metadata,
+    seoScore: evaluation.score,
+    seoChecks: evaluation.checks,
+  };
+}
+
+function serializeSeoForFirestore(input: FirestoreBlogPostInput) {
+  const metadata = resolveBlogSeoFallbacks({
+    ...input.seo,
+    title: input.title,
+    slug: input.slug,
+    seoTitle: input.seo?.seoTitle || input.seoTitle,
+    metaDescription: input.seo?.metaDescription || input.description,
+    excerpt: input.excerpt,
+    intro: input.intro,
+    image: input.image,
+    imageAlt: input.imageAlt,
+    sections: input.sections,
+  });
+  const evaluation = evaluateBlogSeo({
+    title: input.title,
+    slug: metadata.slug || input.slug,
+    seoTitle: metadata.seoTitle,
+    metaDescription: metadata.metaDescription,
+    excerpt: input.excerpt,
+    intro: input.intro,
+    focusKeyword: metadata.focusKeyword,
+    canonicalUrl: metadata.canonicalUrl,
+    image: input.image,
+    imageAlt: input.imageAlt,
+    sections: input.sections,
+  });
+
+  return {
+    ...metadata,
+    seoScore: evaluation.score,
+    seoChecks: evaluation.checks,
+  };
+}
+
 export function createBlogSlug(title: string) {
   return title
     .normalize('NFD')
@@ -238,9 +336,21 @@ export function estimateBlogReadingTimeFromContent({
 
 function normalizeStaticBlogArticle(article: (typeof blogArticles)[number]): BlogResolvedArticle {
   const articleMeta = getBlogArticleMeta(article);
+  const seo = normalizeSeoMetadata(article as unknown as Record<string, unknown>, {
+    title: article.title,
+    slug: article.slug,
+    seoTitle: article.seoTitle,
+    description: article.description,
+    excerpt: articleMeta.excerpt,
+    intro: article.intro,
+    image: article.image,
+    imageAlt: article.imageAlt,
+    sections: article.sections,
+  });
 
   return {
     ...article,
+    seo,
     id: article.slug,
     source: 'static',
     category: articleMeta.category,
@@ -291,6 +401,18 @@ function normalizeFirestoreBlogPost(id: string, data: DocumentData): BlogResolve
     return null;
   }
 
+  const seo = normalizeSeoMetadata(data, {
+    title,
+    slug,
+    seoTitle,
+    description,
+    excerpt,
+    intro,
+    image,
+    imageAlt,
+    sections,
+  });
+
   return {
     id,
     source: 'firestore',
@@ -311,6 +433,7 @@ function normalizeFirestoreBlogPost(id: string, data: DocumentData): BlogResolve
     intro,
     summaryPoints,
     sections,
+    seo,
     isPublished: data.isPublished !== false,
     isVisibleInListings: data.isVisibleInListings !== false,
     createdAt: normalizeBlogDateIso(data.createdAt),
@@ -334,7 +457,7 @@ export async function fetchFirestoreBlogPosts(options?: { includeUnpublished?: b
   return articles;
 }
 
-export async function blogSlugExists(slug: string) {
+export async function blogSlugExists(slug: string, excludePostId?: string) {
   const normalizedSlug = ensureString(slug);
 
   if (!normalizedSlug) {
@@ -347,7 +470,7 @@ export async function blogSlugExists(slug: string) {
   }
 
   const snapshot = await getDocs(query(collection(db, BLOG_POSTS_COLLECTION), where('slug', '==', normalizedSlug)));
-  return !snapshot.empty;
+  return snapshot.docs.some((docSnapshot) => docSnapshot.id !== excludePostId);
 }
 
 export async function uploadBlogImage(file: File) {
@@ -378,6 +501,7 @@ export async function createFirestoreBlogPost(
     ...input,
     categorySlug: resolveBlogCategorySlug(input.category, input.categorySlug),
     sections: serializeBlogSectionsForFirestore(input.sections),
+    seo: serializeSeoForFirestore(input),
     readingTime,
     publishedAt: formatBlogPublishedAt(publishedAtISO),
     publishedAtISO,
@@ -389,6 +513,27 @@ export async function createFirestoreBlogPost(
   };
 
   return addDoc(collection(db, BLOG_POSTS_COLLECTION), payload);
+}
+
+export async function updateFirestoreBlogPost(
+  postId: string,
+  input: FirestoreBlogPostInput,
+  options?: {
+    imageStoragePath?: string;
+  },
+) {
+  const nowIso = new Date().toISOString();
+  const readingTime = estimateBlogReadingTimeFromContent(input);
+
+  await updateDoc(doc(db, BLOG_POSTS_COLLECTION, postId), {
+    ...input,
+    categorySlug: resolveBlogCategorySlug(input.category, input.categorySlug),
+    sections: serializeBlogSectionsForFirestore(input.sections),
+    seo: serializeSeoForFirestore(input),
+    readingTime,
+    updatedAt: nowIso,
+    ...(options?.imageStoragePath !== undefined ? { imageStoragePath: options.imageStoragePath } : {}),
+  });
 }
 
 export async function setFirestoreBlogPostPublished(postId: string, isPublished: boolean) {
