@@ -1,8 +1,11 @@
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   BookOpen,
+  Edit3,
   Eye,
   EyeOff,
+  ExternalLink,
   ImagePlus,
   Loader2,
   Plus,
@@ -19,10 +22,21 @@ import {
   createFirestoreBlogPost,
   deleteFirestoreBlogPost,
   setFirestoreBlogPostPublished,
+  updateFirestoreBlogPost,
   updateFirestoreBlogPostImages,
   uploadBlogImage,
 } from '../../services/blogService';
-import type { BlogResolvedArticle, BlogSection } from '../../types/blog';
+import type {
+  BlogResolvedArticle,
+  BlogRobotsFollow,
+  BlogRobotsIndex,
+  BlogSchemaType,
+  BlogSection,
+  BlogSeoCheck,
+} from '../../types/blog';
+import { evaluateBlogSeo, getSeoQuality } from '../../utils/blogSeo';
+import BlogSeoPanel, { type BlogSeoPanelValue } from './blog-seo/BlogSeoPanel';
+import SeoScoreBadge from './blog-seo/SeoScoreBadge';
 
 type SectionFormState = {
   heading: string;
@@ -47,6 +61,17 @@ type BlogFormState = {
   summaryPointsText: string;
   sections: SectionFormState[];
   isPublished: boolean;
+  focusKeyword: string;
+  canonicalUrl: string;
+  robotsIndex: BlogRobotsIndex;
+  robotsFollow: BlogRobotsFollow;
+  ogTitle: string;
+  ogDescription: string;
+  ogImage: string;
+  twitterTitle: string;
+  twitterDescription: string;
+  twitterImage: string;
+  schemaType: BlogSchemaType;
 };
 
 type SectionImageEditorState = {
@@ -66,6 +91,29 @@ type BlogImageEditorState = {
   imageStoragePath?: string;
   sections: SectionImageEditorState[];
 };
+
+type BlogSeoFilter =
+  | 'all'
+  | 'low'
+  | 'medium'
+  | 'good'
+  | 'noindex'
+  | 'missing-meta'
+  | 'missing-focus'
+  | 'missing-image'
+  | 'missing-internal-link';
+
+const seoFilters: Array<{ id: BlogSeoFilter; label: string }> = [
+  { id: 'all', label: 'Tous' },
+  { id: 'low', label: 'SEO faible' },
+  { id: 'medium', label: 'SEO moyen' },
+  { id: 'good', label: 'Bon SEO' },
+  { id: 'noindex', label: 'Noindex' },
+  { id: 'missing-meta', label: 'Meta manquante' },
+  { id: 'missing-focus', label: 'Focus manquant' },
+  { id: 'missing-image', label: 'Image manquante' },
+  { id: 'missing-internal-link', label: 'Lien interne manquant' },
+];
 
 const createEmptySection = (): SectionFormState => ({
   heading: '',
@@ -90,6 +138,17 @@ const createInitialFormState = (): BlogFormState => ({
   summaryPointsText: '',
   sections: [createEmptySection()],
   isPublished: true,
+  focusKeyword: '',
+  canonicalUrl: '',
+  robotsIndex: 'index',
+  robotsFollow: 'follow',
+  ogTitle: '',
+  ogDescription: '',
+  ogImage: '',
+  twitterTitle: '',
+  twitterDescription: '',
+  twitterImage: '',
+  schemaType: 'BlogPosting',
 });
 
 function splitTextarea(value: string, separator: RegExp = /\n+/) {
@@ -97,6 +156,92 @@ function splitTextarea(value: string, separator: RegExp = /\n+/) {
     .split(separator)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function getKeywordsFromForm(form: BlogFormState) {
+  return form.keywordsText
+    .split(/[,\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getSummaryPointsFromForm(form: BlogFormState) {
+  return splitTextarea(form.summaryPointsText);
+}
+
+function getSectionsFromForm(form: BlogFormState): BlogSection[] {
+  return form.sections
+    .map((section) => ({
+      heading: section.heading.trim(),
+      paragraphs: splitTextarea(section.paragraphsText),
+      bullets: splitTextarea(section.bulletsText),
+      image: section.imageUrl.trim(),
+      imageAlt: section.imageAlt.trim(),
+    }))
+    .filter((section) => section.heading && section.paragraphs.length > 0)
+    .map((section) => ({
+      ...section,
+      bullets: section.bullets.length > 0 ? section.bullets : undefined,
+      image: section.image || undefined,
+      imageAlt: section.imageAlt || undefined,
+    }));
+}
+
+function formFromArticle(article: BlogResolvedArticle): BlogFormState {
+  return {
+    title: article.title,
+    slug: article.slug,
+    seoTitle: article.seo?.seoTitle || article.seoTitle,
+    description: article.seo?.metaDescription || article.description,
+    excerpt: article.excerpt,
+    categorySlug: article.categorySlug,
+    heroLabel: article.heroLabel,
+    imageUrl: article.image,
+    imageAlt: article.imageAlt,
+    keywordsText: article.keywords.join(', '),
+    intro: article.intro,
+    summaryPointsText: article.summaryPoints.join('\n'),
+    sections: article.sections.map((section) => ({
+      heading: section.heading,
+      paragraphsText: section.paragraphs.join('\n\n'),
+      bulletsText: (section.bullets || []).join('\n'),
+      imageUrl: section.image || '',
+      imageAlt: section.imageAlt || '',
+    })),
+    isPublished: article.isPublished,
+    focusKeyword: article.seo?.focusKeyword || article.keywords[0] || '',
+    canonicalUrl: article.seo?.canonicalUrl || '',
+    robotsIndex: article.seo?.robotsIndex || 'index',
+    robotsFollow: article.seo?.robotsFollow || 'follow',
+    ogTitle: article.seo?.ogTitle || '',
+    ogDescription: article.seo?.ogDescription || '',
+    ogImage: article.seo?.ogImage || '',
+    twitterTitle: article.seo?.twitterTitle || '',
+    twitterDescription: article.seo?.twitterDescription || '',
+    twitterImage: article.seo?.twitterImage || '',
+    schemaType: article.seo?.schemaType || 'BlogPosting',
+  };
+}
+
+function getSeoCheck(article: BlogResolvedArticle, checkId: string) {
+  return article.seo?.seoChecks.find((check) => check.id === checkId);
+}
+
+function articleMatchesSeoFilter(article: BlogResolvedArticle, filter: BlogSeoFilter) {
+  const seo = article.seo;
+  const score = seo?.seoScore || 0;
+
+  if (filter === 'all') return true;
+  if (filter === 'low') return getSeoQuality(score) === 'low';
+  if (filter === 'medium') return getSeoQuality(score) === 'medium';
+  if (filter === 'good') return getSeoQuality(score) === 'good';
+  if (filter === 'noindex') return seo?.robotsIndex === 'noindex';
+  if (filter === 'missing-meta') return !seo?.metaDescription;
+  if (filter === 'missing-focus') return !seo?.focusKeyword;
+  if (filter === 'missing-image') return getSeoCheck(article, 'image-present')?.status !== 'passed';
+  if (filter === 'missing-internal-link') return getSeoCheck(article, 'internal-link')?.status !== 'passed';
+
+  return true;
 }
 
 export default function BlogManager() {
@@ -107,6 +252,9 @@ export default function BlogManager() {
   });
 
   const [form, setForm] = useState<BlogFormState>(createInitialFormState);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingArticleId, setEditingArticleId] = useState<string | null>(null);
+  const [seoFilter, setSeoFilter] = useState<BlogSeoFilter>('all');
   const [slugTouched, setSlugTouched] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -114,17 +262,63 @@ export default function BlogManager() {
   const [imageEditor, setImageEditor] = useState<BlogImageEditorState | null>(null);
   const [imageEditorFeedback, setImageEditorFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [linkText, setLinkText] = useState('Tarifs Factourati');
+  const [linkUrl, setLinkUrl] = useState('/tarifs');
 
   const stats = useMemo(() => {
     return {
       total: firestoreArticles.length,
       published: firestoreArticles.filter((article) => article.isPublished).length,
       drafts: firestoreArticles.filter((article) => !article.isPublished).length,
+      goodSeo: firestoreArticles.filter((article) => getSeoQuality(article.seo?.seoScore || 0) === 'good').length,
     };
   }, [firestoreArticles]);
 
+  const formSections = useMemo(() => getSectionsFromForm(form), [form]);
+  const seoEvaluation = useMemo(
+    () =>
+      evaluateBlogSeo({
+        title: form.title,
+        slug: form.slug,
+        seoTitle: form.seoTitle,
+        metaDescription: form.description,
+        excerpt: form.excerpt,
+        intro: form.intro,
+        focusKeyword: form.focusKeyword,
+        canonicalUrl: form.canonicalUrl,
+        image: form.imageUrl,
+        imageAlt: form.imageAlt,
+        sections: formSections,
+      }),
+    [form, formSections],
+  );
+  const filteredFirestoreArticles = useMemo(
+    () => firestoreArticles.filter((article) => articleMatchesSeoFilter(article, seoFilter)),
+    [firestoreArticles, seoFilter],
+  );
+  const linkSnippet = useMemo(() => {
+    const label = linkText.trim() || 'texte cliquable';
+    const url = linkUrl.trim() || '/tarifs';
+    return `[${label}](${url})`;
+  }, [linkText, linkUrl]);
+
   const handleFieldChange = <K extends keyof BlogFormState>(field: K, value: BlogFormState[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSeoFieldChange = <K extends keyof BlogSeoPanelValue>(field: K, value: BlogSeoPanelValue[K]) => {
+    if (field === 'slug') {
+      setSlugTouched(true);
+      handleFieldChange('slug', createBlogSlug(String(value)));
+      return;
+    }
+
+    if (field === 'metaDescription') {
+      handleFieldChange('description', value as BlogFormState['description']);
+      return;
+    }
+
+    handleFieldChange(field as keyof BlogFormState, value as BlogFormState[keyof BlogFormState]);
   };
 
   const handleTitleChange = (value: string) => {
@@ -161,36 +355,49 @@ export default function BlogManager() {
 
   const resetForm = () => {
     setForm(createInitialFormState());
+    setEditingArticleId(null);
     setSelectedImageFile(null);
     setSlugTouched(false);
+    setIsEditorOpen(false);
   };
 
-  const handleCreatePost = async (event: React.FormEvent) => {
+  const openCreateEditor = () => {
+    setFeedback(null);
+    setImageEditor(null);
+    setForm(createInitialFormState());
+    setEditingArticleId(null);
+    setSelectedImageFile(null);
+    setSlugTouched(false);
+    setIsEditorOpen(true);
+
+    window.setTimeout(() => {
+      document.getElementById('blog-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
+
+  const handleCopyLinkSnippet = async () => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(linkSnippet);
+        setFeedback({ type: 'success', message: 'Lien copie. Collez-le dans une introduction, un paragraphe ou une puce.' });
+        return;
+      }
+
+      window.prompt('Copiez ce lien et collez-le dans le texte du blog:', linkSnippet);
+    } catch {
+      window.prompt('Copiez ce lien et collez-le dans le texte du blog:', linkSnippet);
+    }
+  };
+
+  const handleSavePost = async (event: React.FormEvent) => {
     event.preventDefault();
     setFeedback(null);
 
     const slug = form.slug.trim() || createBlogSlug(form.title);
     const category = getBlogCategoryBySlug(form.categorySlug);
-    const summaryPoints = splitTextarea(form.summaryPointsText);
-    const keywords = form.keywordsText
-      .split(/[,\n]/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-    const sections = form.sections
-      .map((section) => ({
-        heading: section.heading.trim(),
-        paragraphs: splitTextarea(section.paragraphsText),
-        bullets: splitTextarea(section.bulletsText),
-        image: section.imageUrl.trim(),
-        imageAlt: section.imageAlt.trim(),
-      }))
-      .filter((section) => section.heading && section.paragraphs.length > 0)
-      .map((section) => ({
-        ...section,
-        bullets: section.bullets.length > 0 ? section.bullets : undefined,
-        image: section.image || undefined,
-        imageAlt: section.imageAlt || undefined,
-      }));
+    const summaryPoints = getSummaryPointsFromForm(form);
+    const keywords = getKeywordsFromForm(form);
+    const sections = getSectionsFromForm(form);
 
     if (
       !form.title.trim() ||
@@ -230,7 +437,7 @@ export default function BlogManager() {
     setIsSaving(true);
 
     try {
-      const slugAlreadyExists = await blogSlugExists(slug);
+      const slugAlreadyExists = await blogSlugExists(slug, editingArticleId || undefined);
       if (slugAlreadyExists) {
         setFeedback({ type: 'error', message: 'Ce slug existe deja. Modifiez le titre ou le slug de l article.' });
         return;
@@ -245,44 +452,114 @@ export default function BlogManager() {
         imageStoragePath = uploadResult.storagePath;
       }
 
-      await createFirestoreBlogPost(
-        {
+      const postInput = {
+        slug,
+        title: form.title.trim(),
+        seoTitle: form.seoTitle.trim(),
+        description: form.description.trim(),
+        excerpt: form.excerpt.trim(),
+        category: category.label,
+        categorySlug: category.slug,
+        heroLabel: form.heroLabel.trim(),
+        image,
+        imageAlt: form.imageAlt.trim(),
+        keywords,
+        intro: form.intro.trim(),
+        summaryPoints,
+        sections,
+        isPublished: form.isPublished,
+        seo: {
+          ...seoEvaluation.metadata,
           slug,
-          title: form.title.trim(),
           seoTitle: form.seoTitle.trim(),
-          description: form.description.trim(),
-          excerpt: form.excerpt.trim(),
-          category: category.label,
-          categorySlug: category.slug,
-          heroLabel: form.heroLabel.trim(),
-          image,
-          imageAlt: form.imageAlt.trim(),
-          keywords,
-          intro: form.intro.trim(),
-          summaryPoints,
-          sections,
-          isPublished: form.isPublished,
+          metaDescription: form.description.trim(),
+          canonicalUrl: form.canonicalUrl.trim(),
+          robotsIndex: form.robotsIndex,
+          robotsFollow: form.robotsFollow,
+          ogTitle: form.ogTitle.trim(),
+          ogDescription: form.ogDescription.trim(),
+          ogImage: form.ogImage.trim(),
+          twitterTitle: form.twitterTitle.trim(),
+          twitterDescription: form.twitterDescription.trim(),
+          twitterImage: form.twitterImage.trim(),
+          schemaType: form.schemaType,
         },
-        {
+      };
+
+      if (editingArticleId) {
+        await updateFirestoreBlogPost(editingArticleId, postInput, {
+          imageStoragePath: selectedImageFile ? imageStoragePath : undefined,
+        });
+      } else {
+        await createFirestoreBlogPost(postInput, {
           createdByEmail: user?.email,
           imageStoragePath,
-        },
-      );
+        });
+      }
 
       setFeedback({
         type: 'success',
-        message: form.isPublished
-          ? 'Article blog cree et publie avec succes.'
-          : 'Article blog cree en brouillon avec succes.',
+        message: editingArticleId
+          ? 'Article blog mis a jour avec succes.'
+          : form.isPublished
+            ? 'Article blog cree et publie avec succes.'
+            : 'Article blog cree en brouillon avec succes.',
       });
       resetForm();
       await refetch();
     } catch (createError) {
       console.error('Erreur lors de la creation du blog:', createError);
-      setFeedback({ type: 'error', message: 'Impossible de creer cet article pour le moment.' });
+      setFeedback({ type: 'error', message: 'Impossible d enregistrer cet article pour le moment.' });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleEditArticle = (article: BlogResolvedArticle) => {
+    setFeedback(null);
+    setImageEditor(null);
+    setEditingArticleId(article.id);
+    setIsEditorOpen(true);
+    setForm(formFromArticle(article));
+    setSelectedImageFile(null);
+    setSlugTouched(true);
+    window.setTimeout(() => {
+      document.getElementById('blog-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
+
+  const handleSeoCheckClick = (check: BlogSeoCheck) => {
+    if (!check.targetId) {
+      return;
+    }
+
+    const target = document.getElementById(check.targetId);
+    if (!target) {
+      return;
+    }
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const focusTarget = target.matches('input, textarea, select, button')
+      ? target
+      : target.querySelector('input, textarea, select, button');
+    const highlightTarget = focusTarget instanceof HTMLElement ? focusTarget : target;
+    const previousOutline = highlightTarget.style.outline;
+    const previousOutlineOffset = highlightTarget.style.outlineOffset;
+
+    window.setTimeout(() => {
+      if (focusTarget instanceof HTMLElement) {
+        focusTarget.focus({ preventScroll: true });
+      }
+
+      highlightTarget.style.outline = '3px solid #f59e0b';
+      highlightTarget.style.outlineOffset = '3px';
+    }, 350);
+
+    window.setTimeout(() => {
+      highlightTarget.style.outline = previousOutline;
+      highlightTarget.style.outlineOffset = previousOutlineOffset;
+    }, 2200);
   };
 
   const handleTogglePublication = async (articleId: string, isPublished: boolean) => {
@@ -414,17 +691,19 @@ export default function BlogManager() {
   };
 
   return (
-    <div className="mb-8 space-y-6">
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div id="admin-blog-manager" className="mb-8 space-y-6">
+      <div id="blog-editor" className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-col gap-4 border-b border-gray-200 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Gestion du blog</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {editingArticleId ? 'Modifier un article blog' : 'Gestion du blog'}
+            </h3>
             <p className="mt-1 text-sm text-gray-500">
-              Creez de nouveaux articles avec image, keywords SEO, resume et sections, puis publiez-les directement depuis l admin.
+              Creez ou optimisez des articles avec score SEO, checklist, previews Google/social et publication Firestore.
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="grid grid-cols-2 gap-3 text-center lg:grid-cols-4">
             <div className="rounded-lg bg-gray-50 px-4 py-3">
               <p className="text-xl font-bold text-gray-900">{stats.total}</p>
               <p className="text-xs uppercase tracking-wide text-gray-500">Articles admin</p>
@@ -437,11 +716,24 @@ export default function BlogManager() {
               <p className="text-xl font-bold text-amber-700">{stats.drafts}</p>
               <p className="text-xs uppercase tracking-wide text-amber-600">Brouillons</p>
             </div>
+            <div className="rounded-lg bg-indigo-50 px-4 py-3">
+              <p className="text-xl font-bold text-indigo-700">{stats.goodSeo}</p>
+              <p className="text-xs uppercase tracking-wide text-indigo-600">Bon SEO</p>
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={openCreateEditor}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:from-indigo-700 hover:to-purple-700"
+          >
+            <Plus className="h-4 w-4" />
+            Creer un blog
+          </button>
         </div>
 
-        <form onSubmit={handleCreatePost} className="space-y-6 px-6 py-6">
-          {feedback && (
+        {feedback && (
+          <div className="px-6 pt-6">
             <div
               className={`rounded-lg border px-4 py-3 text-sm ${
                 feedback.type === 'success'
@@ -451,12 +743,36 @@ export default function BlogManager() {
             >
               {feedback.message}
             </div>
-          )}
+          </div>
+        )}
+
+        {!isEditorOpen ? (
+          <div className="px-6 py-10">
+            <div className="rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/60 p-8 text-center">
+              <BookOpen className="mx-auto h-10 w-10 text-indigo-500" />
+              <h4 className="mt-4 text-lg font-bold text-gray-950">Formulaire blog masque</h4>
+              <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+                Cliquez sur <strong>Creer un blog</strong> pour ajouter un nouvel article, ou sur <strong>Editer</strong> dans la liste
+                pour modifier un article et ouvrir l optimisation SEO.
+              </p>
+              <button
+                type="button"
+                onClick={openCreateEditor}
+                className="mt-5 inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+              >
+                <Plus className="h-4 w-4" />
+                Creer un blog
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSavePost} className="space-y-6 px-6 py-6">
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="xl:col-span-2">
               <label className="mb-2 block text-sm font-medium text-gray-700">Titre *</label>
               <input
+                id="blog-title"
                 type="text"
                 value={form.title}
                 onChange={(e) => handleTitleChange(e.target.value)}
@@ -523,6 +839,7 @@ export default function BlogManager() {
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">Meta description *</label>
               <textarea
+                id="blog-meta-description"
                 value={form.description}
                 onChange={(e) => handleFieldChange('description', e.target.value)}
                 rows={4}
@@ -547,6 +864,7 @@ export default function BlogManager() {
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">Image URL</label>
               <input
+                id="blog-main-image"
                 type="url"
                 value={form.imageUrl}
                 onChange={(e) => handleFieldChange('imageUrl', e.target.value)}
@@ -572,6 +890,7 @@ export default function BlogManager() {
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">Alt image *</label>
               <input
+                id="blog-main-image-alt"
                 type="text"
                 value={form.imageAlt}
                 onChange={(e) => handleFieldChange('imageAlt', e.target.value)}
@@ -608,6 +927,7 @@ export default function BlogManager() {
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">Introduction / resume long *</label>
             <textarea
+              id="blog-intro"
               value={form.intro}
               onChange={(e) => handleFieldChange('intro', e.target.value)}
               rows={5}
@@ -616,7 +936,50 @@ export default function BlogManager() {
             />
           </div>
 
-          <div className="space-y-4 rounded-xl border border-gray-200 bg-gray-50 p-5">
+          <div className="rounded-xl border border-cyan-100 bg-cyan-50 p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-cyan-900">
+                  <ExternalLink className="h-5 w-5" />
+                  <h4 className="text-sm font-bold uppercase tracking-wide">Ajouter un lien cliquable dans le texte</h4>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-cyan-800">
+                  Ecrivez un lien sous cette forme dans une introduction, un paragraphe ou une puce :
+                  <span className="mx-1 rounded bg-white px-2 py-0.5 font-mono text-xs text-cyan-950">[texte visible](URL)</span>
+                  Vous pouvez aussi coller une URL directement : elle deviendra cliquable sur le blog public.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyLinkSnippet}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-cyan-800"
+              >
+                Copier le lien
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_1.3fr]">
+              <input
+                type="text"
+                value={linkText}
+                onChange={(event) => setLinkText(event.target.value)}
+                className="rounded-lg border border-cyan-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="Texte visible"
+              />
+              <input
+                type="text"
+                value={linkUrl}
+                onChange={(event) => setLinkUrl(event.target.value)}
+                className="rounded-lg border border-cyan-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="/tarifs ou https://..."
+              />
+              <div className="overflow-hidden rounded-lg border border-cyan-200 bg-white px-4 py-2.5 font-mono text-xs text-cyan-950">
+                <span className="block truncate">{linkSnippet}</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="blog-sections" className="space-y-4 rounded-xl border border-gray-200 bg-gray-50 p-5">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-900">Sections de l article</h4>
@@ -712,6 +1075,32 @@ export default function BlogManager() {
             ))}
           </div>
 
+          {editingArticleId && (
+            <BlogSeoPanel
+              value={{
+                focusKeyword: form.focusKeyword,
+                seoTitle: form.seoTitle,
+                metaDescription: form.description,
+                slug: form.slug,
+                canonicalUrl: form.canonicalUrl,
+                robotsIndex: form.robotsIndex,
+                robotsFollow: form.robotsFollow,
+                ogTitle: form.ogTitle,
+                ogDescription: form.ogDescription,
+                ogImage: form.ogImage,
+                twitterTitle: form.twitterTitle,
+                twitterDescription: form.twitterDescription,
+                twitterImage: form.twitterImage,
+                schemaType: form.schemaType,
+              }}
+              score={seoEvaluation.score}
+              checks={seoEvaluation.checks}
+              wordCount={seoEvaluation.wordCount}
+              onChange={handleSeoFieldChange}
+              onCheckClick={handleSeoCheckClick}
+            />
+          )}
+
           <div className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm font-semibold text-gray-900">Publication</p>
@@ -750,6 +1139,7 @@ export default function BlogManager() {
             <p className="text-sm text-gray-500">
               URL finale: <span className="font-medium text-gray-700">/blog/{form.slug || 'slug-article'}</span>
             </p>
+            <SeoScoreBadge score={seoEvaluation.score} />
 
             <div className="flex gap-3">
               <button
@@ -759,20 +1149,30 @@ export default function BlogManager() {
               >
                 Reinitialiser
               </button>
+              {editingArticleId && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="inline-flex items-center gap-2 rounded-lg border border-amber-300 px-4 py-2.5 font-medium text-amber-700 transition hover:bg-amber-50"
+                >
+                  Annuler edition
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={isSaving}
                 className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-2.5 font-semibold text-white transition hover:from-indigo-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {isSaving ? 'Creation...' : 'Creer l article'}
+                {isSaving ? 'Enregistrement...' : editingArticleId ? 'Mettre a jour l article' : 'Creer l article'}
               </button>
             </div>
           </div>
-        </form>
+          </form>
+        )}
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div id="blog-list" className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <div>
             <h4 className="text-base font-semibold text-gray-900">Articles blog crees depuis l admin</h4>
@@ -789,6 +1189,26 @@ export default function BlogManager() {
           </button>
         </div>
 
+        <div className="border-b border-gray-200 px-6 py-4">
+          <p className="mb-3 text-sm font-semibold text-gray-900">Filtres SEO</p>
+          <div className="flex flex-wrap gap-2">
+            {seoFilters.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => setSeoFilter(filter.id)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                  seoFilter === filter.id
+                    ? 'border-indigo-600 bg-indigo-600 text-white'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700'
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {isLoading ? (
           <div className="flex items-center justify-center px-6 py-12 text-gray-500">
             <Loader2 className="mr-3 h-5 w-5 animate-spin" />
@@ -796,16 +1216,21 @@ export default function BlogManager() {
           </div>
         ) : error ? (
           <div className="px-6 py-10 text-center text-sm text-red-600">{error}</div>
-        ) : firestoreArticles.length === 0 ? (
+        ) : filteredFirestoreArticles.length === 0 ? (
           <div className="px-6 py-10 text-center">
             <BookOpen className="mx-auto h-10 w-10 text-gray-300" />
-            <p className="mt-3 text-sm text-gray-500">Aucun article admin pour le moment.</p>
+            <p className="mt-3 text-sm text-gray-500">Aucun article ne correspond a ce filtre.</p>
           </div>
         ) : (
           <div className="grid gap-4 px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
-            {firestoreArticles.map((article) => (
+            {filteredFirestoreArticles.map((article) => (
               <article key={article.id} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                <img src={article.image} alt={article.imageAlt} className="h-44 w-full object-cover" />
+                <div className="relative">
+                  <img src={article.image} alt={article.imageAlt} className="h-44 w-full object-cover" />
+                  <div className="absolute left-3 top-3 rounded-full bg-white/90 shadow-lg backdrop-blur">
+                    <SeoScoreBadge score={article.seo?.seoScore || 0} size="sm" />
+                  </div>
+                </div>
 
                 <div className="space-y-4 p-5">
                   <div className="flex items-start justify-between gap-3">
@@ -830,6 +1255,25 @@ export default function BlogManager() {
                     <div>Lecture: {article.readingTime}</div>
                   </div>
 
+                  <div className="grid gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-xs text-gray-600">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div>
+                        <p className="font-semibold text-gray-900">Focus keyword</p>
+                        <p className="truncate">{article.seo?.focusKeyword || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">Indexation</p>
+                        <p className={article.seo?.robotsIndex === 'noindex' ? 'font-bold text-red-600' : 'font-bold text-emerald-600'}>
+                          {article.seo?.robotsIndex || 'index'} / {article.seo?.robotsFollow || 'follow'}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Slug SEO</p>
+                      <p className="truncate">/blog/{article.seo?.slug || article.slug}</p>
+                    </div>
+                  </div>
+
                   <div className="flex flex-wrap gap-2">
                     {article.keywords.slice(0, 3).map((keyword) => (
                       <span key={keyword} className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">
@@ -838,7 +1282,27 @@ export default function BlogManager() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleEditArticle(article)}
+                      disabled={actionLoadingId === article.id}
+                      className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                      Editer
+                    </button>
+
+                    {article.isPublished && (
+                      <Link
+                        to={`/blog/${article.slug}`}
+                        className="inline-flex items-center gap-2 rounded-lg bg-teal-50 px-3 py-2 text-sm font-medium text-teal-700 transition hover:bg-teal-100"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        Apercu
+                      </Link>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => openImageEditor(article)}
