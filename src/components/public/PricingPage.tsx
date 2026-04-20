@@ -50,6 +50,30 @@ const features = [
   'Solution pensee pour les PME marocaines',
 ];
 
+const pricingUseCases = [
+  {
+    title: 'Pour une TPE ou un independant',
+    text: 'La formule mensuelle aide a demarrer sans engagement long. Elle convient aux prestataires, consultants, agences et petites structures qui veulent sortir des fichiers Excel et creer des factures plus professionnelles.',
+  },
+  {
+    title: 'Pour une PME en croissance',
+    text: 'La formule 6 mois donne plus de stabilite pour mettre en place le suivi des clients, des produits, des paiements et du stock sans changer d outil tous les mois.',
+  },
+  {
+    title: 'Pour une entreprise organisee',
+    text: 'La formule annuelle est adaptee aux entreprises qui veulent installer une vraie routine de gestion : devis, factures, rapports, fournisseurs, projets et pilotage de l activite.',
+  },
+];
+
+const includedHighlights = [
+  'Creation de factures professionnelles avec les informations utiles au Maroc : ICE, IF, RC, TVA, client et total TTC.',
+  'Transformation plus simple des devis en factures pour gagner du temps lorsque le client valide une offre.',
+  'Suivi des paiements pour comprendre rapidement ce qui est paye, impaye ou encore a relancer.',
+  'Gestion du catalogue produits et du stock pour garder une vision plus fiable des quantites et des prix.',
+  'Tableaux de bord et rapports pour suivre les ventes, les clients, les fournisseurs et les performances.',
+  'Acces au generateur gratuit pour tester la creation de facture avant de passer au compte complet.',
+];
+
 export default function PricingPage() {
   const pageUrl = `${SITE_URL}/tarifs`;
   const pageDescription =
@@ -138,6 +162,45 @@ export default function PricingPage() {
                   Commencer maintenant
                   <ArrowRight className="h-4 w-4" />
                 </Link>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-12 rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-sm lg:p-10">
+            <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Comprendre le prix</p>
+                <h2 className="mt-3 text-3xl font-bold text-slate-900">
+                  Un tarif logiciel pense pour les entreprises marocaines
+                </h2>
+                <p className="mt-4 text-base leading-8 text-slate-600">
+                  Factourati regroupe plusieurs outils dans un seul abonnement : logiciel de facturation, suivi client,
+                  gestion du stock, fournisseurs, projets et rapports. Le prix evite d additionner plusieurs solutions
+                  separees pour creer une organisation claire au quotidien.
+                </p>
+                <p className="mt-4 text-base leading-8 text-slate-600">
+                  Avant de choisir une formule, vous pouvez tester le generateur de facture gratuit. Il permet de creer
+                  une facture simple sans compte, puis de passer au compte complet si vous voulez sauvegarder vos
+                  documents, utiliser les templates Pro et suivre vos paiements.
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {includedHighlights.map((highlight) => (
+                  <div key={highlight} className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+                    <CheckCircle2 className="h-5 w-5 text-teal-600" />
+                    <p className="mt-3 text-sm leading-7 text-slate-700">{highlight}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            {pricingUseCases.map((useCase) => (
+              <article key={useCase.title} className="rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Cas d usage</p>
+                <h2 className="mt-3 text-xl font-bold text-slate-900">{useCase.title}</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{useCase.text}</p>
               </article>
             ))}
           </div>
