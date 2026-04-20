@@ -166,6 +166,14 @@ export default function EmailVerificationPage() {
               . Ouvrez votre boîte de réception et cliquez sur le lien.
             </p>
 
+            <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left">
+              <p className="text-sm font-semibold text-amber-900">Vous ne trouvez pas l'email ?</p>
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                Verifiez aussi Spam, Courrier indesirable ou Promotions. L'email de verification peut parfois arriver
+                avec quelques minutes de retard.
+              </p>
+            </div>
+
             {/* feedback */}
             {error && (
               <div className="mt-4 inline-flex items-center gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-lg">
@@ -176,7 +184,7 @@ export default function EmailVerificationPage() {
             {sent && !error && (
               <div className="mt-4 inline-flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Email de vérification renvoyé. Vérifiez votre boîte de réception !</span>
+                <span>Email de verification renvoye. Verifiez votre boite de reception et les spams.</span>
               </div>
             )}
 
