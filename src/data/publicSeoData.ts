@@ -68,6 +68,26 @@ export const faqItems = [
     question: 'Que peut-on gerer avec Factourati ?',
     answer: 'Vous pouvez gerer les devis, factures, paiements, relances, produits, stock, fournisseurs et projets dans une seule interface.',
   },
+  {
+    question: 'Factourati remplace-t-il Excel pour la facturation ?',
+    answer: 'Oui. Factourati permet de creer des devis et factures plus propres, de garder un historique client, de suivre les paiements et de limiter les erreurs de saisie souvent presentes dans les fichiers Excel.',
+  },
+  {
+    question: 'Le logiciel convient-il aux petites entreprises et independants ?',
+    answer: 'Oui. Factourati est adapte aux TPE, PME, commerces, prestataires, agences, entreprises BTP, distributeurs et independants qui veulent une gestion simple sans infrastructure complexe.',
+  },
+  {
+    question: 'Puis-je imprimer une facture sans creer de compte ?',
+    answer: 'Oui. Le generateur de facture gratuit permet de creer et imprimer une facture avec un template gratuit. Pour sauvegarder les factures, utiliser les templates Pro et suivre les clients, il faut creer un compte.',
+  },
+  {
+    question: 'Factourati aide-t-il a suivre les impayes ?',
+    answer: 'Oui. La plateforme centralise les factures, les paiements, les restes a payer et les informations clients pour faciliter le suivi des encaissements.',
+  },
+  {
+    question: 'Quels modules sont utiles pour demarrer ?',
+    answer: 'La plupart des entreprises commencent avec les modules devis, facturation, clients et produits. Ensuite, elles activent le stock, fournisseurs, projets, RH et rapports selon leurs besoins.',
+  },
 ] as const;
 
 export const pricingFaqItems = [
