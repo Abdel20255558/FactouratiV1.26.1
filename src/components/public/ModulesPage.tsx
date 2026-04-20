@@ -64,6 +64,24 @@ const modules = [
   },
 ] as const;
 
+const moduleSeoSections = [
+  {
+    title: 'Devis, factures et paiements dans un seul workflow',
+    text: 'Une entreprise perd du temps lorsque les devis sont dans un fichier, les factures dans un autre et les paiements dans un cahier. Factourati relie ces etapes pour garder un historique plus propre : le devis devient facture, le paiement est suivi, et le client reste centralise.',
+    points: ['Moins de double saisie', 'Documents plus coherents', 'Suivi client plus lisible'],
+  },
+  {
+    title: 'Stock, fournisseurs et achats mieux organises',
+    text: 'Le stock n est pas seulement une liste de produits. Il influence les ventes, les achats, les ruptures et la tresorerie. Les modules produits, fournisseurs et mouvements de stock aident a comprendre ce qui entre, ce qui sort et ce qui doit etre anticipe.',
+    points: ['Alertes de stock', 'Produits et prix centralises', 'Fournisseurs et paiements lies'],
+  },
+  {
+    title: 'Rapports pour piloter une PME marocaine',
+    text: 'Les rapports donnent une lecture rapide des ventes, clients, factures, paiements et performances. L objectif n est pas de produire des tableaux compliques, mais de prendre de meilleures decisions a partir de chiffres accessibles.',
+    points: ['Ventes et encaissements', 'Top clients et produits', 'Vision globale de l activite'],
+  },
+];
+
 export default function ModulesPage() {
   const pageUrl = `${SITE_URL}/modules`;
   const pageDescription =
@@ -186,6 +204,57 @@ export default function ModulesPage() {
                 </article>
               );
             })}
+          </div>
+
+          <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            {moduleSeoSections.map((section) => (
+              <article key={section.title} className="rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Usage concret</p>
+                <h2 className="mt-3 text-xl font-bold leading-8 text-slate-950">{section.title}</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{section.text}</p>
+                <div className="mt-5 space-y-2">
+                  {section.points.map((point) => (
+                    <p key={point} className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                      <CheckCircle2 className="h-4 w-4 text-teal-600" />
+                      {point}
+                    </p>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-12 rounded-[1.75rem] border border-slate-200 bg-slate-50 p-8 lg:p-10">
+            <div className="grid gap-8 lg:grid-cols-[1fr_0.8fr] lg:items-center">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Maillage interne</p>
+                <h2 className="mt-3 text-3xl font-bold text-slate-950">
+                  Du generateur gratuit aux modules complets
+                </h2>
+                <p className="mt-4 text-base leading-8 text-slate-600">
+                  Si vous cherchez seulement un modele de facture, le generateur gratuit suffit pour tester. Si vous
+                  voulez conserver les clients, retrouver les anciennes factures, suivre les paiements, gerer le stock
+                  et analyser l activite, les modules Factourati deviennent plus utiles qu un simple fichier PDF.
+                </p>
+              </div>
+              <div className="rounded-3xl bg-white p-6 shadow-sm">
+                <p className="text-sm font-bold text-slate-900">Pages utiles a consulter</p>
+                <div className="mt-4 grid gap-3">
+                  <Link to="/generateur-facture" className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-teal-300 hover:text-teal-700">
+                    Generateur de facture gratuit
+                  </Link>
+                  <Link to="/tarifs" className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-teal-300 hover:text-teal-700">
+                    Tarifs Factourati
+                  </Link>
+                  <Link to="/secteurs" className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-teal-300 hover:text-teal-700">
+                    Secteurs couverts
+                  </Link>
+                  <Link to="/blog" className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-teal-300 hover:text-teal-700">
+                    Guides pratiques du blog
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="mt-12 rounded-[1.75rem] bg-slate-950 p-8 text-white shadow-xl lg:p-10">
