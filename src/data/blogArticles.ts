@@ -1,347 +1,338 @@
-import { Suspense, lazy } from 'react';
-import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3 } from 'lucide-react';
-import { Link, Navigate, useParams } from 'react-router-dom';
-import { getBlogArticleMeta } from '../../data/blogTaxonomy';
-import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
-import { useBlogArticles } from '../../hooks/useBlogArticles';
-import { resolveArticleSeo } from '../../utils/blogSeo';
-import PublicSiteChrome from '../public/PublicSiteChrome';
-import SeoHead from '../seo/SeoHead';
-import LinkedBlogText from './LinkedBlogText';
+import type { BlogArticle, BlogSection } from '../types/blog';
 
-const GuideErpArticle = lazy(() => import('./GuideErpArticle'));
-const GuideFacturationArticle = lazy(() => import('./GuideFacturationArticle'));
-const GuideFiscalArticle = lazy(() => import('./GuideFiscalArticle'));
-const GuideProjectArticle = lazy(() => import('./GuideProjectArticle'));
-const GuideStockArticle = lazy(() => import('./GuideStockArticle'));
+export const blogArticles: BlogArticle[] = [
+  {
+    slug: 'guide-complet-facturation-maroc',
+    title: 'Guide complet de facturation au Maroc',
+    seoTitle: 'Guide complet de facturation au Maroc pour PME | Factourati',
+    description:
+      'Découvrez comment réussir votre facturation au Maroc : mentions utiles, organisation, paiements, relances et outils pour PME avec Factourati.',
+    excerpt:
+      "Un guide pratique pour structurer vos devis, vos factures, vos relances et votre suivi client avec une methode simple.",
+    category: 'Facturation',
+    publishedAt: '27 mars 2026',
+    readingTime: '9 min',
+    heroLabel: 'Piloter la facturation',
+    image: '/blog-assets/facturation-dashboard1.PNG',
+    imageAlt: 'logiciel de facturation au Maroc pour PME',
+    keywords: [
+      'facturation au Maroc',
+      'guide facturation Maroc',
+      'logiciel de facturation Maroc',
+      'facture Maroc PME',
+      'gestion des factures Maroc',
+      'devis et factures Maroc',
+      'facture conforme Maroc',
+      'relance facture Maroc',
+      'suivi paiement client Maroc',
+    ],
+    intro:
+      "La facturation est souvent le coeur administratif de l'entreprise. Quand elle est mal organisee, on perd du temps, on oublie des relances et on se retrouve avec une vision floue du chiffre d'affaires.",
+    summaryPoints: [
+      'Standardiser vos devis et factures reduit les erreurs.',
+      'Un bon suivi des paiements ameliore directement la tresorerie.',
+      'Centraliser les documents clients fait gagner du temps a toute l equipe.',
+    ],
+    sections: [
+      {
+        heading: 'Pourquoi structurer sa facturation des le debut',
+        paragraphs: [
+          "Beaucoup d'entreprises commencent avec des documents faits a la main, des fichiers disperses et des rappels en memoire. Cela fonctionne un moment, puis devient vite difficile a suivre.",
+          "Avoir un processus clair permet de creer des devis plus vite, de les convertir en factures sans refaire le travail et de garder un historique propre pour chaque client.",
+        ],
+      },
+      {
+        heading: 'Les elements essentiels a ne pas oublier',
+        paragraphs: [
+          "Une bonne organisation passe par des modeles coherents, une numerotation claire, une base clients fiable et un suivi des echeances. Chaque detail evite des oublis et rassure le client.",
+        ],
+        bullets: [
+          'modele de devis et de facture professionnel',
+          'base clients centralisee',
+          'suivi des factures payees et impayees',
+          'historique complet des documents',
+        ],
+      },
+      {
+        heading: 'Comment Factourati simplifie la gestion',
+        paragraphs: [
+          "Factourati permet de gerer devis, factures, paiements et clients dans le meme espace. Vous gagnez du temps et vous gardez une vue claire sur l activite.",
+          "Cette centralisation est aussi utile pour le SEO de votre marque, car elle permet de communiquer clairement sur une offre complete et adaptee au marche marocain.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'comment-gerer-votre-stock-efficacement',
+    title: 'Comment gerer votre stock efficacement',
+    seoTitle: 'Comment gerer votre stock efficacement au Maroc | Factourati',
+    description:
+      'Découvrez comment mieux gérer votre stock, éviter les ruptures et suivre vos produits avec une méthode simple et un logiciel comme Factourati.',
+    excerpt:
+      "Une methode simple pour eviter les ruptures, suivre les sorties et garder un stock sain sans complexifier votre quotidien.",
+    category: 'Stock',
+    publishedAt: '27 mars 2026',
+    readingTime: '7 min',
+    heroLabel: 'Maitriser le stock',
+    image: '/blog-assets/stock.PNG',
+    imageAlt: 'gestion de stock produits avec Factourati',
+    keywords: [
+      'gerer son stock efficacement',
+      'gestion de stock Maroc',
+      'logiciel de stock Maroc',
+      'suivi stock PME',
+      'stock produit entreprise',
+      'eviter rupture de stock',
+      'gestion produits Factourati',
+      'stock faible',
+      'stock restant',
+    ],
+    intro:
+      "Une mauvaise gestion du stock a un cout direct: ruptures, surstock, perte de marge et commandes faites dans l urgence. Une methode simple et un bon outil changent rapidement la donne.",
+    summaryPoints: [
+      'Mesurer les entrees et sorties evite les decisions a l aveugle.',
+      'Les alertes de stock aident a commander au bon moment.',
+      'Relier stock et ventes donne une vision plus fiable des besoins.',
+    ],
+    sections: [
+      {
+        heading: 'Les erreurs les plus frequentes',
+        paragraphs: [
+          "La plupart des problemes viennent d un suivi incomplet: produits non mis a jour, inventaires trop rares, ou absence de seuils d alerte.",
+          "Quand les informations ne sont pas centralisees, l equipe ne sait plus quelle quantite est vraiment disponible.",
+        ],
+      },
+      {
+        heading: 'Les reflexes a mettre en place',
+        paragraphs: [
+          "Il faut definir un processus simple pour chaque entree, sortie et ajustement. Meme une petite entreprise gagne enormement a travailler avec des regles claires.",
+        ],
+        bullets: ['mettre a jour le stock en temps reel', 'fixer des seuils minimums', 'faire des controles reguliers', 'suivre les produits les plus vendus'],
+      },
+      {
+        heading: 'Pourquoi relier stock, ventes et fournisseurs',
+        paragraphs: [
+          "Un bon suivi de stock n est pas isole. Il doit etre connecte aux ventes, aux achats et aux fournisseurs pour anticiper les besoins et negocier plus sereinement.",
+          "Avec Factourati, cette logique reliee aide a mieux piloter la rentabilite et le service client.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'avantages-erp-pme-marocaines',
+    title: "Avantages d'un ERP pour PME marocaines",
+    seoTitle: "Avantages d'un ERP pour PME marocaines | Factourati",
+    description:
+      "Découvrez les avantages d’un ERP pour les PME marocaines : gain de temps, meilleure organisation, suivi du stock, facturation et pilotage simplifié avec Factourati.",
+    excerpt:
+      "De la facturation au stock en passant par les projets, un ERP peut faire gagner un temps precieux aux PME marocaines.",
+    category: 'ERP',
+    publishedAt: '27 mars 2026',
+    readingTime: '8 min',
+    heroLabel: 'Vision globale',
+    image: '/blog-assets/facturation-dashboard1.PNG',
+    imageAlt: 'ERP pour PME marocaines avec Factourati',
+    keywords: [
+      'ERP pour PME marocaines',
+      'avantages ERP PME',
+      'logiciel ERP Maroc',
+      'ERP gestion entreprise Maroc',
+      'ERP facturation stock clients',
+      'solution ERP PME Maroc',
+      'digitalisation PME marocaines',
+      'logiciel gestion PME Maroc',
+    ],
+    intro:
+      "Beaucoup de PME utilisent plusieurs outils separes: factures dans un fichier, stock dans un autre, projets ailleurs. A mesure que l activite grandit, cette organisation devient fragile.",
+    summaryPoints: [
+      'Un ERP centralise les informations importantes.',
+      'Il reduit les doubles saisies et les oublis.',
+      'Il facilite le pilotage global de l entreprise.',
+    ],
+    sections: [
+      {
+        heading: 'Pourquoi les outils disperses ralentissent la croissance',
+        paragraphs: [
+          "Quand chaque tache a son propre fichier, l equipe passe plus de temps a chercher l information qu a agir. Cela cree aussi des ecarts entre les donnees.",
+          "Une PME a besoin de fluidite. Plus les operations sont reliees, plus il est facile de prendre de bonnes decisions.",
+        ],
+      },
+      {
+        heading: 'Ce qu un ERP apporte au quotidien',
+        paragraphs: [
+          "Un ERP aide a centraliser les clients, les produits, les ventes, les achats, le stock et parfois les projets ou les ressources humaines.",
+        ],
+        bullets: ['meilleure coordination des equipes', 'donnees plus fiables', 'moins de taches repetitives', 'meilleur suivi de la rentabilite'],
+      },
+      {
+        heading: 'Pourquoi Factourati est pertinent pour une PME marocaine',
+        paragraphs: [
+          "Factourati combine plusieurs briques utiles dans une interface claire. Pour une PME marocaine, cela aide a professionnaliser la gestion sans basculer dans un outil trop lourd.",
+          "C est aussi un argument fort a travailler dans une strategie SEO autour des recherches ERP Maroc et gestion entreprise Maroc.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'conformite-fiscale-maroc-factourati',
+    title: 'Conformite fiscale au Maroc avec Factourati',
+    seoTitle: 'Conformite fiscale au Maroc avec Factourati | Guide PME',
+    description:
+      'Découvrez comment mieux organiser votre conformité fiscale au Maroc avec Factourati : factures, ICE, suivi des paiements, documents et gestion plus structurée.',
+    excerpt:
+      "Une approche claire pour mieux preparer vos documents, eviter les oublis et garder une gestion plus propre au quotidien.",
+    category: 'Fiscalite',
+    publishedAt: '27 mars 2026',
+    readingTime: '8 min',
+    heroLabel: 'Organisation fiscale',
+    image: '/blog-assets/1.PNG',
+    imageAlt: 'facture conforme au Maroc avec Factourati',
+    keywords: [
+      'conformite fiscale au Maroc',
+      'conformite fiscale Maroc PME',
+      'logiciel de facturation Maroc conforme',
+      'facture conforme Maroc',
+      'ICE sur facture Maroc',
+      'gestion fiscale entreprise Maroc',
+      'organisation fiscale PME Maroc',
+      'teledeclaration Maroc',
+      'Factourati conformite fiscale',
+    ],
+    intro:
+      "La conformite n est pas seulement une question de documents. C est aussi une question d organisation, de tracabilite et de rigueur dans la gestion quotidienne.",
+    summaryPoints: [
+      'Des documents bien structures limitent les erreurs.',
+      'Un historique centralise simplifie le suivi administratif.',
+      'Une meilleure organisation rend les controles moins stressants.',
+    ],
+    sections: [
+      {
+        heading: 'Pourquoi la rigueur documentaire compte',
+        paragraphs: [
+          "Quand les pieces sont eparpillees, il devient difficile de reconstituer les echanges, les paiements et la chronologie des documents. Cela augmente le risque d oubli ou d incoherence.",
+          "Centraliser devis, factures et paiements dans un seul outil aide a maintenir un dossier plus propre pour chaque client.",
+        ],
+      },
+      {
+        heading: 'Les bonnes habitudes a mettre en place',
+        paragraphs: [
+          "La conformite passe souvent par des habitudes simples mais constantes. L enjeu est surtout de rendre ces habitudes faciles a suivre par l equipe.",
+        ],
+        bullets: ['numerotation reguliere des documents', 'historique client accessible', 'suivi des reglements', 'documents exportables rapidement'],
+      },
+      {
+        heading: 'Le role de Factourati dans cette organisation',
+        paragraphs: [
+          "Factourati aide a creer un cadre de travail plus propre autour de la facturation et du suivi client. Cette structure reduit les pertes d information et simplifie les verifications.",
+          "Pour votre communication SEO, c est aussi un sujet de confiance tres fort, car il repond a une preoccupation concrete des entreprises marocaines.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'gestion-de-projet-meilleures-pratiques',
+    title: 'Gestion de projet : meilleures pratiques',
+    seoTitle: 'Gestion de projet : meilleures pratiques pour PME | Factourati',
+    description:
+      'Découvrez les meilleures pratiques de gestion de projet pour mieux organiser vos tâches, délais et équipes avec une méthode claire et Factourati.',
+    excerpt:
+      "Des habitudes simples pour mieux cadrer vos projets, suivre les taches et garder une bonne cadence d execution.",
+    category: 'Projets',
+    publishedAt: '27 mars 2026',
+    readingTime: '7 min',
+    heroLabel: 'Execution claire',
+    image: '/blog-assets/5.PNG',
+    imageAlt: 'gestion de projet avec Factourati',
+    keywords: [
+      'gestion de projet meilleures pratiques',
+      'gestion de projet PME Maroc',
+      'logiciel gestion de projet Maroc',
+      'suivi projet entreprise',
+      'organiser projet equipe',
+      'taches delais projet',
+      'pilotage projet PME',
+      'outil gestion de projet Factourati',
+    ],
+    intro:
+      "Un projet avance mieux quand chacun sait quoi faire, pour quand et avec quel niveau de priorite. Sans cadre, les retards et les blocages deviennent vite frequents.",
+    summaryPoints: [
+      'Des objectifs clairs evitent les malentendus.',
+      'Le suivi des taches aide a garder le rythme.',
+      'Une bonne visibilite equipe reduit les blocages.',
+    ],
+    sections: [
+      {
+        heading: 'Commencer par un cadre simple',
+        paragraphs: [
+          "Un projet n a pas besoin d une methode lourde pour bien avancer. Il a besoin d objectifs clairs, d un responsable identifie et d un suivi regulier.",
+          "Les equipes progressent mieux quand les informations importantes sont visibles au meme endroit.",
+        ],
+      },
+      {
+        heading: 'Les habitudes qui font la difference',
+        paragraphs: [
+          "Quelques routines bien tenues ont souvent plus de valeur qu un outil complexe mal utilise.",
+        ],
+        bullets: ['decouper en taches concretes', 'fixer des echeances realistes', 'visualiser les priorites', 'faire des points d avancement reguliers'],
+      },
+      {
+        heading: 'Relier projet et gestion globale',
+        paragraphs: [
+          "Quand les projets sont relies aux clients, aux commandes ou a la facturation, la direction gagne une vision beaucoup plus utile. C est la que des outils comme Factourati prennent de la valeur.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'logiciel-facturation-maroc',
+    title: 'Logiciel de facturation au Maroc : comment choisir la bonne solution pour votre entreprise',
+    seoTitle: 'Logiciel de facturation au Maroc : comment choisir la bonne solution | Blog Factourati',
+    description:
+      'Guide complet pour choisir un logiciel de facturation au Maroc selon vos besoins de gestion, de suivi client et de croissance.',
+    excerpt:
+      "Les criteres essentiels pour choisir un logiciel de facturation au Maroc et structurer une gestion plus simple et plus solide.",
+    category: 'Logiciel',
+    publishedAt: '27 mars 2026',
+    readingTime: '8 min',
+    heroLabel: 'Choisir le bon outil',
+    image: '/blog-assets/logiciel-facturation-maroc.svg',
+    imageAlt: 'Illustration logiciel de facturation au Maroc',
+    keywords: ['logiciel de facturation maroc', 'logiciel facturation maroc', 'erp maroc', 'gestion commerciale maroc'],
+    intro:
+      "Choisir un logiciel de facturation ne se resume pas a comparer des prix. Il faut regarder la simplicite, la centralisation des donnees et la capacite de l outil a accompagner la croissance.",
+    summaryPoints: [
+      'La simplicite d usage est aussi importante que les fonctions.',
+      'Le suivi des paiements et des clients doit etre fluide.',
+      'Une solution centralisee devient vite plus rentable.',
+    ],
+    sections: [
+      {
+        heading: 'Pourquoi utiliser un logiciel de facturation au Maroc',
+        paragraphs: [
+          "Quand une entreprise grandit, les documents eparpilles deviennent une vraie charge. Un logiciel de facturation centralise devis, factures et paiements dans un seul espace.",
+          "Cela permet aussi d offrir une meilleure experience client avec des documents plus propres et un suivi plus rapide.",
+        ],
+      },
+      {
+        heading: 'Les criteres importants avant de choisir',
+        paragraphs: [
+          "Un bon outil doit etre facile a prendre en main, adapte a votre activite et utile au quotidien. Il doit surtout vous faire gagner du temps.",
+        ],
+        bullets: ['creation rapide de devis et factures', 'historique client centralise', 'suivi des echeances', 'vision claire sur les ventes'],
+      },
+      {
+        heading: 'Pourquoi Factourati repond bien a ce besoin',
+        paragraphs: [
+          "Factourati ne se limite pas a la facturation. Il relie aussi clients, produits, stock, fournisseurs et projets pour donner une vision globale de l activite.",
+          "Cette promesse plus large est precieuse a la fois pour les utilisateurs et pour votre positionnement SEO.",
+        ],
+      },
+    ],
+  },
+];
 
-function ArticleLoader() {
-  return (
-    <div className="flex min-h-[40vh] items-center justify-center bg-white">
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-600 shadow-sm">
-        Chargement de l'article...
-      </div>
-    </div>
-  );
-}
+export const featuredArticle = blogArticles[0];
 
-function splitReadableText(text: string) {
-  const blocks = text
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean);
-
-  return blocks.flatMap((block) => {
-    if (block.length <= 520) {
-      return [block];
-    }
-
-    const sentences = block.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((sentence) => sentence.trim()).filter(Boolean) || [block];
-    const paragraphs: string[] = [];
-    let currentParagraph = '';
-
-    sentences.forEach((sentence) => {
-      const nextParagraph = currentParagraph ? `${currentParagraph} ${sentence}` : sentence;
-      if (nextParagraph.length > 420 && currentParagraph) {
-        paragraphs.push(currentParagraph);
-        currentParagraph = sentence;
-        return;
-      }
-
-      currentParagraph = nextParagraph;
-    });
-
-    if (currentParagraph) {
-      paragraphs.push(currentParagraph);
-    }
-
-    return paragraphs;
-  });
-}
-
-export default function BlogArticlePage() {
-  const { slug } = useParams();
-  const { articles, isLoading } = useBlogArticles({ includeHiddenStatic: true });
-
-  if (slug === 'gestion-projet-meilleures-pratiques') {
-    return <Navigate to="/blog/gestion-de-projet-meilleures-pratiques" replace />;
-  }
-
-  if (slug === 'guide-complet-facturation-maroc') {
-    return (
-      <Suspense fallback={<ArticleLoader />}>
-        <GuideFacturationArticle />
-      </Suspense>
-    );
-  }
-
-  if (slug === 'comment-gerer-votre-stock-efficacement') {
-    return (
-      <Suspense fallback={<ArticleLoader />}>
-        <GuideStockArticle />
-      </Suspense>
-    );
-  }
-
-  if (slug === 'avantages-erp-pme-marocaines') {
-    return (
-      <Suspense fallback={<ArticleLoader />}>
-        <GuideErpArticle />
-      </Suspense>
-    );
-  }
-
-  if (slug === 'conformite-fiscale-maroc-factourati') {
-    return (
-      <Suspense fallback={<ArticleLoader />}>
-        <GuideFiscalArticle />
-      </Suspense>
-    );
-  }
-
-  if (slug === 'gestion-de-projet-meilleures-pratiques') {
-    return (
-      <Suspense fallback={<ArticleLoader />}>
-        <GuideProjectArticle />
-      </Suspense>
-    );
-  }
-
-  const article = articles.find((item) => item.slug === slug);
-
-  if (!article) {
-    if (isLoading) {
-      return <ArticleLoader />;
-    }
-
-    return <Navigate to="/blog" replace />;
-  }
-
-  const relatedArticles = articles.filter((item) => item.slug !== article.slug).slice(0, 3);
-  const articleCategory = getBlogArticleMeta(article);
-  const articleSeo = resolveArticleSeo(article);
-  const introBlocks = splitReadableText(article.intro);
-  const articleImage = articleSeo.ogImage || article.image;
-  const articleImageUrl = articleImage.startsWith('http') ? articleImage : `${SITE_URL}${articleImage}`;
-  const canonicalPath = articleSeo.canonicalUrl || `/blog/${article.slug}`;
-  const robots = `${articleSeo.robotsIndex}, ${articleSeo.robotsFollow}, max-snippet:-1, max-image-preview:large, max-video-preview:-1`;
-
-  const contentSchema =
-    articleSeo.schemaType === 'None'
-      ? null
-      : articleSeo.schemaType === 'FAQPage'
-        ? {
-            '@context': 'https://schema.org',
-            '@type': 'FAQPage',
-            mainEntity: article.sections.map((section) => ({
-              '@type': 'Question',
-              name: section.heading,
-              acceptedAnswer: {
-                '@type': 'Answer',
-                text: section.paragraphs.join(' '),
-              },
-            })),
-          }
-        : {
-            '@context': 'https://schema.org',
-            '@type': articleSeo.schemaType,
-            headline: article.title,
-            description: articleSeo.metaDescription,
-            image: [articleImageUrl],
-            keywords: article.keywords.join(', '),
-            author: {
-              '@type': 'Organization',
-              name: 'Factourati',
-            },
-            publisher: {
-              '@type': 'Organization',
-              name: 'Factourati',
-              logo: {
-                '@type': 'ImageObject',
-                url: `${SITE_URL}/files_3254075-1761082431431-image.png`,
-              },
-            },
-            mainEntityOfPage: articleSeo.canonicalUrl || `${SITE_URL}/blog/${article.slug}`,
-            datePublished: article.publishedAtISO,
-            dateModified: article.updatedAt || article.publishedAtISO,
-          };
-
-  const articleSchema = [
-    createBreadcrumbSchema([
-      { name: 'Accueil', url: SITE_URL },
-      { name: 'Blog', url: `${SITE_URL}/blog` },
-      ...(articleCategory
-        ? [{ name: articleCategory.category, url: `${SITE_URL}/blog/categorie/${articleCategory.categorySlug}` }]
-        : []),
-      { name: article.title, url: `${SITE_URL}/blog/${article.slug}` },
-    ]),
-    ...(contentSchema ? [contentSchema] : []),
-  ];
-
-  return (
-    <PublicSiteChrome>
-      <SeoHead
-        title={articleSeo.seoTitle}
-        description={articleSeo.metaDescription}
-        canonicalPath={canonicalPath}
-        keywords={article.keywords.join(', ')}
-        image={articleImage}
-        imageAlt={article.imageAlt}
-        ogTitle={articleSeo.ogTitle}
-        ogDescription={articleSeo.ogDescription}
-        ogImage={articleSeo.ogImage || article.image}
-        twitterTitle={articleSeo.twitterTitle}
-        twitterDescription={articleSeo.twitterDescription}
-        twitterImage={articleSeo.twitterImage || articleSeo.ogImage || article.image}
-        type="article"
-        robots={robots}
-        schema={articleSchema}
-      />
-
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-teal-900 text-white">
-        <div className="pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full bg-teal-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute right-0 top-12 h-80 w-80 rounded-full bg-blue-400/20 blur-3xl" />
-
-        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-          <Link to="/blog" className="inline-flex items-center gap-2 text-sm text-teal-200 hover:text-white">
-            <ArrowLeft className="h-4 w-4" />
-            Retour au blog
-          </Link>
-
-          <div className="mt-8 grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-            <div>
-              <div className="inline-flex rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-teal-100">
-                {article.heroLabel}
-              </div>
-              <div className="mt-6 flex flex-wrap gap-4 text-sm text-slate-300">
-                <span className="inline-flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4" />
-                  {article.publishedAt}
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <Clock3 className="h-4 w-4" />
-                  {article.readingTime} de lecture
-                </span>
-              </div>
-              <h1 className="mt-4 max-w-3xl text-4xl font-extrabold leading-tight sm:text-5xl">{article.title}</h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">{article.description}</p>
-            </div>
-
-            <div className="rounded-[2rem] border border-white/10 bg-white/10 p-4 shadow-2xl backdrop-blur">
-              <img
-                src={article.image}
-                alt={article.imageAlt}
-                loading="eager"
-                fetchPriority="high"
-                decoding="async"
-                className="h-full w-full rounded-[1.5rem] object-cover"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-white py-16">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
-          <article className="max-w-4xl">
-            <div className="rounded-[1.75rem] border border-teal-100 bg-gradient-to-br from-teal-50 to-blue-50 p-7 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-900">En resume</h2>
-              <div className="mt-4 space-y-4 break-words text-base leading-8 text-gray-700">
-                {introBlocks.map((introBlock) => (
-                  <p key={introBlock}>
-                    <LinkedBlogText text={introBlock} />
-                  </p>
-                ))}
-              </div>
-              <ul className="mt-5 space-y-3">
-                {article.summaryPoints.map((point) => (
-                  <li key={point} className="flex gap-3 text-sm leading-7 text-gray-700">
-                    <CheckCircle2 className="mt-1 h-5 w-5 flex-shrink-0 text-teal-600" />
-                    <span>
-                      <LinkedBlogText text={point} />
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mt-10 space-y-10">
-              {article.sections.map((section) => (
-                <section key={section.heading} className="rounded-[1.75rem] border border-gray-200 bg-white p-8 shadow-sm">
-                  <h2 className="text-2xl font-bold text-gray-900">{section.heading}</h2>
-                  <div className="mt-5 space-y-4 break-words text-base leading-8 text-gray-700">
-                    {section.paragraphs.map((paragraph) => (
-                      <p key={paragraph}>
-                        <LinkedBlogText text={paragraph} />
-                      </p>
-                    ))}
-                  </div>
-                  {section.image && (
-                    <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-gray-200 bg-gray-50 shadow-sm">
-                      <img
-                        src={section.image}
-                        alt={section.imageAlt || section.heading}
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  )}
-                  {section.bullets && (
-                    <ul className="mt-6 grid gap-3 md:grid-cols-2">
-                      {section.bullets.map((bullet) => (
-                        <li key={bullet} className="rounded-2xl bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700">
-                          <LinkedBlogText text={bullet} />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              ))}
-            </div>
-
-            <div className="mt-12 rounded-[1.75rem] bg-gray-900 p-8 text-white shadow-xl">
-              <h2 className="text-2xl font-semibold">Transformer ces bonnes pratiques en resultat concret</h2>
-              <p className="mt-3 max-w-2xl text-slate-300">
-                Factourati vous aide a relier la facturation, les clients, le stock, les fournisseurs et les projets
-                dans une seule interface claire.
-              </p>
-              <Link
-                to="/login?mode=register"
-                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-gray-900 transition hover:bg-gray-100"
-              >
-                Demarrer l'essai gratuit
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </article>
-
-          <aside className="space-y-6 lg:sticky lg:top-24 lg:h-fit">
-            <div className="rounded-[1.75rem] border border-gray-200 bg-gray-50 p-6">
-              <h2 className="text-lg font-semibold text-gray-900">Mots-cles travailles</h2>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {article.keywords.map((keyword) => (
-                  <span key={keyword} className="rounded-full bg-white px-3 py-2 text-sm text-gray-700 shadow-sm">
-                    {keyword}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-[1.75rem] border border-gray-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-900">A lire ensuite</h2>
-              <div className="mt-5 space-y-5">
-                {relatedArticles.map((related) => (
-                  <Link key={related.slug} to={`/blog/${related.slug}`} className="block rounded-2xl border border-gray-100 p-4 transition hover:border-teal-200 hover:bg-teal-50">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">{getBlogArticleMeta(related).category}</p>
-                    <p className="mt-2 text-base font-semibold leading-7 text-gray-900">{related.title}</p>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </aside>
-        </div>
-      </section>
-    </PublicSiteChrome>
-  );
+export function getBlogArticleBySlug(slug?: string) {
+  return blogArticles.find((article) => article.slug === slug);
 }
