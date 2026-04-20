@@ -4,8 +4,10 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { getBlogArticleMeta } from '../../data/blogTaxonomy';
 import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
 import { useBlogArticles } from '../../hooks/useBlogArticles';
+import { resolveArticleSeo } from '../../utils/blogSeo';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
+import LinkedBlogText from './LinkedBlogText';
 
 const GuideErpArticle = lazy(() => import('./GuideErpArticle'));
 const GuideFacturationArticle = lazy(() => import('./GuideFacturationArticle'));
@@ -21,6 +23,43 @@ function ArticleLoader() {
       </div>
     </div>
   );
+}
+
+function splitReadableText(text: string) {
+  const withLinkBreaks = text
+    .replace(/\s+(Lien\s+interne\s*:)/gi, '\n\n$1')
+    .replace(/\s+(Lien\s+externe\s*:)/gi, '\n\n$1');
+  const blocks = withLinkBreaks
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  return blocks.flatMap((block) => {
+    if (block.length <= 520) {
+      return [block];
+    }
+
+    const sentences = block.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((sentence) => sentence.trim()).filter(Boolean) || [block];
+    const paragraphs: string[] = [];
+    let currentParagraph = '';
+
+    sentences.forEach((sentence) => {
+      const nextParagraph = currentParagraph ? `${currentParagraph} ${sentence}` : sentence;
+      if (nextParagraph.length > 420 && currentParagraph) {
+        paragraphs.push(currentParagraph);
+        currentParagraph = sentence;
+        return;
+      }
+
+      currentParagraph = nextParagraph;
+    });
+
+    if (currentParagraph) {
+      paragraphs.push(currentParagraph);
+    }
+
+    return paragraphs;
+  });
 }
 
 export default function BlogArticlePage() {
@@ -83,7 +122,52 @@ export default function BlogArticlePage() {
 
   const relatedArticles = articles.filter((item) => item.slug !== article.slug).slice(0, 3);
   const articleCategory = getBlogArticleMeta(article);
-  const articleImageUrl = article.image.startsWith('http') ? article.image : `${SITE_URL}${article.image}`;
+  const articleSeo = resolveArticleSeo(article);
+  const introBlocks = splitReadableText(article.intro);
+  const articleImage = articleSeo.ogImage || article.image;
+  const articleImageUrl = articleImage.startsWith('http') ? articleImage : `${SITE_URL}${articleImage}`;
+  const canonicalPath = articleSeo.canonicalUrl || `/blog/${article.slug}`;
+  const robots = `${articleSeo.robotsIndex}, ${articleSeo.robotsFollow}, max-snippet:-1, max-image-preview:large, max-video-preview:-1`;
+
+  const contentSchema =
+    articleSeo.schemaType === 'None'
+      ? null
+      : articleSeo.schemaType === 'FAQPage'
+        ? {
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: article.sections.map((section) => ({
+              '@type': 'Question',
+              name: section.heading,
+              acceptedAnswer: {
+                '@type': 'Answer',
+                text: section.paragraphs.join(' '),
+              },
+            })),
+          }
+        : {
+            '@context': 'https://schema.org',
+            '@type': articleSeo.schemaType,
+            headline: article.title,
+            description: articleSeo.metaDescription,
+            image: [articleImageUrl],
+            keywords: article.keywords.join(', '),
+            author: {
+              '@type': 'Organization',
+              name: 'Factourati',
+            },
+            publisher: {
+              '@type': 'Organization',
+              name: 'Factourati',
+              logo: {
+                '@type': 'ImageObject',
+                url: `${SITE_URL}/files_3254075-1761082431431-image.png`,
+              },
+            },
+            mainEntityOfPage: articleSeo.canonicalUrl || `${SITE_URL}/blog/${article.slug}`,
+            datePublished: article.publishedAtISO,
+            dateModified: article.updatedAt || article.publishedAtISO,
+          };
 
   const articleSchema = [
     createBreadcrumbSchema([
@@ -94,41 +178,26 @@ export default function BlogArticlePage() {
         : []),
       { name: article.title, url: `${SITE_URL}/blog/${article.slug}` },
     ]),
-    {
-      '@context': 'https://schema.org',
-      '@type': 'BlogPosting',
-      headline: article.title,
-      description: article.description,
-      image: [articleImageUrl],
-      keywords: article.keywords.join(', '),
-      author: {
-        '@type': 'Organization',
-        name: 'Factourati',
-      },
-      publisher: {
-        '@type': 'Organization',
-        name: 'Factourati',
-        logo: {
-          '@type': 'ImageObject',
-          url: `${SITE_URL}/files_3254075-1761082431431-image.png`,
-        },
-      },
-      mainEntityOfPage: `${SITE_URL}/blog/${article.slug}`,
-      datePublished: article.publishedAtISO,
-      dateModified: article.updatedAt || article.publishedAtISO,
-    },
+    ...(contentSchema ? [contentSchema] : []),
   ];
 
   return (
     <PublicSiteChrome>
       <SeoHead
-        title={article.seoTitle}
-        description={article.description}
-        canonicalPath={`/blog/${article.slug}`}
+        title={articleSeo.seoTitle}
+        description={articleSeo.metaDescription}
+        canonicalPath={canonicalPath}
         keywords={article.keywords.join(', ')}
-        image={article.image}
+        image={articleImage}
         imageAlt={article.imageAlt}
+        ogTitle={articleSeo.ogTitle}
+        ogDescription={articleSeo.ogDescription}
+        ogImage={articleSeo.ogImage || article.image}
+        twitterTitle={articleSeo.twitterTitle}
+        twitterDescription={articleSeo.twitterDescription}
+        twitterImage={articleSeo.twitterImage || articleSeo.ogImage || article.image}
         type="article"
+        robots={robots}
         schema={articleSchema}
       />
 
@@ -180,12 +249,20 @@ export default function BlogArticlePage() {
           <article className="max-w-4xl">
             <div className="rounded-[1.75rem] border border-teal-100 bg-gradient-to-br from-teal-50 to-blue-50 p-7 shadow-sm">
               <h2 className="text-lg font-semibold text-gray-900">En resume</h2>
-              <p className="mt-4 text-base leading-8 text-gray-700">{article.intro}</p>
+              <div className="mt-4 space-y-4 break-words text-base leading-8 text-gray-700">
+                {introBlocks.map((introBlock) => (
+                  <p key={introBlock}>
+                    <LinkedBlogText text={introBlock} />
+                  </p>
+                ))}
+              </div>
               <ul className="mt-5 space-y-3">
                 {article.summaryPoints.map((point) => (
                   <li key={point} className="flex gap-3 text-sm leading-7 text-gray-700">
                     <CheckCircle2 className="mt-1 h-5 w-5 flex-shrink-0 text-teal-600" />
-                    {point}
+                    <span>
+                      <LinkedBlogText text={point} />
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -195,9 +272,11 @@ export default function BlogArticlePage() {
               {article.sections.map((section) => (
                 <section key={section.heading} className="rounded-[1.75rem] border border-gray-200 bg-white p-8 shadow-sm">
                   <h2 className="text-2xl font-bold text-gray-900">{section.heading}</h2>
-                  <div className="mt-5 space-y-4 text-base leading-8 text-gray-700">
+                  <div className="mt-5 space-y-4 break-words text-base leading-8 text-gray-700">
                     {section.paragraphs.map((paragraph) => (
-                      <p key={paragraph}>{paragraph}</p>
+                      <p key={paragraph}>
+                        <LinkedBlogText text={paragraph} />
+                      </p>
                     ))}
                   </div>
                   {section.image && (
@@ -215,7 +294,7 @@ export default function BlogArticlePage() {
                     <ul className="mt-6 grid gap-3 md:grid-cols-2">
                       {section.bullets.map((bullet) => (
                         <li key={bullet} className="rounded-2xl bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700">
-                          {bullet}
+                          <LinkedBlogText text={bullet} />
                         </li>
                       ))}
                     </ul>
