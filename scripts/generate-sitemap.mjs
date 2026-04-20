@@ -6,43 +6,15 @@ const BUILD_DATE = new Date().toISOString().slice(0, 10);
 
 const staticRoutes = [
   { path: '/', changefreq: 'weekly', priority: '1.0', lastmod: BUILD_DATE },
-  { path: '/secteurs', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
-  { path: '/modules', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
+  { path: '/blog', changefreq: 'weekly', priority: '0.9', lastmod: BUILD_DATE },
+  { path: '/tarifs', changefreq: 'weekly', priority: '0.9', lastmod: BUILD_DATE },
+  { path: '/faq', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
   { path: '/generateur-facture', changefreq: 'weekly', priority: '0.9', lastmod: BUILD_DATE },
-  { path: '/tarifs', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
-  { path: '/faq', changefreq: 'weekly', priority: '0.7', lastmod: BUILD_DATE },
-  { path: '/blog', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
-  { path: '/login', changefreq: 'monthly', priority: '0.6', lastmod: BUILD_DATE },
+  { path: '/modules', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
+  { path: '/secteurs', changefreq: 'weekly', priority: '0.8', lastmod: BUILD_DATE },
 ];
 
-const categoryRoutes = [
-  'facturation',
-  'stock',
-  'erp',
-  'fiscalite',
-  'gestion',
-].map((slug) => ({
-  path: `/blog/categorie/${slug}`,
-  changefreq: 'weekly',
-  priority: '0.6',
-  lastmod: BUILD_DATE,
-}));
-
-const articleRoutes = [
-  'guide-complet-facturation-maroc',
-  'comment-gerer-votre-stock-efficacement',
-  'avantages-erp-pme-marocaines',
-  'conformite-fiscale-maroc-factourati',
-  'gestion-de-projet-meilleures-pratiques',
-  'logiciel-facturation-maroc',
-].map((slug) => ({
-  path: `/blog/${slug}`,
-  changefreq: 'monthly',
-  priority: '0.7',
-  lastmod: '2026-03-27',
-}));
-
-const urls = [...staticRoutes, ...categoryRoutes, ...articleRoutes];
+const urls = [...staticRoutes];
 
 const xml = [
   '<?xml version="1.0" encoding="UTF-8"?>',
