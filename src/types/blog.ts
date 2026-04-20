@@ -4,6 +4,40 @@ export type BlogSection = {
   bullets?: string[];
   image?: string;
   imageAlt?: string;
+  imagePrompt?: string;
+};
+
+export type BlogRobotsIndex = 'index' | 'noindex';
+export type BlogRobotsFollow = 'follow' | 'nofollow';
+export type BlogSchemaType = 'Article' | 'BlogPosting' | 'FAQPage' | 'None';
+export type BlogSeoCheckStatus = 'passed' | 'warning' | 'failed';
+
+export type BlogSeoCheck = {
+  id: string;
+  label: string;
+  status: BlogSeoCheckStatus;
+  points: number;
+  recommendation: string;
+  targetId?: string;
+};
+
+export type BlogSeoMetadata = {
+  focusKeyword: string;
+  seoTitle: string;
+  metaDescription: string;
+  slug: string;
+  canonicalUrl: string;
+  robotsIndex: BlogRobotsIndex;
+  robotsFollow: BlogRobotsFollow;
+  ogTitle: string;
+  ogDescription: string;
+  ogImage: string;
+  twitterTitle: string;
+  twitterDescription: string;
+  twitterImage: string;
+  schemaType: BlogSchemaType;
+  seoScore: number;
+  seoChecks: BlogSeoCheck[];
 };
 
 export type BlogArticle = {
@@ -22,6 +56,7 @@ export type BlogArticle = {
   intro: string;
   summaryPoints: string[];
   sections: BlogSection[];
+  seo?: BlogSeoMetadata;
 };
 
 export type BlogResolvedArticle = BlogArticle & {
@@ -33,7 +68,6 @@ export type BlogResolvedArticle = BlogArticle & {
   publishedAtISO: string;
   createdAt?: string;
   updatedAt?: string;
-  
   imageStoragePath?: string;
 };
 
@@ -53,4 +87,5 @@ export type FirestoreBlogPostInput = {
   summaryPoints: string[];
   sections: BlogSection[];
   isPublished: boolean;
+  seo?: BlogSeoMetadata;
 };
