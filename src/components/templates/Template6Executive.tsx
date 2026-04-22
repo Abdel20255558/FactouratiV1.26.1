@@ -18,10 +18,12 @@ import {
   INVOICE_TOTALS_SECTION_CLASS,
   getInvoiceFooterTextStyle,
   getInvoiceContentStyle,
+  getInvoiceLogoBoxStyle,
   getInvoiceSignatureBoxStyle,
   getInvoiceSignatureFrameStyle,
   getInvoiceSignatureImageStyle,
   getInvoiceSignatureSectionStyle,
+  getInvoiceTableSectionStyle,
   resolveInvoiceTemplateCustomization,
   templateFontSizeStyle,
 } from './invoiceTemplateLayout';
@@ -49,10 +51,12 @@ export default function Template6Executive({ data, type, includeSignature = fals
     clientNameFontSize: 18,
     clientInfoFontSize: 14,
     footerTextFontSize: 10,
+    logoSize: 64,
     signatureSpacing: 12,
     signatureBoxWidth: 192,
     signatureBoxHeight: 64,
     signatureAlign: 'right',
+    showSignatureBlock: true,
     tableColor: ACCENT,
     textColor: PRIMARY,
     headerHeight: DEFAULT_HEADER_H,
@@ -99,7 +103,7 @@ export default function Template6Executive({ data, type, includeSignature = fals
           <div className="flex h-full items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               {company?.logo ? (
-                <div className="h-16 w-16 rounded-2xl bg-white/10 p-2">
+                <div className="h-16 w-16 rounded-2xl bg-white/10 p-2" style={getInvoiceLogoBoxStyle(customization)}>
                   <img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="h-full w-full object-contain" />
                 </div>
               ) : null}
@@ -141,7 +145,7 @@ export default function Template6Executive({ data, type, includeSignature = fals
           </div>
         </div>
 
-        <div className="invoice-table-section px-5 pb-4">
+        <div className="invoice-table-section px-5 pb-4" style={getInvoiceTableSectionStyle(customization)}>
           <div className="overflow-hidden rounded-2xl border" style={{ borderColor: customization.tableColor }}>
             <table className="w-full" style={INVOICE_TABLE_STYLE}>
               <colgroup>
@@ -204,7 +208,7 @@ export default function Template6Executive({ data, type, includeSignature = fals
           </div>
         </section>
 
-        <section className={INVOICE_SIGNATURE_SECTION_CLASS} style={getInvoiceSignatureSectionStyle(customization)}>
+        <section className={INVOICE_SIGNATURE_SECTION_CLASS} style={{ ...getInvoiceSignatureSectionStyle(customization), display: customization.showSignatureBlock ? undefined : 'none' }}>
           <div className={`${INVOICE_SIGNATURE_BOX_CLASS} rounded-2xl border`} style={{ borderColor: customization.tableColor, background: SURFACE, ...getInvoiceSignatureBoxStyle(customization) }}>
             <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: customization.tableColor }}>
               Signature
