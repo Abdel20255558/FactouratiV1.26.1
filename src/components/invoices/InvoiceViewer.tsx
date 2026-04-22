@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLicense } from '../../contexts/LicenseContext';
 import { Invoice } from '../../contexts/DataContext';
@@ -9,7 +9,7 @@ import TemplateCustomizationPanel, {
 } from '../templates/TemplateCustomizationPanel';
 import ProTemplateModal from '../license/ProTemplateModal';
 import { useNavigate } from 'react-router-dom';
-import { X, Download, Edit, Palette, Printer } from 'lucide-react';
+import { X, Crown, Download, Edit, Palette, Printer, Sparkles } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import html2canvas from 'html2canvas';
 import { prepareImagesForPdf } from '../../utils/pdfImageUtils';
@@ -23,7 +23,7 @@ interface InvoiceViewerProps {
   onUpgrade?: () => void;
 }
 
-export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewerProps) {
+export default function InvoiceViewer({ invoice, onClose, onEdit, onUpgrade }: InvoiceViewerProps) {
   const { user, updateCompanySettings } = useAuth();
   const { licenseType } = useLicense();
   const navigate = useNavigate();
@@ -34,7 +34,10 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [showProSignatureModal, setShowProSignatureModal] = useState(false);
   const [showStylePanel, setShowStylePanel] = useState(false);
+  const [showStyleUpgradeNotice, setShowStyleUpgradeNotice] = useState(false);
   const [isSavingStyle, setIsSavingStyle] = useState(false);
+  const [styleSaveSuccess, setStyleSaveSuccess] = useState(false);
+  const styleUpgradeTimer = useRef<number | null>(null);
   const [templateCustomization, setTemplateCustomization] = useState<TemplateCustomizationState>(
     createTemplateCustomizationState(user?.company?.templateCustomization),
   );
@@ -56,6 +59,12 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
 
   const getTemplateName = (templateId: string) => templates.find(t => t.id === templateId)?.name || 'Template';
   const isTemplateProOnly = (templateId: string) => templates.find(t => t.id === templateId)?.isPro || false;
+
+  useEffect(() => () => {
+    if (styleUpgradeTimer.current) {
+      window.clearTimeout(styleUpgradeTimer.current);
+    }
+  }, []);
 
   // ---------- PDF helpers ----------
   const findHeaderFooter = () => {
@@ -173,9 +182,11 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
     }
 
     setIsSavingStyle(true);
+    setStyleSaveSuccess(false);
     try {
       await updateCompanySettings({ templateCustomization });
-      alert('Style du document sauvegarde avec succes.');
+      setStyleSaveSuccess(true);
+      window.setTimeout(() => setStyleSaveSuccess(false), 3500);
     } catch (error) {
       console.error('Erreur sauvegarde style document:', error);
       alert('Erreur lors de la sauvegarde du style.');
@@ -184,8 +195,37 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
     }
   };
 
+  const handleTemplateCustomizationChange = (nextValue: TemplateCustomizationState) => {
+    setStyleSaveSuccess(false);
+    setTemplateCustomization(nextValue);
+  };
+
   const handleResetTemplateStyle = () => {
+    setStyleSaveSuccess(false);
     setTemplateCustomization(createTemplateCustomizationState());
+  };
+
+  const handleStyleButtonClick = () => {
+    if (licenseType !== 'pro') {
+      setShowStylePanel(false);
+      setShowStyleUpgradeNotice(true);
+
+      if (styleUpgradeTimer.current) {
+        window.clearTimeout(styleUpgradeTimer.current);
+      }
+
+      styleUpgradeTimer.current = window.setTimeout(() => {
+        setShowStyleUpgradeNotice(false);
+        if (onUpgrade) {
+          onUpgrade();
+        } else {
+          setShowProModal(true);
+        }
+      }, 1200);
+      return;
+    }
+
+    setShowStylePanel((prev) => !prev);
   };
 
   return (
@@ -207,9 +247,15 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
           padding-top:0 !important;
           padding-bottom:10px !important;
         }
+        @keyframes style-upgrade-pop {
+          0% { opacity: 0; transform: translateY(-10px) scale(0.96); }
+          55% { opacity: 1; transform: translateY(0) scale(1.02); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .style-upgrade-pop { animation: style-upgrade-pop 420ms ease-out both; }
       `}</style>
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div className="inline-block w-full max-w-4xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
+        <div className={`inline-block w-full ${showStylePanel ? 'max-w-7xl' : 'max-w-4xl'} my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl`}>
           {/* Header */}
           <div className="flex flex-col gap-4 p-6 border-b border-gray-200 lg:flex-row lg:items-center lg:justify-between">
             <h3 className="text-lg font-semibold text-gray-900">Facture {invoice.number}</h3>
@@ -230,8 +276,12 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
               </select>
 
               <button
-                onClick={() => setShowStylePanel((prev) => !prev)}
-                className="inline-flex items-center space-x-2 px-3 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-sm"
+                onClick={handleStyleButtonClick}
+                className={`inline-flex items-center space-x-2 px-3 py-2 text-white rounded-lg text-sm transition ${
+                  licenseType === 'pro'
+                    ? 'bg-slate-700 hover:bg-slate-800'
+                    : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
+                }`}
               >
                 <Palette className="w-4 h-4" /><span>Style</span>
               </button>
@@ -268,29 +318,65 @@ export default function InvoiceViewer({ invoice, onClose, onEdit }: InvoiceViewe
             </div>
           </div>
 
-          {showStylePanel && (
-            <div className="border-b border-gray-200 bg-slate-100 p-4">
-              <TemplateCustomizationPanel
-                value={templateCustomization}
-                onChange={setTemplateCustomization}
-                onSave={handleSaveTemplateStyle}
-                onReset={handleResetTemplateStyle}
-                isSaving={isSavingStyle}
-                disabled={!user?.isAdmin}
-              />
+          {showStyleUpgradeNotice && (
+            <div className="mx-6 mt-4 style-upgrade-pop overflow-hidden rounded-2xl border border-purple-200 bg-gradient-to-r from-purple-50 via-pink-50 to-amber-50 shadow-lg">
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 text-white shadow-md">
+                    <Crown className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-[0.16em] text-purple-700">Option Pro</p>
+                    <p className="text-sm font-semibold text-slate-800">
+                      La personnalisation du style est reservee aux abonnes Pro.
+                    </p>
+                  </div>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-purple-700 shadow-sm">
+                  <Sparkles className="h-4 w-4 animate-pulse" />
+                  Ouverture de l'abonnement...
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Contenu facture */}
-          <div id="invoice-content" style={{ backgroundColor: 'white', padding: '20px' }}>
-            <TemplateRenderer
-              templateId={selectedTemplate}
-              data={invoice}
-              type="invoice"
-              includeSignature={includeSignature}
-              companyOverride={previewCompany}
-            />
-          </div>
+          {showStylePanel ? (
+            <div className="grid grid-cols-1 gap-4 bg-slate-100 p-4 xl:grid-cols-[410px_minmax(0,1fr)]">
+              <aside className="max-h-[78vh] overflow-y-auto rounded-3xl xl:sticky xl:top-4 xl:self-start">
+                <TemplateCustomizationPanel
+                  value={templateCustomization}
+                  onChange={handleTemplateCustomizationChange}
+                  onSave={handleSaveTemplateStyle}
+                  onReset={handleResetTemplateStyle}
+                  isSaving={isSavingStyle}
+                  saveSuccess={styleSaveSuccess}
+                  disabled={!user?.isAdmin}
+                />
+              </aside>
+
+              <div className="min-w-0 overflow-auto rounded-3xl bg-white p-4 shadow-inner">
+                <div id="invoice-content" style={{ backgroundColor: 'white', padding: '20px' }}>
+                  <TemplateRenderer
+                    templateId={selectedTemplate}
+                    data={invoice}
+                    type="invoice"
+                    includeSignature={includeSignature}
+                    companyOverride={previewCompany}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div id="invoice-content" style={{ backgroundColor: 'white', padding: '20px' }}>
+              <TemplateRenderer
+                templateId={selectedTemplate}
+                data={invoice}
+                type="invoice"
+                includeSignature={includeSignature}
+                companyOverride={previewCompany}
+              />
+            </div>
+          )}
 
           {/* Modals Signature */}
           {showSignatureModal && (
