@@ -24,10 +24,12 @@ import {
   INVOICE_TOTALS_SECTION_CLASS,
   getInvoiceFooterTextStyle,
   getInvoiceContentStyle,
+  getInvoiceLogoBoxStyle,
   getInvoiceSignatureBoxStyle,
   getInvoiceSignatureFrameStyle,
   getInvoiceSignatureImageStyle,
   getInvoiceSignatureSectionStyle,
+  getInvoiceTableSectionStyle,
   resolveInvoiceTemplateCustomization,
   templateFontSizeStyle,
 } from './invoiceTemplateLayout';
@@ -54,10 +56,12 @@ export default function Template4Corporate({ data, type, includeSignature = fals
     clientNameFontSize: 14,
     clientInfoFontSize: 14,
     footerTextFontSize: 14,
+    logoSize: 120,
     signatureSpacing: 12,
     signatureBoxWidth: 192,
     signatureBoxHeight: 64,
     signatureAlign: 'right',
+    showSignatureBlock: true,
     tableColor: THEME,
     textColor: '#111827',
     headerHeight: DEFAULT_HEADER_H,
@@ -98,9 +102,9 @@ export default function Template4Corporate({ data, type, includeSignature = fals
         <div className="relative" style={{ background: customization.tableColor, color: '#fff' }}>
           <div className="px-8 py-6 flex items-center justify-between">
             {company?.logo ? (
-              <img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="mx-auto" style={{ height: 120, width: 120, objectFit: 'contain' }} />
+              <img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="mx-auto" style={{ ...getInvoiceLogoBoxStyle(customization), objectFit: 'contain' }} />
             ) : (
-              <div style={{ width: 120, height: 120 }} />
+              <div style={getInvoiceLogoBoxStyle(customization)} />
             )}
 
             <div className="flex-1 text-center">
@@ -144,7 +148,7 @@ export default function Template4Corporate({ data, type, includeSignature = fals
         </div>
 
         {/* TABLE PRODUITS */}
-        <div className={INVOICE_TABLE_SECTION_CLASS} style={{ borderBottom: `1px solid ${customization.tableColor}` }}>
+        <div className={INVOICE_TABLE_SECTION_CLASS} style={{ borderBottom: `1px solid ${customization.tableColor}`, ...getInvoiceTableSectionStyle(customization) }}>
           <table className="w-full rounded" style={{ ...INVOICE_TABLE_STYLE, border: `1px solid ${customization.tableColor}` }}>
             <colgroup>
               <col style={{ width: INVOICE_TABLE_COLUMN_WIDTHS.designation }} />
@@ -224,7 +228,7 @@ export default function Template4Corporate({ data, type, includeSignature = fals
         </section>
 
         {/* ===== BLOC SIGNATURE (séparé) ===== */}
-        <section className={INVOICE_SIGNATURE_SECTION_CLASS} style={getInvoiceSignatureSectionStyle(customization)}>
+        <section className={INVOICE_SIGNATURE_SECTION_CLASS} style={{ ...getInvoiceSignatureSectionStyle(customization), display: customization.showSignatureBlock ? undefined : 'none' }}>
           <div className={`bg-gray-50 border ${INVOICE_SIGNATURE_BOX_CLASS}`} style={{ borderColor: customization.tableColor, ...getInvoiceSignatureBoxStyle(customization) }}>
             <div className="text-sm font-bold" style={{ color: customization.hasCustomTextColor ? customization.textColor : THEME }}>Signature</div>
             <div className={`border-2 relative ${INVOICE_SIGNATURE_FRAME_CLASS}`} style={{ borderColor: customization.tableColor, ...getInvoiceSignatureFrameStyle(customization) }}>
