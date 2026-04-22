@@ -3,6 +3,34 @@ import React from 'react';
 import { Invoice, Quote } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import type { TemplateCompany } from './Template1Classic';
+import {
+  INVOICE_INFO_CARD_CLASS,
+  INVOICE_PAGE_STYLE,
+  INVOICE_SIGNATURE_BOX_CLASS,
+  INVOICE_SIGNATURE_FRAME_CLASS,
+  INVOICE_SIGNATURE_IMAGE_CLASS,
+  INVOICE_SIGNATURE_SECTION_CLASS,
+  INVOICE_TABLE_COLUMN_WIDTHS,
+  INVOICE_TABLE_DESCRIPTION_CELL_CLASS,
+  INVOICE_TABLE_HEAD_CELL_CLASS,
+  INVOICE_TABLE_HEAD_CELL_LEFT_CLASS,
+  INVOICE_TABLE_NUMERIC_CELL_CLASS,
+  INVOICE_TABLE_SECTION_CLASS,
+  INVOICE_TABLE_STYLE,
+  INVOICE_TABLE_TOTAL_CELL_CLASS,
+  INVOICE_TOP_GRID_CLASS,
+  INVOICE_TOP_SECTION_CLASS,
+  INVOICE_TOTALS_GRID_CLASS,
+  INVOICE_TOTALS_SECTION_CLASS,
+  getInvoiceFooterTextStyle,
+  getInvoiceContentStyle,
+  getInvoiceSignatureBoxStyle,
+  getInvoiceSignatureFrameStyle,
+  getInvoiceSignatureImageStyle,
+  getInvoiceSignatureSectionStyle,
+  resolveInvoiceTemplateCustomization,
+  templateFontSizeStyle,
+} from './invoiceTemplateLayout';
 
 interface TemplateProps {
   data: Invoice | Quote;
@@ -18,8 +46,25 @@ export default function Template5Premium({ data, type, includeSignature = false,
   const THEME = '#0a1f44';
   const ACCENT = '#c1121f';
 
-  const HEADER_H = 170;
-  const FOOTER_H = 120;
+  const DEFAULT_HEADER_H = 170;
+  const DEFAULT_FOOTER_H = 120;
+  const customization = resolveInvoiceTemplateCustomization(company, {
+    companyNameFontSize: 30,
+    documentTitleFontSize: 30,
+    clientNameFontSize: 14,
+    clientInfoFontSize: 14,
+    footerTextFontSize: 14,
+    signatureSpacing: 12,
+    signatureBoxWidth: 192,
+    signatureBoxHeight: 64,
+    signatureAlign: 'right',
+    tableColor: THEME,
+    textColor: '#111827',
+    headerHeight: DEFAULT_HEADER_H,
+    footerHeight: DEFAULT_FOOTER_H,
+  });
+  const HEADER_H = customization.headerHeight;
+  const FOOTER_H = customization.footerHeight;
 
   // ----- format helpers -----
   const normUnit = (u?: string) => (u || 'unité').toLowerCase().trim();
@@ -46,10 +91,10 @@ export default function Template5Premium({ data, type, includeSignature = false,
   const vatRates = Object.keys(vatGroups).map(Number).sort((a, b) => a - b);
 
   return (
-    <div className="bg-white mx-auto relative" style={{ fontFamily: 'Arial, sans-serif', width: '100%', maxWidth: 750 }}>
+    <div className="bg-white mx-auto relative" style={{ ...INVOICE_PAGE_STYLE, color: customization.textColor }}>
       {/* ===== HEADER (exclu, repeint par page) ===== */}
       <div className="pdf-header pdf-exclude" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_H }}>
-        <div className="relative" style={{ background: THEME, color: '#fff', height: '100%' }}>
+        <div className="relative" style={{ background: customization.tableColor, color: '#fff', height: '100%' }}>
           <div className="h-full flex items-center justify-between px-8">
             {company?.logo ? (
               <img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="mx-auto" style={{ height: 120, width: 120, objectFit: 'contain' }} />
@@ -57,8 +102,8 @@ export default function Template5Premium({ data, type, includeSignature = false,
               <div style={{ width: 160 }} />
             )}
             <div className="flex-1 text-center">
-              <h1 className="text-4xl font-extrabold">{company?.name || '-'}</h1>
-              <h2 className="text-3xl font-bold mt-6 uppercase tracking-wide">{title}</h2>
+              <h1 className="font-extrabold" style={templateFontSizeStyle(customization.companyNameFontSize)}>{company?.name || '-'}</h1>
+              <h2 className="font-bold mt-6 uppercase tracking-wide" style={templateFontSizeStyle(customization.documentTitleFontSize)}>{title}</h2>
             </div>
             <div className="w-5" />
           </div>
@@ -67,45 +112,51 @@ export default function Template5Premium({ data, type, includeSignature = false,
       </div>
 
       {/* ===== CONTENU ===== */}
-      <div className="pdf-content" style={{ paddingTop: HEADER_H + 16, paddingBottom: FOOTER_H + 16 }}>
+      <div className="pdf-content" style={getInvoiceContentStyle(HEADER_H, FOOTER_H)}>
         {/* CLIENT + DATES */}
-        <div className="p-8 border-b border-black">
-          <div className="grid grid-cols-2 gap-8">
-            <div className="bg-gray-50 p-6 rounded border border-black text-center">
-              <h3 className="font-bold text-sm text-black mb-3 border-b border-black pb-2">
+        <div className={`${INVOICE_TOP_SECTION_CLASS} border-b border-black`} style={{ borderColor: customization.tableColor }}>
+          <div className={INVOICE_TOP_GRID_CLASS}>
+            <div className={`bg-gray-50 ${INVOICE_INFO_CARD_CLASS} rounded border border-black text-center`} style={{ borderColor: customization.tableColor }}>
+              <h3 className="font-bold text-black mb-3 border-b border-black pb-2" style={{ color: customization.textColor, borderColor: customization.tableColor, ...templateFontSizeStyle(customization.clientNameFontSize) }}>
                 CLIENT : {data.client.name} {data.client.address}
               </h3>
-              <p className="text-sm text-black"><strong>ICE:</strong> {data.client.ice}</p>
+              <p className="text-black" style={{ color: customization.textColor, ...templateFontSizeStyle(customization.clientInfoFontSize) }}><strong>ICE:</strong> {data.client.ice}</p>
             </div>
-            <div className="bg-gray-50 p-6 rounded border border-black text-center">
-              <h3 className="font-bold text-sm text-black mb-3 border-b border-black pb-2">
+            <div className={`bg-gray-50 ${INVOICE_INFO_CARD_CLASS} rounded border border-black text-center`} style={{ borderColor: customization.tableColor }}>
+              <h3 className="font-bold text-black mb-3 border-b border-black pb-2" style={{ color: customization.textColor, borderColor: customization.tableColor, ...templateFontSizeStyle(customization.clientNameFontSize) }}>
                 DATE : {new Date(data.date).toLocaleDateString('fr-FR')}
               </h3>
-              <p className="text-sm text-black"><strong>{title} N° :</strong> {data.number}</p>
+              <p className="text-black" style={{ color: customization.textColor, ...templateFontSizeStyle(customization.clientInfoFontSize) }}><strong>{title} N° :</strong> {data.number}</p>
             </div>
           </div>
         </div>
 
         {/* TABLE PRODUITS */}
-        <div className="p-8 border-b border-black">
-          <table className="w-full rounded" style={{ border: `1px solid ${THEME}` }}>
-            <thead className="text-white text-sm" style={{ background: THEME }}>
+        <div className={`${INVOICE_TABLE_SECTION_CLASS} border-b border-black`} style={{ borderColor: customization.tableColor }}>
+          <table className="w-full rounded" style={{ ...INVOICE_TABLE_STYLE, border: `1px solid ${customization.tableColor}` }}>
+            <colgroup>
+              <col style={{ width: INVOICE_TABLE_COLUMN_WIDTHS.designation }} />
+              <col style={{ width: INVOICE_TABLE_COLUMN_WIDTHS.quantity }} />
+              <col style={{ width: INVOICE_TABLE_COLUMN_WIDTHS.unitPrice }} />
+              <col style={{ width: INVOICE_TABLE_COLUMN_WIDTHS.total }} />
+            </colgroup>
+            <thead className="text-white text-sm" style={{ background: customization.tableColor }}>
               <tr>
-                <th className="px-4 py-2 text-center">Désignation</th>
-                <th className="px-4 py-2 text-center">Quantité</th>
-                <th className="px-4 py-2 text-center">P.U. HT</th>
-                <th className="px-4 py-2 text-center">Total HT</th>
+                <th className={INVOICE_TABLE_HEAD_CELL_LEFT_CLASS}>Désignation</th>
+                <th className={INVOICE_TABLE_HEAD_CELL_CLASS}>Quantité</th>
+                <th className={INVOICE_TABLE_HEAD_CELL_CLASS}>P.U. HT</th>
+                <th className={INVOICE_TABLE_HEAD_CELL_CLASS}>Total HT</th>
               </tr>
             </thead>
             <tbody>
               {data.items.map((item, index) => (
-                <tr key={index} className="avoid-break" style={{ borderTop: `1px solid ${THEME}` }}>
-                  <td className="px-4 py-2 text-center text-sm">{item.description}</td>
-                  <td className="px-4 py-2 text-center text-sm">
+                <tr key={index} className="avoid-break" style={{ borderTop: `1px solid ${customization.tableColor}` }}>
+                  <td className={INVOICE_TABLE_DESCRIPTION_CELL_CLASS}>{item.description}</td>
+                  <td className={INVOICE_TABLE_NUMERIC_CELL_CLASS}>
                     {formatQty(item.quantity, item.unit)} ({item.unit || 'unité'})
                   </td>
-                  <td className="px-4 py-2 text-center text-sm">{formatAmount(item.unitPrice)} MAD</td>
-                  <td className="px-4 py-2 text-center text-sm font-semibold">{formatAmount(item.total)} MAD</td>
+                  <td className={INVOICE_TABLE_NUMERIC_CELL_CLASS}>{formatAmount(item.unitPrice)} MAD</td>
+                  <td className={INVOICE_TABLE_TOTAL_CELL_CLASS}>{formatAmount(item.total)} MAD</td>
                 </tr>
               ))}
             </tbody>
@@ -113,19 +164,19 @@ export default function Template5Premium({ data, type, includeSignature = false,
         </div>
 
         {/* ===== BLOC TOTAUX (seul) ===== */}
-        <section className="keep-together p-8">
-          <div className="grid grid-cols-2 gap-4">
+        <section className={INVOICE_TOTALS_SECTION_CLASS}>
+          <div className={INVOICE_TOTALS_GRID_CLASS}>
             {/* Montant en lettres */}
-            <div className="min-w-0 bg-gray-50 rounded border p-4" style={{ borderColor: THEME }}>
+            <div className="min-w-0 bg-gray-50 rounded border p-3" style={{ borderColor: customization.tableColor }}>
               <div className="text-sm font-bold text-center">
                 Arrêtée le présent {type === 'invoice' ? 'facture' : 'devis'} à la somme de :
               </div>
-              <div className="border-t my-2" style={{ borderColor: THEME }} />
+              <div className="border-t my-2" style={{ borderColor: customization.tableColor }} />
               <p className="text-sm font-bold" style={{ color: THEME }}>• {data.totalInWords}</p>
             </div>
 
             {/* TVA / Totaux */}
-            <div className="min-w-0 bg-gray-50 rounded border p-4" style={{ borderColor: THEME }}>
+            <div className="min-w-0 bg-gray-50 rounded border p-3" style={{ borderColor: customization.tableColor }}>
               <div className="flex justify-between mb-2 text-sm">
                 <span>Total HT :</span>
                 <span className="font-medium">{formatAmount(data.subtotal)} MAD</span>
@@ -145,7 +196,7 @@ export default function Template5Premium({ data, type, includeSignature = false,
                   );
                 })}
               </div>
-              <div className="flex justify-between text-sm font-bold border-t pt-2" style={{ color: THEME, borderColor: THEME }}>
+              <div className="flex justify-between text-sm font-bold border-t pt-2" style={{ color: customization.hasCustomTextColor ? customization.textColor : THEME, borderColor: customization.tableColor }}>
                 <span>TOTAL TTC :</span>
                 <span>{formatAmount(data.totalTTC)} MAD</span>
               </div>
@@ -154,17 +205,18 @@ export default function Template5Premium({ data, type, includeSignature = false,
         </section>
 
         {/* ===== SIGNATURE (séparée) ===== */}
-        <section className="p-8 avoid-break">
-          <div className="w-60 bg-gray-50 border rounded p-4 text-center" style={{ borderColor: THEME }}>
-            <div className="text-sm font-bold mb-3">Signature</div>
-            <div className="border-2 rounded-sm h-20 flex items-center justify-center relative" style={{ borderColor: THEME }}>
+        <section className={INVOICE_SIGNATURE_SECTION_CLASS} style={getInvoiceSignatureSectionStyle(customization)}>
+          <div className={`bg-gray-50 border ${INVOICE_SIGNATURE_BOX_CLASS}`} style={{ borderColor: customization.tableColor, ...getInvoiceSignatureBoxStyle(customization) }}>
+            <div className="text-sm font-bold">Signature</div>
+            <div className={`border-2 relative ${INVOICE_SIGNATURE_FRAME_CLASS}`} style={{ borderColor: customization.tableColor, ...getInvoiceSignatureFrameStyle(customization) }}>
               {includeSignature && company?.signature ? (
                 <img
                   src={company.signature}
                   alt="Signature"
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"
-                  className="max-h-18 max-w-full object-contain"
+                  className={INVOICE_SIGNATURE_IMAGE_CLASS}
+                  style={getInvoiceSignatureImageStyle(customization)}
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /* pourquoi: éviter image cassée */
                 />
               ) : (
@@ -177,9 +229,9 @@ export default function Template5Premium({ data, type, includeSignature = false,
 
       {/* ===== FOOTER (exclu; répété par page) ===== */}
       <div className="pdf-footer pdf-exclude" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: FOOTER_H }}>
-        <div className="relative" style={{ background: THEME, color: '#fff', height: '100%' }}>
+        <div className="relative" style={{ background: customization.tableColor, color: '#fff', height: '100%' }}>
          
-          <div className="pt-10 p-6 text-center text-sm relative z-10">
+          <div className="pt-10 p-6 text-center text-sm relative z-10" style={getInvoiceFooterTextStyle(customization)}>
             <p>
               <strong>{company?.name || '-'}</strong> | {company?.address || '-'} | <strong>Tél :</strong> {company?.phone || '-'} |
               <strong> ICE :</strong> {company?.ice || '-'} | <strong>IF:</strong> {company?.if || '-'} | <strong>RC:</strong> {company?.rc || '-'} |
