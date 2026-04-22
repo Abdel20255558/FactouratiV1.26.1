@@ -10,6 +10,11 @@ const COMPACT_SIGNATURE_OFFSET_PX = 6;
 const DEFAULT_SIGNATURE_OFFSET_PX = 18;
 const SPACIOUS_SIGNATURE_OFFSET_PX = 24;
 
+function parsePixelValue(value: string) {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function getPageContentHeightPx(root: HTMLElement, options: Required<BalanceSignatureOptions>) {
   const rootWidth = root.getBoundingClientRect().width || 1;
   const availablePageWidthMM = options.pageWidthMM - options.horizontalMarginMM;
@@ -29,6 +34,21 @@ export function balanceInvoiceSignatureForPdf(root: HTMLElement, options: Balanc
 
   if (!signatureSection || !content) {
     return () => undefined;
+  }
+
+  const explicitOffset = parsePixelValue(getComputedStyle(signatureSection).getPropertyValue('--invoice-signature-offset'));
+
+  if (explicitOffset > 0) {
+    root.style.setProperty('--invoice-signature-offset', `${explicitOffset}px`);
+
+    return () => {
+      if (previousOffset) {
+        root.style.setProperty('--invoice-signature-offset', previousOffset);
+        return;
+      }
+
+      root.style.removeProperty('--invoice-signature-offset');
+    };
   }
 
   const normalizedOptions: Required<BalanceSignatureOptions> = {
