@@ -179,6 +179,7 @@ export default function ProTemplateModal({ isOpen, onClose, templateName }: ProT
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           onComplete={handlePaymentComplete}
+          billingPeriod="monthly"
         />
       )}
     </div>
