@@ -7,6 +7,7 @@ import { useLicense } from '../../contexts/LicenseContext';
 import QuoteViewer from './QuoteViewer';
 import EditQuote from './EditQuote';
 import ProTemplateModal from '../license/ProTemplateModal';
+import PaymentModal from '../license/PaymentModal';
 import QuoteActionsGuide from './QuoteActionsGuide';
 
 import { Plus, Search, Filter, Eye, CreditCard as Edit, Trash2, FileText, Crown, ChevronDown, ChevronRight, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -159,6 +160,7 @@ export default function QuotesList() {
   const [showProModal, setShowProModal] = useState(false);
   const [blockedTemplateName, setBlockedTemplateName] = useState('');
   const [showUpgradePage, setShowUpgradePage] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Groupement par année (ouvert par défaut)
   const [expandedYears, setExpandedYears] = useState<Record<number, boolean>>({});
@@ -183,6 +185,12 @@ export default function QuotesList() {
     const proTemplates = ['template2', 'template3', 'template4', 'template5', 'template6', 'template7', 'template8'];
     return proTemplates.includes(templateId);
   };
+
+  const handleOpenProPayment = () => {
+    setShowUpgradePage(false);
+    setShowPaymentModal(true);
+  };
+
   const getTemplateName = (templateId: string = 'template1') => {
     const m: Record<string, string> = {
       template1: 'Classic Free',
@@ -668,7 +676,10 @@ export default function QuotesList() {
                   >
                     Fermer
                   </button>
-                  <button className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg">
+                  <button
+                    onClick={handleOpenProPayment}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg"
+                  >
                     Acheter Pro
                   </button>
                 </div>
@@ -676,6 +687,15 @@ export default function QuotesList() {
             </div>
           </div>
         </div>
+      )}
+
+      {showPaymentModal && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          onComplete={() => setShowPaymentModal(false)}
+          billingPeriod="monthly"
+        />
       )}
 
       {quotes.length > 0 && (
@@ -893,7 +913,5 @@ export default function QuotesList() {
     </div>
   );
 }
-
-
 
 
