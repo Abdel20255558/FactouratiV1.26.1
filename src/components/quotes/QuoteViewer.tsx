@@ -5,8 +5,12 @@ import { useNavigate } from 'react-router-dom';
 import { useLicense } from '../../contexts/LicenseContext';
 import { Quote } from '../../contexts/DataContext';
 import TemplateRenderer from '../templates/TemplateRenderer';
+import TemplateCustomizationPanel, {
+  createTemplateCustomizationState,
+  type TemplateCustomizationState,
+} from '../templates/TemplateCustomizationPanel';
 import ProTemplateModal from '../license/ProTemplateModal';
-import { X, Download, Edit, Printer } from 'lucide-react';
+import { X, Download, Edit, Palette, Printer } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import html2canvas from 'html2canvas';
 import { prepareImagesForPdf } from '../../utils/pdfImageUtils';
@@ -20,7 +24,7 @@ interface QuoteViewerProps {
 }
 
 export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps) {
-  const { user } = useAuth();
+  const { user, updateCompanySettings } = useAuth();
   const navigate = useNavigate();
   const { licenseType } = useLicense();
 
@@ -29,6 +33,15 @@ export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps
   const [includeSignature, setIncludeSignature] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [showProSignatureModal, setShowProSignatureModal] = useState(false);
+  const [showStylePanel, setShowStylePanel] = useState(false);
+  const [isSavingStyle, setIsSavingStyle] = useState(false);
+  const [templateCustomization, setTemplateCustomization] = useState<TemplateCustomizationState>(
+    createTemplateCustomizationState(user?.company?.templateCustomization),
+  );
+
+  const previewCompany = user?.company
+    ? { ...user.company, templateCustomization }
+    : undefined;
 
   const templates = [
     { id: 'template1', name: 'Classique', isPro: false },
@@ -53,6 +66,28 @@ export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps
       return;
     }
     await generatePDFWithTemplate();
+  };
+
+  const handleSaveTemplateStyle = async () => {
+    if (!user?.isAdmin) {
+      alert('Seuls les administrateurs peuvent sauvegarder le style du document.');
+      return;
+    }
+
+    setIsSavingStyle(true);
+    try {
+      await updateCompanySettings({ templateCustomization });
+      alert('Style du document sauvegarde avec succes.');
+    } catch (error) {
+      console.error('Erreur sauvegarde style document:', error);
+      alert('Erreur lors de la sauvegarde du style.');
+    } finally {
+      setIsSavingStyle(false);
+    }
+  };
+
+  const handleResetTemplateStyle = () => {
+    setTemplateCustomization(createTemplateCustomizationState());
   };
 
   // px -> mm
@@ -168,9 +203,9 @@ export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div className="inline-block w-full max-w-4xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex flex-col gap-4 p-6 border-b border-gray-200 lg:flex-row lg:items-center lg:justify-between">
             <h3 className="text-lg font-semibold">Devis {quote.number}</h3>
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-wrap items-center gap-3">
               {/* Sélecteur Template */}
               <select
                 value={selectedTemplate}
@@ -186,6 +221,13 @@ export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps
                 <option value="template7">Atlas Emeraude Pro</option>
                 <option value="template8">Prestige Graphite Pro</option>
               </select>
+
+              <button
+                onClick={() => setShowStylePanel((prev) => !prev)}
+                className="inline-flex items-center space-x-2 px-3 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-sm"
+              >
+                <Palette className="w-4 h-4" /><span>Style</span>
+              </button>
 
               {/* PDF */}
               <button onClick={handlePDF} className="inline-flex items-center space-x-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm">
@@ -234,6 +276,19 @@ export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps
             </div>
           </div>
 
+          {showStylePanel && (
+            <div className="border-b border-gray-200 bg-slate-100 p-4">
+              <TemplateCustomizationPanel
+                value={templateCustomization}
+                onChange={setTemplateCustomization}
+                onSave={handleSaveTemplateStyle}
+                onReset={handleResetTemplateStyle}
+                isSaving={isSavingStyle}
+                disabled={!user?.isAdmin}
+              />
+            </div>
+          )}
+
           {/* Contenu devis */}
           <div id="quote-content" style={{ backgroundColor: 'white', padding: '20px' }}>
             <TemplateRenderer
@@ -241,6 +296,7 @@ export default function QuoteViewer({ quote, onClose, onEdit }: QuoteViewerProps
               data={quote}
               type="quote"
               includeSignature={includeSignature}
+              companyOverride={previewCompany}
             />
           </div>
 
