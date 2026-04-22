@@ -6,10 +6,14 @@ export type InvoiceTemplateCustomization = Partial<{
   clientNameFontSize: number;
   clientInfoFontSize: number;
   footerTextFontSize: number;
+  logoSize: number;
+  tableTopSpacing: number;
+  tableBottomSpacing: number;
   signatureSpacing: number;
   signatureBoxWidth: number;
   signatureBoxHeight: number;
   signatureAlign: 'left' | 'right';
+  showSignatureBlock: boolean;
   tableColor: string;
   textColor: string;
   headerHeight: number;
@@ -22,10 +26,14 @@ export type ResolvedInvoiceTemplateCustomization = {
   clientNameFontSize: number;
   clientInfoFontSize: number;
   footerTextFontSize: number;
+  logoSize: number;
+  tableTopSpacing: number;
+  tableBottomSpacing: number;
   signatureSpacing: number;
   signatureBoxWidth: number;
   signatureBoxHeight: number;
   signatureAlign: 'left' | 'right';
+  showSignatureBlock: boolean;
   tableColor: string;
   textColor: string;
   headerHeight: number;
@@ -40,10 +48,14 @@ export const DEFAULT_TEMPLATE_CUSTOMIZATION: Required<InvoiceTemplateCustomizati
   clientNameFontSize: 0,
   clientInfoFontSize: 0,
   footerTextFontSize: 0,
+  logoSize: 0,
+  tableTopSpacing: 0,
+  tableBottomSpacing: 0,
   signatureSpacing: 0,
   signatureBoxWidth: 0,
   signatureBoxHeight: 0,
   signatureAlign: 'right',
+  showSignatureBlock: true,
   tableColor: '',
   textColor: '',
   headerHeight: 0,
@@ -124,10 +136,14 @@ export function resolveInvoiceTemplateCustomization(
     clientNameFontSize: number;
     clientInfoFontSize: number;
     footerTextFontSize?: number;
+    logoSize?: number;
+    tableTopSpacing?: number;
+    tableBottomSpacing?: number;
     signatureSpacing?: number;
     signatureBoxWidth?: number;
     signatureBoxHeight?: number;
     signatureAlign?: 'left' | 'right';
+    showSignatureBlock?: boolean;
     tableColor: string;
     textColor: string;
     headerHeight: number;
@@ -144,12 +160,18 @@ export function resolveInvoiceTemplateCustomization(
     clientNameFontSize: clampNumber(customization.clientNameFontSize, 10, 28, defaults.clientNameFontSize),
     clientInfoFontSize: clampNumber(customization.clientInfoFontSize, 9, 22, defaults.clientInfoFontSize),
     footerTextFontSize: clampNumber(customization.footerTextFontSize, 8, 18, defaults.footerTextFontSize ?? 10),
-    signatureSpacing: clampNumber(customization.signatureSpacing, 0, 80, defaults.signatureSpacing ?? 12),
-    signatureBoxWidth: clampNumber(customization.signatureBoxWidth, 140, 340, defaults.signatureBoxWidth ?? 192),
-    signatureBoxHeight: clampNumber(customization.signatureBoxHeight, 48, 150, defaults.signatureBoxHeight ?? 64),
+    logoSize: clampNumber(customization.logoSize, 24, 280, defaults.logoSize ?? 80),
+    tableTopSpacing: clampNumber(customization.tableTopSpacing, 0, 600, defaults.tableTopSpacing ?? 0),
+    tableBottomSpacing: clampNumber(customization.tableBottomSpacing, 0, 600, defaults.tableBottomSpacing ?? 0),
+    signatureSpacing: clampNumber(customization.signatureSpacing, 0, 600, defaults.signatureSpacing ?? 12),
+    signatureBoxWidth: clampNumber(customization.signatureBoxWidth, 140, 620, defaults.signatureBoxWidth ?? 192),
+    signatureBoxHeight: clampNumber(customization.signatureBoxHeight, 48, 320, defaults.signatureBoxHeight ?? 64),
     signatureAlign: customization.signatureAlign === 'left' || customization.signatureAlign === 'right'
       ? customization.signatureAlign
       : defaults.signatureAlign ?? 'right',
+    showSignatureBlock: typeof customization.showSignatureBlock === 'boolean'
+      ? customization.showSignatureBlock
+      : defaults.showSignatureBlock ?? true,
     tableColor: tableColor.color,
     textColor: textColor.color,
     headerHeight: clampNumber(customization.headerHeight, 80, 240, defaults.headerHeight),
@@ -166,6 +188,29 @@ export function templateFontSizeStyle(fontSize: number, lineHeight: number = 1.2
   };
 }
 
+export function getInvoiceLogoStyle(customization: ResolvedInvoiceTemplateCustomization): CSSProperties {
+  return {
+    height: customization.logoSize,
+    width: 'auto',
+    maxWidth: customization.logoSize * 1.6,
+    objectFit: 'contain',
+  };
+}
+
+export function getInvoiceLogoBoxStyle(customization: ResolvedInvoiceTemplateCustomization): CSSProperties {
+  return {
+    height: customization.logoSize,
+    width: customization.logoSize,
+  };
+}
+
+export function getInvoiceTableSectionStyle(customization: ResolvedInvoiceTemplateCustomization): CSSProperties {
+  return {
+    marginTop: customization.tableTopSpacing,
+    marginBottom: customization.tableBottomSpacing,
+  };
+}
+
 export function getInvoiceFooterTextStyle(customization: ResolvedInvoiceTemplateCustomization): CSSProperties {
   return {
     fontSize: customization.footerTextFontSize,
@@ -175,8 +220,9 @@ export function getInvoiceFooterTextStyle(customization: ResolvedInvoiceTemplate
 
 export function getInvoiceSignatureSectionStyle(customization: ResolvedInvoiceTemplateCustomization): CSSProperties {
   return {
+    '--invoice-signature-offset': `${customization.signatureSpacing}px`,
     marginTop: customization.signatureSpacing,
-  };
+  } as CSSProperties;
 }
 
 export function getInvoiceSignatureBoxStyle(customization: ResolvedInvoiceTemplateCustomization): CSSProperties {
