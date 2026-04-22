@@ -26,10 +26,12 @@ import {
   INVOICE_TOTALS_SECTION_CLASS,
   getInvoiceFooterTextStyle,
   getInvoiceContentStyle,
+  getInvoiceLogoBoxStyle,
   getInvoiceSignatureBoxStyle,
   getInvoiceSignatureFrameStyle,
   getInvoiceSignatureImageStyle,
   getInvoiceSignatureSectionStyle,
+  getInvoiceTableSectionStyle,
   resolveInvoiceTemplateCustomization,
   templateFontSizeStyle,
 } from './invoiceTemplateLayout';
@@ -53,10 +55,12 @@ export default function Template3Minimal({ data, type, includeSignature = false,
     clientNameFontSize: 14,
     clientInfoFontSize: 14,
     footerTextFontSize: 14,
+    logoSize: 85,
     signatureSpacing: 12,
     signatureBoxWidth: 192,
     signatureBoxHeight: 64,
     signatureAlign: 'right',
+    showSignatureBlock: true,
     tableColor: THEME,
     textColor: '#111827',
     headerHeight: DEFAULT_HEADER_H,
@@ -89,7 +93,7 @@ export default function Template3Minimal({ data, type, includeSignature = false,
       <div className="pdf-header pdf-exclude" style={{ position:'absolute', top:0, left:0, right:0, height: HEADER_H }}>
        
         <div className="p-5 text-center relative">
-          {company?.logo && <img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="mx-auto" style={{ height: 85, width: 85, objectFit:'contain' }} />}
+          {company?.logo && <img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="mx-auto" style={{ ...getInvoiceLogoBoxStyle(customization), objectFit:'contain' }} />}
           <h1 className="font-extrabold" style={{ color: customization.hasCustomTextColor ? customization.textColor : THEME, ...templateFontSizeStyle(customization.companyNameFontSize) }}>{company?.name || '-'}</h1>
           <h2 className="font-semibold mt-4 uppercase tracking-wide" style={{ color: customization.hasCustomTextColor ? customization.textColor : THEME, ...templateFontSizeStyle(customization.documentTitleFontSize) }}>
             {type === 'invoice' ? 'FACTURE' : 'DEVIS'}
@@ -122,7 +126,7 @@ export default function Template3Minimal({ data, type, includeSignature = false,
         </div>
 
         {/* TABLE */}
-        <div className={INVOICE_TABLE_SECTION_CLASS} style={{ borderBottom: `1px solid ${customization.tableColor}` }}>
+        <div className={INVOICE_TABLE_SECTION_CLASS} style={{ borderBottom: `1px solid ${customization.tableColor}`, ...getInvoiceTableSectionStyle(customization) }}>
           <table className="w-full rounded overflow-visible" style={{ ...INVOICE_TABLE_STYLE, border: `1px solid ${customization.tableColor}` }}>
             <colgroup>
               <col style={{ width: INVOICE_TABLE_COLUMN_WIDTHS.designation }} />
@@ -190,7 +194,7 @@ export default function Template3Minimal({ data, type, includeSignature = false,
         </section>
 
         {/* ===== BLOC SIGNATURE (séparé) ===== */}
-        <section className={INVOICE_SIGNATURE_SECTION_CLASS} style={getInvoiceSignatureSectionStyle(customization)}>
+        <section className={INVOICE_SIGNATURE_SECTION_CLASS} style={{ ...getInvoiceSignatureSectionStyle(customization), display: customization.showSignatureBlock ? undefined : 'none' }}>
           <div className={`bg-gray-50 border ${INVOICE_SIGNATURE_BOX_CLASS}`} style={{ borderColor: customization.tableColor, ...getInvoiceSignatureBoxStyle(customization) }}>
             <div className="text-sm font-bold" style={{ color: customization.hasCustomTextColor ? customization.textColor : THEME }}>Signature</div>
             <div className={`border-2 relative ${INVOICE_SIGNATURE_FRAME_CLASS}`} style={{ borderColor: customization.tableColor, ...getInvoiceSignatureFrameStyle(customization) }}>
