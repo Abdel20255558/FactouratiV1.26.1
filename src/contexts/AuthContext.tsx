@@ -14,6 +14,7 @@ import {
 } from 'firebase/auth';
 import { addDoc, doc, getDoc, setDoc, updateDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import type { InvoiceTemplateCustomization } from '../components/templates/invoiceTemplateLayout';
 import { ManagedUser } from './UserManagementContext';
 
 interface Company {
@@ -35,6 +36,7 @@ interface Company {
   invoiceCounter?: number;
   lastInvoiceYear?: number;
   defaultTemplate?: string;
+  templateCustomization?: InvoiceTemplateCustomization;
   subscription?: 'free' | 'pro';
   subscriptionDate?: string;
   expiryDate?: string;
@@ -242,6 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       invoiceCounter: companyData.invoiceCounter,
       lastInvoiceYear: companyData.lastInvoiceYear,
       defaultTemplate: companyData.defaultTemplate || 'template1',
+      templateCustomization: companyData.templateCustomization || {},
       subscription: companyData.subscription || 'free',
       subscriptionDate: companyData.subscriptionDate,
       expiryDate: companyData.expiryDate
@@ -419,6 +422,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               invoiceCounter: companyData.invoiceCounter,
               lastInvoiceYear: companyData.lastInvoiceYear,
               defaultTemplate: companyData.defaultTemplate || 'template1',
+              templateCustomization: companyData.templateCustomization || {},
               subscription: companyData.subscription || 'free',
               subscriptionDate: companyData.subscriptionDate,
               expiryDate: companyData.expiryDate
