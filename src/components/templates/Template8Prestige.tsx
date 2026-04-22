@@ -18,10 +18,12 @@ import {
   INVOICE_TOTALS_SECTION_CLASS,
   getInvoiceFooterTextStyle,
   getInvoiceContentStyle,
+  getInvoiceLogoBoxStyle,
   getInvoiceSignatureBoxStyle,
   getInvoiceSignatureFrameStyle,
   getInvoiceSignatureImageStyle,
   getInvoiceSignatureSectionStyle,
+  getInvoiceTableSectionStyle,
   resolveInvoiceTemplateCustomization,
   templateFontSizeStyle,
 } from './invoiceTemplateLayout';
@@ -51,10 +53,12 @@ export default function Template8Prestige({ data, type, includeSignature = false
     clientNameFontSize: 16,
     clientInfoFontSize: 14,
     footerTextFontSize: 10,
+    logoSize: 80,
     signatureSpacing: 12,
     signatureBoxWidth: 192,
     signatureBoxHeight: 64,
     signatureAlign: 'right',
+    showSignatureBlock: true,
     tableColor: GOLD,
     textColor: INK,
     headerHeight: DEFAULT_HEADER_H,
@@ -99,7 +103,7 @@ export default function Template8Prestige({ data, type, includeSignature = false
             <div className="flex items-center gap-4">
               <div className="h-20 w-1.5 rounded-full" style={{ background: customization.tableColor }} />
               {company?.logo ? (
-                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 p-2">
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 p-2" style={getInvoiceLogoBoxStyle(customization)}>
                   <img src={company.logo} alt="Logo" crossOrigin="anonymous" referrerPolicy="no-referrer" className="h-full w-full object-contain" />
                 </div>
               ) : null}
@@ -157,7 +161,7 @@ export default function Template8Prestige({ data, type, includeSignature = false
           </div>
         </div>
 
-        <div className="invoice-table-section px-5 pb-4">
+        <div className="invoice-table-section px-5 pb-4" style={getInvoiceTableSectionStyle(customization)}>
           <div className="overflow-hidden rounded-3xl border" style={{ borderColor: BORDER }}>
             <table className="w-full" style={INVOICE_TABLE_STYLE}>
               <colgroup>
@@ -227,7 +231,7 @@ export default function Template8Prestige({ data, type, includeSignature = false
           </div>
         </section>
 
-        <section className={INVOICE_SIGNATURE_SECTION_CLASS} style={getInvoiceSignatureSectionStyle(customization)}>
+        <section className={INVOICE_SIGNATURE_SECTION_CLASS} style={{ ...getInvoiceSignatureSectionStyle(customization), display: customization.showSignatureBlock ? undefined : 'none' }}>
           <div className={`${INVOICE_SIGNATURE_BOX_CLASS} rounded-3xl border`} style={{ borderColor: BORDER, background: PANEL, ...getInvoiceSignatureBoxStyle(customization) }}>
             <p className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: customization.tableColor }}>
               Signature
