@@ -2,6 +2,29 @@ import React from 'react';
 import { Invoice, Quote } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import type { TemplateCompany } from './Template1Classic';
+import {
+  INVOICE_PAGE_STYLE,
+  INVOICE_SIGNATURE_BOX_CLASS,
+  INVOICE_SIGNATURE_FRAME_CLASS,
+  INVOICE_SIGNATURE_IMAGE_CLASS,
+  INVOICE_SIGNATURE_SECTION_CLASS,
+  INVOICE_TABLE_COLUMN_WIDTHS,
+  INVOICE_TABLE_DESCRIPTION_CELL_CLASS,
+  INVOICE_TABLE_HEAD_CELL_CLASS,
+  INVOICE_TABLE_HEAD_CELL_LEFT_CLASS,
+  INVOICE_TABLE_NUMERIC_CELL_CLASS,
+  INVOICE_TABLE_STYLE,
+  INVOICE_TABLE_TOTAL_CELL_CLASS,
+  INVOICE_TOTALS_SECTION_CLASS,
+  getInvoiceFooterTextStyle,
+  getInvoiceContentStyle,
+  getInvoiceSignatureBoxStyle,
+  getInvoiceSignatureFrameStyle,
+  getInvoiceSignatureImageStyle,
+  getInvoiceSignatureSectionStyle,
+  resolveInvoiceTemplateCustomization,
+  templateFontSizeStyle,
+} from './invoiceTemplateLayout';
 
 interface TemplateProps {
   data: Invoice | Quote;
@@ -18,8 +41,25 @@ export default function Template6Executive({ data, type, includeSignature = fals
   const SECONDARY = '#475569';
   const ACCENT = '#b45309';
   const SURFACE = '#f8fafc';
-  const HEADER_H = 108;
-  const FOOTER_H = 92;
+  const DEFAULT_HEADER_H = 108;
+  const DEFAULT_FOOTER_H = 92;
+  const customization = resolveInvoiceTemplateCustomization(company, {
+    companyNameFontSize: 24,
+    documentTitleFontSize: 12,
+    clientNameFontSize: 18,
+    clientInfoFontSize: 14,
+    footerTextFontSize: 10,
+    signatureSpacing: 12,
+    signatureBoxWidth: 192,
+    signatureBoxHeight: 64,
+    signatureAlign: 'right',
+    tableColor: ACCENT,
+    textColor: PRIMARY,
+    headerHeight: DEFAULT_HEADER_H,
+    footerHeight: DEFAULT_FOOTER_H,
+  });
+  const HEADER_H = customization.headerHeight;
+  const FOOTER_H = customization.footerHeight;
 
   const normUnit = (u?: string) => (u || 'unite').toLowerCase().trim();
   const is3decUnit = (u?: string) =>
@@ -46,7 +86,7 @@ export default function Template6Executive({ data, type, includeSignature = fals
   return (
     <div
       className="relative mx-auto bg-white"
-      style={{ fontFamily: 'Arial, sans-serif', width: '100%', maxWidth: 750, color: PRIMARY }}
+      style={{ ...INVOICE_PAGE_STYLE, color: customization.textColor }}
     >
       <div
         className="pdf-header pdf-exclude"
@@ -64,13 +104,13 @@ export default function Template6Executive({ data, type, includeSignature = fals
                 </div>
               ) : null}
               <div>
-                <h1 className="text-2xl font-extrabold tracking-wide">{company?.name || '-'}</h1>
+                <h1 className="font-extrabold tracking-wide" style={templateFontSizeStyle(customization.companyNameFontSize)}>{company?.name || '-'}</h1>
                 <p className="mt-1 text-sm text-white/80">{company?.activity || '-'}</p>
               </div>
             </div>
 
             <div className="min-w-[170px] rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-right">
-              <p className="text-xs font-semibold tracking-[0.25em] text-white/70">{title}</p>
+              <p className="font-semibold tracking-[0.25em] text-white/70" style={templateFontSizeStyle(customization.documentTitleFontSize)}>{title}</p>
               <p className="mt-2 text-xl font-extrabold">{data.number}</p>
               <p className="mt-1 text-sm text-white/80">{new Date(data.date).toLocaleDateString('fr-FR')}</p>
             </div>
@@ -78,22 +118,22 @@ export default function Template6Executive({ data, type, includeSignature = fals
         </div>
       </div>
 
-      <div className="pdf-content rounded-2xl border border-slate-200" style={{ paddingTop: HEADER_H + 8, paddingBottom: FOOTER_H + 8 }}>
-        <div className="grid grid-cols-2 gap-6 px-8 py-5 avoid-break">
-          <div className="rounded-2xl border p-5" style={{ borderColor: '#e2e8f0', background: SURFACE }}>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
+      <div className="pdf-content rounded-2xl border border-slate-200" style={getInvoiceContentStyle(HEADER_H, FOOTER_H, 8)}>
+        <div className="grid grid-cols-2 gap-4 px-6 py-4 avoid-break">
+          <div className="rounded-2xl border p-4" style={{ borderColor: '#e2e8f0', background: SURFACE }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: customization.tableColor }}>
               Client
             </p>
-            <h3 className="mt-3 text-lg font-bold">{data.client.name}</h3>
-            <p className="mt-2 text-sm text-slate-600">{data.client.address || '-'}</p>
-            <p className="mt-2 text-sm"><strong>ICE:</strong> {data.client.ice || '-'}</p>
+            <h3 className="mt-3 font-bold" style={templateFontSizeStyle(customization.clientNameFontSize)}>{data.client.name}</h3>
+            <p className="mt-2 text-slate-600" style={{ color: customization.textColor, ...templateFontSizeStyle(customization.clientInfoFontSize) }}>{data.client.address || '-'}</p>
+            <p className="mt-2" style={templateFontSizeStyle(customization.clientInfoFontSize)}><strong>ICE:</strong> {data.client.ice || '-'}</p>
           </div>
 
-          <div className="rounded-2xl border p-5" style={{ borderColor: '#e2e8f0', background: SURFACE }}>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
+          <div className="rounded-2xl border p-4" style={{ borderColor: '#e2e8f0', background: SURFACE }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: customization.tableColor }}>
               Informations
             </p>
-            <div className="mt-3 space-y-2 text-sm">
+            <div className="mt-3 space-y-2" style={templateFontSizeStyle(customization.clientInfoFontSize)}>
               <p><strong>Date:</strong> {new Date(data.date).toLocaleDateString('fr-FR')}</p>
               <p><strong>Document:</strong> {title}</p>
               <p><strong>Reference:</strong> {data.number}</p>
@@ -101,26 +141,32 @@ export default function Template6Executive({ data, type, includeSignature = fals
           </div>
         </div>
 
-        <div className="px-8 pb-6">
-          <div className="overflow-hidden rounded-2xl border" style={{ borderColor: '#cbd5e1' }}>
-            <table className="w-full">
-              <thead style={{ background: '#e2e8f0' }}>
+        <div className="invoice-table-section px-5 pb-4">
+          <div className="overflow-hidden rounded-2xl border" style={{ borderColor: customization.tableColor }}>
+            <table className="w-full" style={INVOICE_TABLE_STYLE}>
+              <colgroup>
+                <col style={{ width: INVOICE_TABLE_COLUMN_WIDTHS.designation }} />
+                <col style={{ width: INVOICE_TABLE_COLUMN_WIDTHS.quantity }} />
+                <col style={{ width: INVOICE_TABLE_COLUMN_WIDTHS.unitPrice }} />
+                <col style={{ width: INVOICE_TABLE_COLUMN_WIDTHS.total }} />
+              </colgroup>
+              <thead style={{ background: customization.tableColor, color: '#fff' }}>
                 <tr className="text-left text-sm">
-                  <th className="px-4 py-3 font-semibold">Designation</th>
-                  <th className="px-4 py-3 text-center font-semibold">Quantite</th>
-                  <th className="px-4 py-3 text-center font-semibold">P.U. HT</th>
-                  <th className="px-4 py-3 text-center font-semibold">Total HT</th>
+                  <th className={INVOICE_TABLE_HEAD_CELL_LEFT_CLASS}>Designation</th>
+                  <th className={INVOICE_TABLE_HEAD_CELL_CLASS}>Quantite</th>
+                  <th className={INVOICE_TABLE_HEAD_CELL_CLASS}>P.U. HT</th>
+                  <th className={INVOICE_TABLE_HEAD_CELL_CLASS}>Total HT</th>
                 </tr>
               </thead>
               <tbody>
                 {data.items.map((item, index) => (
                   <tr key={index} className="avoid-break border-t border-slate-200 text-sm">
-                    <td className="px-4 py-3">{item.description}</td>
-                    <td className="px-4 py-3 text-center">
+                    <td className={INVOICE_TABLE_DESCRIPTION_CELL_CLASS}>{item.description}</td>
+                    <td className={INVOICE_TABLE_NUMERIC_CELL_CLASS}>
                       {formatQty(item.quantity, item.unit)} ({item.unit || 'unite'})
                     </td>
-                    <td className="px-4 py-3 text-center">{formatAmount(item.unitPrice)} MAD</td>
-                    <td className="px-4 py-3 text-center font-semibold">{formatAmount(item.total)} MAD</td>
+                    <td className={INVOICE_TABLE_NUMERIC_CELL_CLASS}>{formatAmount(item.unitPrice)} MAD</td>
+                    <td className={INVOICE_TABLE_TOTAL_CELL_CLASS}>{formatAmount(item.total)} MAD</td>
                   </tr>
                 ))}
               </tbody>
@@ -128,16 +174,16 @@ export default function Template6Executive({ data, type, includeSignature = fals
           </div>
         </div>
 
-        <section className="keep-together px-8 pb-6">
-          <div className="grid grid-cols-[1.2fr_0.8fr] gap-4">
-            <div className="rounded-2xl border p-5" style={{ borderColor: '#e2e8f0', background: SURFACE }}>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
+        <section className={INVOICE_TOTALS_SECTION_CLASS}>
+          <div className="grid grid-cols-[1.16fr_0.84fr] gap-3">
+            <div className="rounded-2xl border p-4" style={{ borderColor: '#e2e8f0', background: SURFACE }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: customization.tableColor }}>
                 Arretee a la somme de
               </p>
               <p className="mt-3 text-sm font-bold leading-6">{data.totalInWords}</p>
             </div>
 
-            <div className="rounded-2xl border p-5" style={{ borderColor: '#e2e8f0', background: SURFACE }}>
+            <div className="rounded-2xl border p-4" style={{ borderColor: '#e2e8f0', background: SURFACE }}>
               <div className="flex items-center justify-between text-sm">
                 <span>Total HT</span>
                 <span className="font-semibold">{formatAmount(data.subtotal)} MAD</span>
@@ -150,7 +196,7 @@ export default function Template6Executive({ data, type, includeSignature = fals
                   </div>
                 ))}
               </div>
-              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-white" style={{ background: ACCENT }}>
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-white" style={{ background: customization.tableColor }}>
                 <span className="whitespace-nowrap font-semibold">TOTAL TTC</span>
                 <span className="whitespace-nowrap text-base font-extrabold">{formatAmount(data.totalTTC)} MAD</span>
               </div>
@@ -158,19 +204,20 @@ export default function Template6Executive({ data, type, includeSignature = fals
           </div>
         </section>
 
-        <section className="px-8 pb-6 avoid-break">
-          <div className="ml-auto w-52 rounded-2xl border p-4 text-center" style={{ borderColor: '#e2e8f0', background: SURFACE }}>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
+        <section className={INVOICE_SIGNATURE_SECTION_CLASS} style={getInvoiceSignatureSectionStyle(customization)}>
+          <div className={`${INVOICE_SIGNATURE_BOX_CLASS} rounded-2xl border`} style={{ borderColor: customization.tableColor, background: SURFACE, ...getInvoiceSignatureBoxStyle(customization) }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: customization.tableColor }}>
               Signature
             </p>
-            <div className="mt-3 flex h-20 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white">
+            <div className={`${INVOICE_SIGNATURE_FRAME_CLASS} rounded-xl border-dashed border-slate-300 bg-white`} style={{ borderColor: customization.tableColor, ...getInvoiceSignatureFrameStyle(customization) }}>
               {includeSignature && company?.signature ? (
                 <img
                   src={company.signature}
                   alt="Signature"
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"
-                  className="max-h-16 max-w-full object-contain"
+                  className={INVOICE_SIGNATURE_IMAGE_CLASS}
+                  style={getInvoiceSignatureImageStyle(customization)}
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
               ) : (
@@ -186,7 +233,7 @@ export default function Template6Executive({ data, type, includeSignature = fals
         style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: FOOTER_H }}
       >
         <div className="h-full border-t border-slate-200 bg-white px-8 py-4">
-          <div className="text-[10px] leading-5 text-slate-600">
+          <div className="text-[10px] leading-5 text-slate-600" style={getInvoiceFooterTextStyle(customization)}>
             <p>
               <strong>{company?.name || '-'}</strong> | Activite: {company?.activity || '-'} | Adresse: {company?.address || '-'} |
               {' '}ICE: {company?.ice || '-'} | IF: {company?.if || '-'} | RC: {company?.rc || '-'} | CNSS: {company?.cnss || '-'} |
