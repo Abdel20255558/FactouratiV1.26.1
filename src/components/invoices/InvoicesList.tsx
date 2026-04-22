@@ -11,6 +11,7 @@ import InvoiceStatusModal from './InvoiceStatusModal';
 import InvoiceActionsGuide from './InvoiceActionsGuide';
 
 import ProTemplateModal from '../license/ProTemplateModal';
+import PaymentModal from '../license/PaymentModal';
 import { Plus, Search, Filter, Eye, CreditCard as Edit, Trash2, Crown, CreditCard, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import { prepareImagesForPdf } from '../../utils/pdfImageUtils';
@@ -28,6 +29,7 @@ export default function InvoicesList() {
   const [showProModal, setShowProModal] = useState(false);
   const [blockedTemplateName, setBlockedTemplateName] = useState('');
   const [showUpgradePage, setShowUpgradePage] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [statusModalInvoice, setStatusModalInvoice] = useState<string | null>(null);
 
   // === Nouveau : mêmes blocs “année” que pour les devis ======================
@@ -52,6 +54,11 @@ export default function InvoicesList() {
       template8: 'Prestige Graphite Pro',
     };
     return templates[templateId as keyof typeof templates] || 'Template';
+  };
+
+  const handleOpenProPayment = () => {
+    setShowUpgradePage(false);
+    setShowPaymentModal(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -723,7 +730,10 @@ export default function InvoicesList() {
                   >
                     Fermer
                   </button>
-                  <button className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg">
+                  <button
+                    onClick={handleOpenProPayment}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg"
+                  >
                     Acheter Pro
                   </button>
                 </div>
@@ -731,6 +741,15 @@ export default function InvoicesList() {
             </div>
           </div>
         </div>
+      )}
+
+      {showPaymentModal && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          onComplete={() => setShowPaymentModal(false)}
+          billingPeriod="monthly"
+        />
       )}
 
       {statusModalInvoice && (
