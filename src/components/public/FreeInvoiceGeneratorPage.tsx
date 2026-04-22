@@ -22,6 +22,7 @@ import {
   recordFreeInvoiceGeneratorProTemplateAttempt,
   recordFreeInvoiceGeneratorView,
 } from '../../services/publicUsageService';
+import { balanceInvoiceSignatureForPdf } from '../../utils/invoicePdfLayout';
 import { prepareImagesForPdf } from '../../utils/pdfImageUtils';
 
 type PublicCompanyForm = {
@@ -363,6 +364,7 @@ export default function FreeInvoiceGeneratorPage() {
     };
 
     root.classList.add('exporting');
+    let restoreSignatureLayout: () => void = () => undefined;
     try {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
       const header = root.querySelector('.pdf-header') as HTMLElement | null;
@@ -372,11 +374,14 @@ export default function FreeInvoiceGeneratorPage() {
       const headerMM = headerImage.dataUrl ? (headerImage.height / headerImage.width) * pageWidthMM : 0;
       const footerMM = footerImage.dataUrl ? (footerImage.height / footerImage.width) * pageWidthMM : 0;
 
+      restoreSignatureLayout = balanceInvoiceSignatureForPdf(root, { headerMM, footerMM });
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
       const options = {
         margin: [headerMM, 8, footerMM, 8],
         filename: `Facture_${invoice.number}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        pagebreak: { mode: ['css', 'legacy'], avoid: ['.avoid-break'] },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.avoid-break', '.invoice-signature-section'] },
         html2canvas: {
           scale: 2,
           useCORS: true,
@@ -438,6 +443,7 @@ export default function FreeInvoiceGeneratorPage() {
       `);
       printWindow.document.close();
     } finally {
+      restoreSignatureLayout();
       root.classList.remove('exporting');
       restoreImages();
     }
@@ -507,12 +513,35 @@ export default function FreeInvoiceGeneratorPage() {
           box-shadow: none !important;
         }
         #public-invoice-print.exporting .pdf-content {
+          padding-top: 10px !important;
+          padding-bottom: 10px !important;
+        }
+        #public-invoice-print.exporting .invoice-top-section {
           padding-top: 12px !important;
           padding-bottom: 12px !important;
+        }
+        #public-invoice-print.exporting .invoice-table-section {
+          padding-top: 10px !important;
+          padding-bottom: 10px !important;
+        }
+        #public-invoice-print.exporting .invoice-totals-section {
+          padding-top: 10px !important;
+          padding-bottom: 8px !important;
+        }
+        #public-invoice-print.exporting .invoice-signature-section {
+          break-inside: avoid !important;
+          margin-top: var(--invoice-signature-offset, 18px) !important;
+          page-break-inside: avoid !important;
+          padding-top: 0 !important;
+          padding-bottom: 10px !important;
         }
         #public-invoice-print.exporting .keep-together {
           break-inside: auto !important;
           page-break-inside: auto !important;
+        }
+        #public-invoice-print.exporting .invoice-signature-section.keep-together {
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
         }
       `}</style>
 
