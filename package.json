@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
+    "seo:check": "node scripts/check-seo-integrity.mjs",
     "prebuild": "node scripts/generate-sitemap.mjs",
     "build": "vite build",
     "postbuild": "node scripts/postbuild.mjs",
