@@ -40,6 +40,13 @@ interface Company {
   subscription?: 'free' | 'pro';
   subscriptionDate?: string;
   expiryDate?: string;
+  hasCompletedOnboarding?: boolean;
+  onboardingDismissedAt?: string;
+  onboardingCompletedAt?: string;
+  onboardingClientId?: string;
+  onboardingProductId?: string;
+  onboardingSupplierId?: string;
+  onboardingInvoiceId?: string;
 }
 
 interface User {
@@ -247,7 +254,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       templateCustomization: companyData.templateCustomization || {},
       subscription: companyData.subscription || 'free',
       subscriptionDate: companyData.subscriptionDate,
-      expiryDate: companyData.expiryDate
+      expiryDate: companyData.expiryDate,
+      hasCompletedOnboarding: companyData.hasCompletedOnboarding || false,
+      onboardingDismissedAt: companyData.onboardingDismissedAt || '',
+      onboardingCompletedAt: companyData.onboardingCompletedAt || '',
+      onboardingClientId: companyData.onboardingClientId || '',
+      onboardingProductId: companyData.onboardingProductId || '',
+      onboardingSupplierId: companyData.onboardingSupplierId || '',
+      onboardingInvoiceId: companyData.onboardingInvoiceId || ''
     }
   });
 
@@ -425,7 +439,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               templateCustomization: companyData.templateCustomization || {},
               subscription: companyData.subscription || 'free',
               subscriptionDate: companyData.subscriptionDate,
-              expiryDate: companyData.expiryDate
+              expiryDate: companyData.expiryDate,
+              hasCompletedOnboarding: companyData.hasCompletedOnboarding || false,
+              onboardingDismissedAt: companyData.onboardingDismissedAt || '',
+              onboardingCompletedAt: companyData.onboardingCompletedAt || '',
+              onboardingClientId: companyData.onboardingClientId || '',
+              onboardingProductId: companyData.onboardingProductId || '',
+              onboardingSupplierId: companyData.onboardingSupplierId || '',
+              onboardingInvoiceId: companyData.onboardingInvoiceId || ''
             }
           });
           setSubscriptionStatus(status);
@@ -479,6 +500,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         subscription: 'pro',
         subscriptionDate: now.toISOString(),
         expiryDate: expiry.toISOString(),
+        hasCompletedOnboarding: false,
+        onboardingDismissedAt: '',
+        onboardingCompletedAt: '',
+        onboardingClientId: '',
+        onboardingProductId: '',
+        onboardingSupplierId: '',
+        onboardingInvoiceId: '',
         createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
         verificationEmailSentAt: '',
