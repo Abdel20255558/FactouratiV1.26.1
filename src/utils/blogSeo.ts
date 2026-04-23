@@ -1,4 +1,5 @@
 import { SITE_URL } from '../data/publicSeoData';
+import { toAbsoluteSiteUrl } from './publicSiteUrl';
 import type {
   BlogArticle,
   BlogRobotsFollow,
@@ -88,6 +89,16 @@ function isValidAbsoluteUrl(value?: string) {
   }
 }
 
+function normalizeCanonicalUrl(value?: string) {
+  const compactedValue = compactText(value);
+
+  if (!compactedValue) {
+    return '';
+  }
+
+  return toAbsoluteSiteUrl(compactedValue);
+}
+
 function countWords(text: string) {
   const words = stripHtml(text)
     .split(/\s+/)
@@ -175,7 +186,7 @@ export function resolveBlogSeoFallbacks(input: BlogSeoFallbackInput): BlogSeoMet
     seoTitle: fallbackTitle,
     metaDescription: fallbackDescription,
     slug: compactText(input.slug),
-    canonicalUrl: compactText(input.canonicalUrl),
+    canonicalUrl: normalizeCanonicalUrl(input.canonicalUrl),
     robotsIndex: input.robotsIndex || 'index',
     robotsFollow: input.robotsFollow || 'follow',
     ogTitle: fallbackOgTitle,
