@@ -23,10 +23,13 @@ import { db } from '../../config/firebase';
 import TemplateSelector from '../templates/TemplateSelector';
 import EmailVerificationModal from '../auth/EmailVerificationModal';
 import { normalizeCompanyName } from '../../utils/companyNameUtils';
+import FactouratiOnboardingModal from '../onboarding/FactouratiOnboardingModal';
+import { useFactouratiOnboarding } from '../../hooks/useFactouratiOnboarding';
 
 export default function Settings() {
   const { user, firebaseUser, updateCompanySettings } = useAuth();
   const { t } = useLanguage();
+  const onboarding = useFactouratiOnboarding();
 
   // --- Company / invoice / template state ---
   const [companyData, setCompanyData] = useState({
@@ -73,6 +76,7 @@ export default function Settings() {
 
   // --- Email verification modal ---
   const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
 
   // Init state from user
   useEffect(() => {
@@ -953,6 +957,45 @@ export default function Settings() {
             </div>
           </div>
 
+          {onboarding.isEligible && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-blue-500 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    Onboarding
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Reprendre la configuration guidee
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2 mb-4">
+                {onboarding.steps.map((step) => (
+                  <div key={step.key} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-300">{step.title}</span>
+                    <span className={step.complete ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-gray-400 dark:text-gray-500'}>
+                      {step.complete ? 'OK' : 'A faire'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={async () => {
+                  await onboarding.reopenOnboarding();
+                  setShowOnboardingModal(true);
+                }}
+                className="w-full bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 text-white px-4 py-3 rounded-lg font-medium transition-all duration-200"
+              >
+                {onboarding.isCompleted ? "Revoir l'onboarding" : "Continuer l'onboarding"}
+              </button>
+            </div>
+          )}
+
           <div className="bg-gradient-to-br from-teal-50 to-blue-50 dark:from-teal-900/20 dark:to-blue-900/20 rounded-xl border border-teal-200 dark:border-teal-700 p-6">
             <div className="text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-teal-600 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
@@ -1272,6 +1315,11 @@ export default function Settings() {
           </div>
         </div>
       )}
+
+      <FactouratiOnboardingModal
+        isOpen={showOnboardingModal}
+        onClose={() => setShowOnboardingModal(false)}
+      />
     </div>
   );
 }
