@@ -86,7 +86,7 @@ interface SupplierContextType {
   supplierProducts: SupplierProduct[];
   purchaseOrders: PurchaseOrder[];
   supplierPayments: SupplierPayment[];
-  addSupplier: (supplier: Omit<Supplier, 'id' | 'createdAt' | 'entrepriseId'>) => Promise<void>;
+  addSupplier: (supplier: Omit<Supplier, 'id' | 'createdAt' | 'entrepriseId'>) => Promise<string | null>;
   updateSupplier: (id: string, supplier: Partial<Supplier>) => Promise<void>;
   deleteSupplier: (id: string) => Promise<void>;
   addSupplierProduct: (product: Omit<SupplierProduct, 'id' | 'createdAt' | 'entrepriseId'>) => Promise<void>;
@@ -207,16 +207,18 @@ export function SupplierProvider({ children }: { children: ReactNode }) {
 
   // Fournisseurs
   const addSupplier = async (supplierData: Omit<Supplier, 'id' | 'createdAt' | 'entrepriseId'>) => {
-    if (!user) return;
+    if (!user) return null;
     
     try {
-      await addDoc(collection(db, 'suppliers'), {
+      const docRef = await addDoc(collection(db, 'suppliers'), {
         ...supplierData,
         entrepriseId: user.isAdmin ? user.id : user.entrepriseId,
         createdAt: new Date().toISOString()
       });
+      return docRef.id;
     } catch (error) {
       console.error('Erreur lors de l\'ajout du fournisseur:', error);
+      return null;
     }
   };
 
