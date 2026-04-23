@@ -146,18 +146,18 @@ export default function GuideErpArticle() {
     description:
       'Découvrez les avantages d’un ERP pour les PME marocaines : gain de temps, meilleure organisation, suivi du stock, facturation et pilotage simplifié avec Factourati.',
     image: [
-      'https://www.factourati.com/blog-assets/facturation-dashboard1.PNG',
-      'https://www.factourati.com/blog-assets/stock.PNG',
-      'https://www.factourati.com/blog-assets/facturation-process2.PNG',
-      'https://www.factourati.com/blog-assets/erp-management.svg',
+      `${SITE_URL}/blog-assets/facturation-dashboard1.PNG`,
+      `${SITE_URL}/blog-assets/stock.PNG`,
+      `${SITE_URL}/blog-assets/facturation-process2.PNG`,
+      `${SITE_URL}/blog-assets/erp-management.svg`,
     ],
     keywords: keywords.join(', '),
-    mainEntityOfPage: 'https://www.factourati.com/blog/avantages-erp-pme-marocaines',
+    mainEntityOfPage: `${SITE_URL}/blog/avantages-erp-pme-marocaines`,
     author: { '@type': 'Organization', name: 'Factourati' },
     publisher: {
       '@type': 'Organization',
       name: 'Factourati',
-      logo: { '@type': 'ImageObject', url: 'https://www.factourati.com/files_3254075-1761082431431-image.png' },
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}/files_3254075-1761082431431-image.png` },
     },
     datePublished: '2026-03-29',
     dateModified: '2026-03-29',
@@ -172,9 +172,8 @@ export default function GuideErpArticle() {
         keywords={keywords.join(', ')}
         image="/blog-assets/facturation-dashboard1.PNG"
         type="article"
-        schema={schema}
+        schema={[...schema, articleSchema]}
       />
-      <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
 
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-teal-900 text-white">
         <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
