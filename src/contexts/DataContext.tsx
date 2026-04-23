@@ -57,10 +57,12 @@ export interface Client {
 export interface Product {
   id: string;
   name: string;
+  description?: string;
   sku: string;
   category: string;
   purchasePrice: number;
   salePrice: number;
+  vatRate?: number;
   unit: string;
   initialStock: number;
   stock: number;
@@ -266,13 +268,13 @@ interface DataContextType {
   projectComments: ProjectComment[];
   projectFiles: ProjectFile[];
   stockMovements: StockMovement[];
-  addClient: (client: Omit<Client, 'id' | 'createdAt' | 'entrepriseId'>) => Promise<void>;
+  addClient: (client: Omit<Client, 'id' | 'createdAt' | 'entrepriseId'>) => Promise<string | null>;
   updateClient: (id: string, client: Partial<Client>) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
-  addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'entrepriseId'>) => Promise<void>;
+  addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'entrepriseId'>) => Promise<string | null>;
   updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
-  addInvoice: (invoice: Omit<Invoice, 'id' | 'number' | 'createdAt' | 'entrepriseId'>) => Promise<void>;
+  addInvoice: (invoice: Omit<Invoice, 'id' | 'number' | 'createdAt' | 'entrepriseId' | 'totalInWords'>) => Promise<string | null>;
   /** NOUVEAU: crée une facture depuis une commande (pas d'impact stock) */
   addInvoiceFromOrder: (order: OrderFromCtx, opts?: { invoiceDate?: string; dueDate?: string }) => Promise<string>;
   updateInvoice: (id: string, invoice: Partial<Invoice>) => Promise<void>;
@@ -493,15 +495,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Clients
   const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'entrepriseId'>) => {
-    if (!user) return;
+    if (!user) return null;
     try {
-      await addDoc(collection(db, 'clients'), {
+      const docRef = await addDoc(collection(db, 'clients'), {
         ...clientData,
         entrepriseId: user.isAdmin ? user.id : user.entrepriseId,
         createdAt: new Date().toISOString()
       });
+      return docRef.id;
     } catch (error) {
       console.error("Erreur lors de l'ajout du client:", error);
+      return null;
     }
   };
 
@@ -526,7 +530,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Produits
   const addProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'entrepriseId'>) => {
-    if (!user) return;
+    if (!user) return null;
     try {
       const sku = generateSKU(productData.name, productData.category);
       const docRef = await addDoc(collection(db, 'products'), {
@@ -551,8 +555,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
           adjustmentDateTime: new Date().toISOString()
         });
       }
+      return docRef.id;
     } catch (error) {
       console.error("Erreur lors de l'ajout du produit:", error);
+      return null;
     }
   };
 
@@ -598,12 +604,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   // Factures (standard)
-  const addInvoice = async (invoiceData: Omit<Invoice, 'id' | 'number' | 'createdAt' | 'entrepriseId' | 'dueDate' | 'totalInWords'>) => {
-    if (!user) return;
+  const addInvoice = async (invoiceData: Omit<Invoice, 'id' | 'number' | 'createdAt' | 'entrepriseId' | 'totalInWords'>) => {
+    if (!user) return null;
     try {
       const invoiceNumber = generateInvoiceNumber(invoiceData.date);
       const totalInWords = convertNumberToWords(invoiceData.totalTTC);
-      await addDoc(collection(db, 'invoices'), {
+      const docRef = await addDoc(collection(db, 'invoices'), {
         ...invoiceData,
         number: invoiceNumber,
         totalInWords,
@@ -611,8 +617,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         entrepriseId: user.isAdmin ? user.id : user.entrepriseId,
         createdAt: new Date().toISOString()
       });
+      return docRef.id;
     } catch (error) {
       console.error("Erreur lors de l'ajout de la facture:", error);
+      return null;
     }
   };
 
