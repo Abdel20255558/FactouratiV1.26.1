@@ -1,4 +1,6 @@
-export const SITE_URL = 'https://factourati.com';
+import { SITE_URL, toAbsoluteSiteUrl } from '../utils/publicSiteUrl';
+
+export { SITE_URL } from '../utils/publicSiteUrl';
 export const BRAND_NAME = 'Factourati';
 export const BRAND_LOGO_URL = `${SITE_URL}/files_3254075-1761082431431-image.png`;
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/2.png`;
@@ -185,7 +187,7 @@ export function createWebsiteSchema() {
     hasPart: publicSitePages.map((page) => ({
       '@type': 'WebPage',
       name: page.name,
-      url: `${SITE_URL}${page.path}`,
+      url: toAbsoluteSiteUrl(page.path),
     })),
   };
 }
@@ -199,7 +201,7 @@ export function createSiteNavigationSchema() {
       '@type': 'SiteNavigationElement',
       position: index + 1,
       name: page.name,
-      url: `${SITE_URL}${page.path}`,
+      url: toAbsoluteSiteUrl(page.path),
     })),
   };
 }
@@ -213,7 +215,7 @@ export function createWebPageSchema({
   path: string;
   description: string;
 }) {
-  const url = path.startsWith('http') ? path : `${SITE_URL}${path}`;
+  const url = toAbsoluteSiteUrl(path);
 
   return {
     '@context': 'https://schema.org',
@@ -236,7 +238,7 @@ export function createWebPageSchema({
 }
 
 export function createOfferCatalogSchema(path: string = '/tarifs') {
-  const url = path.startsWith('http') ? path : `${SITE_URL}${path}`;
+  const url = toAbsoluteSiteUrl(path);
 
   return {
     '@context': 'https://schema.org',
