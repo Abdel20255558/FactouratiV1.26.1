@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { BRAND_NAME, SITE_URL } from '../../data/publicSeoData';
+import { BRAND_NAME } from '../../data/publicSeoData';
+import { toAbsoluteSiteUrl } from '../../utils/publicSiteUrl';
 
 type SeoHeadProps = {
   title: string;
@@ -20,7 +21,11 @@ type SeoHeadProps = {
 };
 
 function setMetaContent(name: string, content: string, attribute: 'name' | 'property' = 'name') {
-  let meta = document.head.querySelector(`meta[${attribute}="${name}"]`);
+  const metaNodes = Array.from(document.head.querySelectorAll(`meta[${attribute}="${name}"]`));
+  const [existingMeta, ...duplicateMetas] = metaNodes;
+  duplicateMetas.forEach((metaNode) => metaNode.remove());
+
+  let meta = existingMeta;
 
   if (!meta) {
     meta = document.createElement('meta');
@@ -32,8 +37,8 @@ function setMetaContent(name: string, content: string, attribute: 'name' | 'prop
 }
 
 function removeMeta(name: string, attribute: 'name' | 'property' = 'name') {
-  const meta = document.head.querySelector(`meta[${attribute}="${name}"]`);
-  meta?.remove();
+  const metas = document.head.querySelectorAll(`meta[${attribute}="${name}"]`);
+  metas.forEach((meta) => meta.remove());
 }
 
 export default function SeoHead({
@@ -54,14 +59,10 @@ export default function SeoHead({
   schema,
 }: SeoHeadProps) {
   useEffect(() => {
-    const canonicalUrl = canonicalPath.startsWith('http') ? canonicalPath : `${SITE_URL}${canonicalPath}`;
-    const imageUrl = image ? (image.startsWith('http') ? image : `${SITE_URL}${image}`) : undefined;
-    const ogImageUrl = ogImage ? (ogImage.startsWith('http') ? ogImage : `${SITE_URL}${ogImage}`) : imageUrl;
-    const twitterImageUrl = twitterImage
-      ? twitterImage.startsWith('http')
-        ? twitterImage
-        : `${SITE_URL}${twitterImage}`
-      : ogImageUrl;
+    const canonicalUrl = toAbsoluteSiteUrl(canonicalPath);
+    const imageUrl = image ? toAbsoluteSiteUrl(image) : undefined;
+    const ogImageUrl = ogImage ? toAbsoluteSiteUrl(ogImage) : imageUrl;
+    const twitterImageUrl = twitterImage ? toAbsoluteSiteUrl(twitterImage) : ogImageUrl;
     const robotsContent = robots ?? 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1';
     const resolvedImageAlt = imageAlt ?? title;
     const resolvedOgTitle = ogTitle || title;
@@ -112,7 +113,11 @@ export default function SeoHead({
       removeMeta('twitter:image:alt');
     }
 
-    let canonical = document.head.querySelector('link[rel="canonical"]');
+    const canonicalLinks = Array.from(document.head.querySelectorAll('link[rel="canonical"]'));
+    const [existingCanonical, ...duplicateCanonicals] = canonicalLinks;
+    duplicateCanonicals.forEach((canonicalNode) => canonicalNode.remove());
+
+    let canonical = existingCanonical;
     if (!canonical) {
       canonical = document.createElement('link');
       canonical.setAttribute('rel', 'canonical');
