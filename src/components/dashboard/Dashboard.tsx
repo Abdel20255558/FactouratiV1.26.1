@@ -13,11 +13,15 @@ import TopProducts from './TopProducts';
 import QuickActions from './QuickActions';
 import RecentActivity from './RecentActivity';
 import WelcomeProModal from '../auth/WelcomeProModal';
+import OnboardingProgressCard from '../onboarding/OnboardingProgressCard';
+import FactouratiOnboardingModal from '../onboarding/FactouratiOnboardingModal';
+import { useFactouratiOnboarding } from '../../hooks/useFactouratiOnboarding';
 
 export default function Dashboard() {
   const { user, checkSubscriptionExpiry } = useAuth();
   const { t } = useLanguage();
   const { invoices, clients, products } = useData();
+  const onboarding = useFactouratiOnboarding();
 
   React.useEffect(() => { if (user) checkSubscriptionExpiry(); }, [user, checkSubscriptionExpiry]);
 
@@ -52,6 +56,19 @@ export default function Dashboard() {
   const [toastType, setToastType] = React.useState<'ok' | 'warn' | 'err'>('ok');
   React.useEffect(() => { if (user?.name) setSupportName(user.name); }, [user]);
   React.useEffect(() => { if (!toast) return; const id = setTimeout(() => setToast(null), 2600); return () => clearTimeout(id); }, [toast]);
+
+  const [showOnboarding, setShowOnboarding] = React.useState(false);
+
+  React.useEffect(() => {
+    if (onboarding.shouldAutoOpen) {
+      setShowOnboarding(true);
+    }
+  }, [onboarding.shouldAutoOpen]);
+
+  const handleContinueOnboarding = async () => {
+    await onboarding.reopenOnboarding();
+    setShowOnboarding(true);
+  };
 
   const tryOpen = (url: string) => {
     try { const w = window.open(url, '_blank'); return !!w; } catch { return false; }
@@ -122,6 +139,15 @@ export default function Dashboard() {
           {getWelcomeMessage()}
         </p>
       </motion.div>
+
+      {onboarding.isEligible && !onboarding.isCompleted && (
+        <OnboardingProgressCard
+          progressCount={onboarding.progressCount}
+          totalSteps={onboarding.totalSteps}
+          steps={onboarding.steps}
+          onContinue={handleContinueOnboarding}
+        />
+      )}
 
       <StatsCards />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
@@ -300,6 +326,11 @@ export default function Dashboard() {
         isOpen={showWelcomePro}
         onClose={() => setShowWelcomePro(false)}
         expiryDate={user?.company?.expiryDate || null}
+      />
+
+      <FactouratiOnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
       />
     </motion.div>
   );
