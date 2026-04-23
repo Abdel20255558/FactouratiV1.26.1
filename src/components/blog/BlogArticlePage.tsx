@@ -5,7 +5,7 @@ import { getBlogArticleMeta } from '../../data/blogTaxonomy';
 import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
 import { useBlogArticles } from '../../hooks/useBlogArticles';
 import { resolveArticleSeo } from '../../utils/blogSeo';
-import { toAbsoluteSiteUrl } from '../../utils/siteUrl';
+import { toAbsoluteSiteUrl } from '../../utils/publicSiteUrl';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
 import LinkedBlogText from './LinkedBlogText';
