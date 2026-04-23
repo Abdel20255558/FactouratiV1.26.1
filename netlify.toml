@@ -6,6 +6,54 @@
   NODE_VERSION = "18"
 
 [[redirects]]
+  from = "/blog/"
+  to = "/blog"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/faq/"
+  to = "/faq"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/tarifs/"
+  to = "/tarifs"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/generateur-facture/"
+  to = "/generateur-facture"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/modules/"
+  to = "/modules"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/secteurs/"
+  to = "/secteurs"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blog/categorie/:categorySlug/"
+  to = "/blog/categorie/:categorySlug"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blog/:slug/"
+  to = "/blog/:slug"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
