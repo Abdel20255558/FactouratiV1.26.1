@@ -1,1 +1,9 @@
-/*    /index.html   200
+/blog/ /blog 301!
+/faq/ /faq 301!
+/tarifs/ /tarifs 301!
+/generateur-facture/ /generateur-facture 301!
+/modules/ /modules 301!
+/secteurs/ /secteurs 301!
+/blog/categorie/:categorySlug/ /blog/categorie/:categorySlug 301!
+/blog/:slug/ /blog/:slug 301!
+/* /index.html 200
