@@ -5,6 +5,7 @@ import { getBlogArticleMeta } from '../../data/blogTaxonomy';
 import { SITE_URL, createBreadcrumbSchema } from '../../data/publicSeoData';
 import { useBlogArticles } from '../../hooks/useBlogArticles';
 import { resolveArticleSeo } from '../../utils/blogSeo';
+import { toAbsoluteSiteUrl } from '../../utils/siteUrl';
 import PublicSiteChrome from '../public/PublicSiteChrome';
 import SeoHead from '../seo/SeoHead';
 import LinkedBlogText from './LinkedBlogText';
@@ -122,8 +123,10 @@ export default function BlogArticlePage() {
   const articleSeo = resolveArticleSeo(article);
   const introBlocks = splitReadableText(article.intro);
   const articleImage = articleSeo.ogImage || article.image;
-  const articleImageUrl = articleImage.startsWith('http') ? articleImage : `${SITE_URL}${articleImage}`;
-  const canonicalPath = articleSeo.canonicalUrl || `/blog/${article.slug}`;
+  const articlePath = `/blog/${article.slug}`;
+  const canonicalPath = articlePath;
+  const canonicalUrl = toAbsoluteSiteUrl(articlePath);
+  const articleImageUrl = toAbsoluteSiteUrl(articleImage);
   const robots = `${articleSeo.robotsIndex}, ${articleSeo.robotsFollow}, max-snippet:-1, max-image-preview:large, max-video-preview:-1`;
 
   const contentSchema =
@@ -161,7 +164,7 @@ export default function BlogArticlePage() {
                 url: `${SITE_URL}/files_3254075-1761082431431-image.png`,
               },
             },
-            mainEntityOfPage: articleSeo.canonicalUrl || `${SITE_URL}/blog/${article.slug}`,
+            mainEntityOfPage: canonicalUrl,
             datePublished: article.publishedAtISO,
             dateModified: article.updatedAt || article.publishedAtISO,
           };
@@ -173,7 +176,7 @@ export default function BlogArticlePage() {
       ...(articleCategory
         ? [{ name: articleCategory.category, url: `${SITE_URL}/blog/categorie/${articleCategory.categorySlug}` }]
         : []),
-      { name: article.title, url: `${SITE_URL}/blog/${article.slug}` },
+      { name: article.title, url: canonicalUrl },
     ]),
     ...(contentSchema ? [contentSchema] : []),
   ];
