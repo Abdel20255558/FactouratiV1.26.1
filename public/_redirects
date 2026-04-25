@@ -6,4 +6,5 @@
 /secteurs/ /secteurs 301!
 /blog/categorie/:categorySlug/ /blog/categorie/:categorySlug 301!
 /blog/:slug/ /blog/:slug 301!
+/api/tva/* /.netlify/functions/tva/:splat 200!
 /* /index.html 200
