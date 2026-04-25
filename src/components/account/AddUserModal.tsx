@@ -14,12 +14,15 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
   quotes: false,
   clients: false,
   products: false,
+  orders: false,
   suppliers: false,
   stockManagement: false,
   supplierManagement: false,
   hrManagement: false,
   reports: false,
-  settings: false
+  smartVat: false,
+  settings: false,
+  projectManagement: false
 };
 
 export default function AddUserModal({ isOpen, onClose }: AddUserModalProps) {
@@ -47,6 +50,7 @@ export default function AddUserModal({ isOpen, onClose }: AddUserModalProps) {
     supplierManagement: { label: 'Gestion Fournisseurs', description: 'Gestion avancée fournisseurs (PRO)' },
     hrManagement: { label: 'Gestion RH', description: 'Gestion des ressources humaines (PRO)' },
     reports: { label: 'Rapports', description: 'Tableaux de bord financiers (PRO)' },
+    smartVat: { label: 'TVA Intelligente', description: 'TVA achat, TVA vente, export PDF et extraction IA (PRO)' },
     settings: { label: 'Paramètres', description: 'Configuration de l\'entreprise' },
     projectManagement: { label: 'Gestion de Projet', description: 'Gestion des projets et tâches (PRO)' }
   };
