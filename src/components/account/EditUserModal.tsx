@@ -33,6 +33,7 @@ export default function EditUserModal({ isOpen, onClose, user }: EditUserModalPr
     supplierManagement: { label: 'Gestion Fournisseurs', description: 'Gestion avancée fournisseurs (PRO)' },
     hrManagement: { label: 'Gestion RH', description: 'Gestion des ressources humaines (PRO)' },
     reports: { label: 'Rapports', description: 'Tableaux de bord financiers (PRO)' },
+    smartVat: { label: 'TVA Intelligente', description: 'TVA achat, TVA vente, export PDF et extraction IA (PRO)' },
     settings: { label: 'Paramètres', description: 'Configuration de l\'entreprise' },
     projectManagement: { label: 'Gestion de Projet', description: 'Gestion des projets et tâches (PRO)' }
   };
