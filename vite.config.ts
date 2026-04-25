@@ -7,4 +7,17 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  server: {
+    proxy: {
+      '/api/tva': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/tva/, '/.netlify/functions/tva'),
+      },
+      '/.netlify/functions/tva': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+      },
+    },
+  },
 });
