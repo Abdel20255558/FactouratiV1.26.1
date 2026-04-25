@@ -68,6 +68,7 @@ interface User {
     supplierManagement: boolean;
     hrManagement: boolean;
     reports: boolean;
+    smartVat: boolean;
     settings: boolean;
     projectManagement: boolean;
   };
@@ -415,7 +416,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: managedUser.email,
             role: 'user',
             isAdmin: false,
-            permissions: managedUser.permissions,
+            permissions: {
+              ...managedUser.permissions,
+              smartVat: managedUser.permissions.smartVat ?? managedUser.permissions.reports ?? false,
+            },
             entrepriseId: managedUser.entrepriseId,
             company: {
               name: companyData.name,
