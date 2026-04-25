@@ -30,9 +30,9 @@ export interface UserPermissions {
   supplierManagement: boolean;
   hrManagement: boolean;
   reports: boolean;
+  smartVat: boolean;
   settings: boolean;
   projectManagement: boolean;
-  orders: boolean;
 }
 
 export interface ManagedUser {
@@ -74,6 +74,7 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
   supplierManagement: false,
   hrManagement: false,
   reports: false,
+  smartVat: false,
   settings: false,
   projectManagement: false
 };
@@ -103,7 +104,12 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onSnapshot(usersQuery, (snapshot) => {
       const usersData = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        permissions: {
+          ...DEFAULT_PERMISSIONS,
+          ...(doc.data().permissions || {}),
+          smartVat: doc.data().permissions?.smartVat ?? doc.data().permissions?.reports ?? false,
+        },
       } as ManagedUser)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
       setManagedUsers(usersData);
