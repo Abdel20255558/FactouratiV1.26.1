@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -28,6 +28,7 @@ import {
   type FreeInvoiceGeneratorLead,
   type FreeInvoiceGeneratorStats,
 } from '../../services/publicUsageService';
+import { TVA_AI_SETTINGS_COLLECTION, TVA_AI_SETTINGS_DOC } from '../../utils/vat';
 
 interface Company {
   id: string;
@@ -55,6 +56,29 @@ interface SupportAccessLog {
   openedAt: string;
 }
 
+interface VatAiSettingsForm {
+  apiKey: string;
+  model: string;
+  prompt: string;
+  updatedAt?: string;
+}
+
+const DEFAULT_TVA_AI_MODEL = 'gpt-4.1';
+const DEFAULT_TVA_AI_PROMPT = `Tu es un assistant comptable marocain. Analyse cette facture et extrais en JSON uniquement ces champs :
+{
+  date: (format YYYY-MM-DD),
+  fournisseur: (nom du fournisseur),
+  description: (designation du produit ou service),
+  montant_ttc: (nombre),
+  taux_tva: (20 | 10 | 7 | 0),
+  montant_tva: (nombre),
+  montant_ht: (nombre),
+  mode_paiement: (virement | cheque | effet | especes | autre),
+  numero_piece: (numero cheque ou effet si applicable, sinon null),
+  ice_fournisseur: (ICE 15 chiffres si visible, sinon null)
+}
+Reponds uniquement avec le JSON, sans texte avant ou apres.`;
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { startSupportAccess, logout } = useAuth();
@@ -75,6 +99,13 @@ export default function AdminDashboard() {
     lastPrintedAt: '',
     updatedAt: '',
   });
+  const [vatAiSettings, setVatAiSettings] = useState<VatAiSettingsForm>({
+    apiKey: '',
+    model: DEFAULT_TVA_AI_MODEL,
+    prompt: DEFAULT_TVA_AI_PROMPT,
+  });
+  const [isSavingVatAiSettings, setIsSavingVatAiSettings] = useState(false);
+  const [vatAiSettingsMessage, setVatAiSettingsMessage] = useState('');
 
   useEffect(() => {
     loadDashboardData();
@@ -83,7 +114,7 @@ export default function AdminDashboard() {
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [companiesSnapshot, supportLogsSnapshot, freeInvoiceGeneratorStats, freeInvoiceGeneratorLeads] = await Promise.all([
+      const [companiesSnapshot, supportLogsSnapshot, freeInvoiceGeneratorStats, freeInvoiceGeneratorLeads, vatAiSettingsSnapshot] = await Promise.all([
         getDocs(collection(db, 'entreprises')),
         getDocs(collection(db, 'supportAccessLogs')),
         fetchFreeInvoiceGeneratorStats().catch((error) => {
@@ -93,7 +124,11 @@ export default function AdminDashboard() {
         fetchFreeInvoiceGeneratorLeads(12).catch((error) => {
           console.warn('Prospects generateur gratuit indisponibles:', error);
           return [];
-        })
+        }),
+        getDoc(doc(db, TVA_AI_SETTINGS_COLLECTION, TVA_AI_SETTINGS_DOC)).catch((error) => {
+          console.warn('Configuration TVA IA indisponible:', error);
+          return null;
+        }),
       ]);
       const companiesData = companiesSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -115,6 +150,21 @@ export default function AdminDashboard() {
         setGeneratorStats(freeInvoiceGeneratorStats);
       }
       setGeneratorLeads(freeInvoiceGeneratorLeads);
+      if (vatAiSettingsSnapshot?.exists()) {
+        const settingsData = vatAiSettingsSnapshot.data() as Partial<VatAiSettingsForm>;
+        setVatAiSettings({
+          apiKey: settingsData.apiKey || '',
+          model: settingsData.model || DEFAULT_TVA_AI_MODEL,
+          prompt: settingsData.prompt || DEFAULT_TVA_AI_PROMPT,
+          updatedAt: settingsData.updatedAt,
+        });
+      } else {
+        setVatAiSettings({
+          apiKey: '',
+          model: DEFAULT_TVA_AI_MODEL,
+          prompt: DEFAULT_TVA_AI_PROMPT,
+        });
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des entreprises:', error);
     } finally {
@@ -167,7 +217,10 @@ export default function AdminDashboard() {
       'suppliers',
       'supplierProducts',
       'purchaseOrders',
-      'supplierPayments'
+      'supplierPayments',
+      'factures_achat_tva',
+      'factures_vente_tva_manuelles',
+      'factures_vente_tva_ajustements'
     ];
 
     for (const collectionName of entrepriseCollections) {
@@ -210,6 +263,46 @@ export default function AdminDashboard() {
       alert("Impossible de supprimer ce client pour le moment.");
     } finally {
       setDeleteLoadingId(null);
+    }
+  };
+
+  const handleVatAiSettingsChange = (field: keyof VatAiSettingsForm, value: string) => {
+    setVatAiSettings((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+    setVatAiSettingsMessage('');
+  };
+
+  const handleSaveVatAiSettings = async () => {
+    const trimmedApiKey = vatAiSettings.apiKey.trim();
+    const trimmedModel = vatAiSettings.model.trim() || DEFAULT_TVA_AI_MODEL;
+    const trimmedPrompt = vatAiSettings.prompt.trim() || DEFAULT_TVA_AI_PROMPT;
+
+    if (!trimmedApiKey) {
+      setVatAiSettingsMessage('La cle OpenAI est obligatoire pour analyser les PDF.');
+      return;
+    }
+
+    try {
+      setIsSavingVatAiSettings(true);
+      setVatAiSettingsMessage('');
+
+      const payload = {
+        apiKey: trimmedApiKey,
+        model: trimmedModel,
+        prompt: trimmedPrompt,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await setDoc(doc(db, TVA_AI_SETTINGS_COLLECTION, TVA_AI_SETTINGS_DOC), payload);
+      setVatAiSettings(payload);
+      setVatAiSettingsMessage('Configuration OpenAI TVA enregistree avec succes.');
+    } catch (error) {
+      console.error('Erreur sauvegarde configuration TVA IA:', error);
+      setVatAiSettingsMessage("Impossible d'enregistrer la configuration OpenAI.");
+    } finally {
+      setIsSavingVatAiSettings(false);
     }
   };
 
@@ -433,6 +526,85 @@ export default function AdminDashboard() {
                 <p className="mt-1 text-xs text-gray-500">
                   {generatorStats.leads.toLocaleString('fr-FR')} prospects / {generatorStats.prints.toLocaleString('fr-FR')} impressions
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-8 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+          <div className="border-b border-emerald-100 bg-gradient-to-r from-emerald-600 to-teal-700 px-6 py-5 text-white">
+            <h3 className="text-lg font-semibold">Configuration OpenAI pour analyse PDF TVA</h3>
+            <p className="mt-1 text-sm text-emerald-50">
+              Cette configuration est stockee dans Firestore et utilisee par le module TVA Intelligente pour l'analyse des PDF.
+            </p>
+          </div>
+
+          <div className="grid gap-5 px-6 py-6 lg:grid-cols-[1fr_1fr]">
+            <div className="space-y-5">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Cle OpenAI</label>
+                <input
+                  type="password"
+                  value={vatAiSettings.apiKey}
+                  onChange={(event) => handleVatAiSettingsChange('apiKey', event.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-emerald-500"
+                  placeholder="sk-..."
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Modele</label>
+                <input
+                  type="text"
+                  value={vatAiSettings.model}
+                  onChange={(event) => handleVatAiSettingsChange('model', event.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-emerald-500"
+                  placeholder={DEFAULT_TVA_AI_MODEL}
+                />
+              </div>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-800">
+                Utilisez ici un modele compatible analyse de documents PDF. La cle et le prompt seront relus par le backend TVA au moment de l'extraction.
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Prompt analyse PDF</label>
+                <textarea
+                  rows={11}
+                  value={vatAiSettings.prompt}
+                  onChange={(event) => handleVatAiSettingsChange('prompt', event.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-emerald-500"
+                />
+              </div>
+
+              {vatAiSettings.updatedAt ? (
+                <p className="text-xs text-gray-500">
+                  Derniere mise a jour : {new Date(vatAiSettings.updatedAt).toLocaleDateString('fr-FR')} a{' '}
+                  {new Date(vatAiSettings.updatedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              ) : null}
+
+              {vatAiSettingsMessage ? (
+                <div className={`rounded-xl px-4 py-3 text-sm ${
+                  vatAiSettingsMessage.includes('succes')
+                    ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border border-red-200 bg-red-50 text-red-700'
+                }`}>
+                  {vatAiSettingsMessage}
+                </div>
+              ) : null}
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveVatAiSettings}
+                  disabled={isSavingVatAiSettings}
+                  className="inline-flex items-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {isSavingVatAiSettings ? 'Enregistrement...' : 'Sauvegarder la configuration IA'}
+                </button>
               </div>
             </div>
           </div>
