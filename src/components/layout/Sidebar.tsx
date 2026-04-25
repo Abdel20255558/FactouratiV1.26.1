@@ -4,8 +4,10 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useLicense } from '../../contexts/LicenseContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useVat } from '../../contexts/VatContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+  Calculator,
   LayoutDashboard,
   FileText,
   Users,
@@ -37,6 +39,7 @@ interface SidebarProps {
 export default function Sidebar({ open, setOpen, onUpgrade }: SidebarProps) {
   const { t } = useLanguage();
   const { licenseType } = useLicense();
+  const { hasVatDue } = useVat();
   const { user, logout, supportSession } = useAuth(); // <-- include logout
   const navigate = useNavigate();
 
@@ -62,6 +65,9 @@ export default function Sidebar({ open, setOpen, onUpgrade }: SidebarProps) {
   const hasPermission = (permission: string) => {
     if (user?.isAdmin) return true;
     if (!user?.permissions) return false;
+    if (permission === 'smartVat') {
+      return Boolean(user.permissions.smartVat || user.permissions.reports);
+    }
     return Boolean(user.permissions[permission as keyof typeof user.permissions]);
   };
 
@@ -96,6 +102,7 @@ export default function Sidebar({ open, setOpen, onUpgrade }: SidebarProps) {
     { icon: TrendingUp, label: 'Gest. de Stock', path: '/stock-management', isPro: true, permission: 'stockManagement' },
     { icon: Truck, label: 'Gest. Fournisseurs', path: '/supplier-management', isPro: true, permission: 'supplierManagement' },
     { icon: BarChart3, label: 'Gest. financière', path: '/reports', isPro: true, permission: 'reports' },
+    { icon: Calculator, label: 'TVA Intelligente', path: '/tva-intelligente', isPro: true, permission: 'smartVat', badge: hasVatDue ? 'TVA due' : undefined },
     { icon: FolderKanban, label: 'Gestion de Projet', path: '/project-management', isPro: true, permission: 'projectManagement' },
     { icon: UserCheck, label: 'Gest. Humaine', path: '/hr-management', isPro: true, permission: 'hrManagement' },
     { icon: Shield, label: 'Gest. de Compte', path: '/account-management', isPro: true, permission: 'settings' }
@@ -116,6 +123,7 @@ export default function Sidebar({ open, setOpen, onUpgrade }: SidebarProps) {
       label: string;
       path: string;
       isPro?: boolean;
+      badge?: string;
     },
     depth: number = 0
   ) => {
@@ -141,10 +149,20 @@ export default function Sidebar({ open, setOpen, onUpgrade }: SidebarProps) {
               }`
             }
           >
-            <Icon className={`${iconSize} flex-shrink-0`} />
+            <div className="relative">
+              <Icon className={`${iconSize} flex-shrink-0`} />
+              {!open && item.badge && (
+                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-900" />
+              )}
+            </div>
             {open && (
               <div className="flex items-center space-x-2">
                 <span className="font-medium">{item.label}</span>
+                {item.badge && (
+                  <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    {item.badge}
+                  </span>
+                )}
                 {item.isPro && (
                   <motion.span
                     animate={{ scale: [1, 1.1, 1] }}
@@ -171,10 +189,20 @@ export default function Sidebar({ open, setOpen, onUpgrade }: SidebarProps) {
         title={!open ? `${item.label} (PRO)` : undefined}
         className={`w-full flex items-center ${open ? 'space-x-3' : 'justify-center'} ${basePadding} py-2.5 rounded-lg transition-all duration-200 group text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400`}
       >
-        <Icon className={`${iconSize} flex-shrink-0 text-red-500`} />
+        <div className="relative">
+          <Icon className={`${iconSize} flex-shrink-0 text-red-500`} />
+          {!open && item.badge && (
+            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-900" />
+          )}
+        </div>
         {open && (
           <div className="flex items-center space-x-2">
             <span className="font-medium">{item.label}</span>
+            {item.badge && (
+              <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                {item.badge}
+              </span>
+            )}
             <motion.span
               animate={{ rotate: [0, 5, -5, 0] }}
               transition={{ duration: 1, repeat: Infinity }}
