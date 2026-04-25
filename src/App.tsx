@@ -16,6 +16,7 @@ import { StockProvider } from './contexts/StockContext';
 import { SupplierProvider } from './contexts/SupplierContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UserManagementProvider } from './contexts/UserManagementContext';
+import { VatProvider } from './contexts/VatContext';
 
 const HomePage = lazy(() => import('./components/home/HomePage'));
 const BlogPage = lazy(() => import('./components/blog/BlogPage'));
@@ -52,6 +53,7 @@ const OrdersList = lazy(() => import('./components/orders/OrdersList'));
 const CreateOrder = lazy(() => import('./components/orders/CreateOrder'));
 const OrderDetail = lazy(() => import('./components/orders/OrderDetail'));
 const EditOrder = lazy(() => import('./components/orders/EditOrder'));
+const TVAIntelligentePage = lazy(() => import('./components/tva/TVAIntelligentePage'));
 const EmailVerificationPage = lazy(() => import('./components/auth/EmailVerificationPage'));
 const EmailActionPage = lazy(() => import('./components/auth/EmailActionPage'));
 
@@ -214,6 +216,7 @@ function AppContent() {
                 <Route path="/hr-management" element={<HRManagement />} />
                 <Route path="/project-management" element={<ProjectManagement />} />
                 <Route path="/account-management" element={<AccountManagement />} />
+                <Route path="/tva-intelligente" element={<TVAIntelligentePage />} />
                 <Route path="/commandes" element={<OrdersList />} />
                 <Route path="/commandes/nouveau" element={<CreateOrder />} />
                 <Route path="/commandes/:id" element={<OrderDetail />} />
@@ -312,9 +315,11 @@ function App() {
                 <StockProvider>
                   <SupplierProvider>
                     <DataProvider>
-                      <LicenseProvider>
-                        <AppContent />
-                      </LicenseProvider>
+                      <VatProvider>
+                        <LicenseProvider>
+                          <AppContent />
+                        </LicenseProvider>
+                      </VatProvider>
                     </DataProvider>
                   </SupplierProvider>
                 </StockProvider>
@@ -328,5 +333,3 @@ function App() {
 }
 
 export default App;
-
-
