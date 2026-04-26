@@ -16,6 +16,7 @@ import { addDoc, doc, getDoc, setDoc, updateDoc, query, collection, where, getDo
 import { auth, db } from '../config/firebase';
 import type { InvoiceTemplateCustomization } from '../components/templates/invoiceTemplateLayout';
 import { ManagedUser } from './UserManagementContext';
+import { buildDefaultVatAnalysisCredits, TVA_ANALYSIS_CREDITS_COLLECTION } from '../utils/vat';
 
 interface Company {
   name: string;
@@ -515,6 +516,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updatedAt: now.toISOString(),
         verificationEmailSentAt: '',
       });
+
+      await setDoc(
+        doc(db, TVA_ANALYSIS_CREDITS_COLLECTION, userId),
+        buildDefaultVatAnalysisCredits(userId, userId),
+        { merge: true },
+      );
 
       try {
         await sendVerificationEmailWithFallback(userCredential.user);
