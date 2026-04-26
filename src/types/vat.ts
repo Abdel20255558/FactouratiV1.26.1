@@ -1,6 +1,9 @@
 export type MoroccanVatRate = 0 | 7 | 10 | 20;
 
 export type PurchaseVatPaymentMode = 'virement' | 'cheque' | 'effet' | 'especes';
+export type VatOperationDirection = 'achat' | 'vente';
+export type VatExtractionDocumentType = 'facture_unique' | 'releve_bancaire' | 'factures_multiples';
+export type VatAnalysisTransactionType = 'gratuit' | 'pack_5' | 'pack_10' | 'pack_20' | 'custom_admin';
 
 export type PurchaseVatInvoiceSource = 'pdf_ia' | 'manuelle';
 export type SalesVatInvoiceSource = 'application' | 'manuelle';
@@ -45,23 +48,63 @@ export interface PurchaseVatInvoiceInput {
   aiMissingFields?: string[];
 }
 
-export interface PurchaseVatExtractionPayload {
-  date?: string | null;
-  numero_facture?: string | null;
-  fournisseur?: string | null;
-  description?: string | null;
-  montant_ttc?: number | null;
-  taux_tva?: MoroccanVatRate | null;
-  montant_tva?: number | null;
-  montant_ht?: number | null;
-  mode_paiement?: PurchaseVatPaymentMode | null;
-  numero_piece?: string | null;
-  ice_fournisseur?: string | null;
+export interface VatExtractedOperation {
+  id: string;
+  sens: VatOperationDirection;
+  date: string;
+  numero_facture: string | null;
+  fournisseur_client: string;
+  description: string;
+  montant_ttc: number;
+  taux_tva: MoroccanVatRate;
+  montant_tva: number;
+  montant_ht: number;
+  mode_paiement: PurchaseVatPaymentMode;
+  numero_piece: string | null;
+  ice: string | null;
+  ignoree: boolean;
 }
 
-export interface PurchaseVatExtractionResult extends PurchaseVatExtractionPayload {
-  autoFilledFields: string[];
-  missingFields: string[];
+export interface VatIgnoredOperation {
+  id: string;
+  date: string;
+  libelle: string;
+  montant: number;
+  sens?: 'debit' | 'credit' | null;
+  raison_exclusion: string;
+}
+
+export interface VatAnalysisCacheInfo {
+  cacheHit: boolean;
+  cacheEntryId: string | null;
+  hash_fichier: string | null;
+  nom_fichier_original: string | null;
+  analyse_date: string | null;
+  nb_factures_achat: number;
+  nb_factures_vente: number;
+  nb_operations_ignorees: number;
+}
+
+export interface PurchaseVatExtractionResult {
+  type_document: VatExtractionDocumentType;
+  periode: string | null;
+  factures: VatExtractedOperation[];
+  operations_ignorees: VatIgnoredOperation[];
+  cache_info?: VatAnalysisCacheInfo | null;
+}
+
+export interface VatAnalysisCacheEntry {
+  id: string;
+  user_id: string;
+  entrepriseId: string;
+  hash_fichier: string;
+  nom_fichier_original: string;
+  resultat_json: PurchaseVatExtractionResult;
+  nb_factures_achat: number;
+  nb_factures_vente: number;
+  nb_operations_ignorees: number;
+  analyse_date: string;
+  created_at: string;
 }
 
 export interface ManualSalesVatInvoice {
@@ -76,6 +119,8 @@ export interface ManualSalesVatInvoice {
   montant_ht: number;
   taux_tva: MoroccanVatRate;
   montant_tva: number;
+  mode_paiement?: PurchaseVatPaymentMode | null;
+  numero_piece?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -89,6 +134,8 @@ export interface ManualSalesVatInvoiceInput {
   montant_ht: number;
   taux_tva: MoroccanVatRate;
   montant_tva: number;
+  mode_paiement?: PurchaseVatPaymentMode | null;
+  numero_piece?: string | null;
 }
 
 export interface SalesVatAdjustment {
@@ -109,6 +156,8 @@ export interface SalesVatInvoiceLike {
   subtotal: number;
   totalVat: number;
   totalTTC: number;
+  mode_paiement?: PurchaseVatPaymentMode | null;
+  numero_piece?: string | null;
   sourceType?: SalesVatInvoiceSource;
   originalDate?: string;
   clientName?: string;
@@ -153,4 +202,51 @@ export interface VatAiSettings {
   model: string;
   prompt: string;
   updatedAt?: string;
+}
+
+export interface VatAnalysisCredits {
+  id: string;
+  user_id: string;
+  entrepriseId?: string;
+  credits_gratuits_utilises: number;
+  credits_payes_restants: number;
+  total_analyses_effectuees: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VatAnalysisCreditsSummary {
+  credits_gratuits_restants: number;
+  credits_payes_restants: number;
+  total_disponible: number;
+  credits_gratuits_utilises: number;
+  total_analyses_effectuees: number;
+}
+
+export interface VatAnalysisCreditsVerification {
+  autorise: boolean;
+  credits_restants: number;
+  credits_gratuits_restants: number;
+  credits_payes_restants: number;
+}
+
+export interface VatAnalysisTransaction {
+  id: string;
+  user_id: string;
+  entrepriseId?: string;
+  type: VatAnalysisTransactionType;
+  credits_ajoutes: number;
+  montant_paye: number;
+  recharge_par_admin: boolean;
+  admin_id: string | null;
+  note?: string | null;
+  created_at: string;
+}
+
+export interface VatAnalysisPackDefinition {
+  type: Extract<VatAnalysisTransactionType, 'pack_5' | 'pack_10' | 'pack_20'>;
+  label: string;
+  price: number;
+  credits: number;
+  badge?: string;
 }
