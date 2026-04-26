@@ -5,6 +5,9 @@ import type {
   PurchaseVatInvoice,
   SalesVatAdjustment,
   SalesVatInvoiceLike,
+  VatAnalysisCredits,
+  VatAnalysisCreditsSummary,
+  VatAnalysisPackDefinition,
   VatHistoryPoint,
   VatSummary,
 } from '../types/vat';
@@ -23,8 +26,52 @@ export const TVA_SALES_MANUAL_COLLECTION = 'factures_vente_tva_manuelles';
 export const TVA_SALES_ADJUSTMENTS_COLLECTION = 'factures_vente_tva_ajustements';
 export const TVA_AI_SETTINGS_COLLECTION = 'platformSettings';
 export const TVA_AI_SETTINGS_DOC = 'openaiPdfAnalysis';
+export const TVA_ANALYSIS_CACHE_COLLECTION = 'tva_analyses_cache';
+export const TVA_ANALYSIS_CREDITS_COLLECTION = 'tva_analyses_credits';
+export const TVA_ANALYSIS_TRANSACTIONS_COLLECTION = 'tva_analyses_transactions';
+export const TVA_FREE_ANALYSIS_LIMIT = 3;
+export const TVA_ANALYSIS_PACKS: VatAnalysisPackDefinition[] = [
+  { type: 'pack_5', label: '5 analyses IA', price: 50, credits: 5 },
+  { type: 'pack_10', label: '10 analyses IA', price: 89, credits: 10, badge: 'Le plus populaire' },
+  { type: 'pack_20', label: '20 analyses IA', price: 179, credits: 20, badge: 'Meilleure offre' },
+];
 
 const roundToTwo = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+export const buildDefaultVatAnalysisCredits = (
+  userId: string,
+  entrepriseId?: string,
+): VatAnalysisCredits => {
+  const now = new Date().toISOString();
+
+  return {
+    id: userId,
+    user_id: userId,
+    entrepriseId,
+    credits_gratuits_utilises: 0,
+    credits_payes_restants: 0,
+    total_analyses_effectuees: 0,
+    created_at: now,
+    updated_at: now,
+  };
+};
+
+export const buildVatAnalysisCreditsSummary = (
+  credits?: Partial<VatAnalysisCredits> | null,
+): VatAnalysisCreditsSummary => {
+  const creditsGratuitsUtilises = Math.max(0, Number(credits?.credits_gratuits_utilises || 0));
+  const creditsPayesRestants = Math.max(0, Number(credits?.credits_payes_restants || 0));
+  const totalAnalysesEffectuees = Math.max(0, Number(credits?.total_analyses_effectuees || 0));
+  const creditsGratuitsRestants = Math.max(0, TVA_FREE_ANALYSIS_LIMIT - creditsGratuitsUtilises);
+
+  return {
+    credits_gratuits_restants: creditsGratuitsRestants,
+    credits_payes_restants: creditsPayesRestants,
+    total_disponible: creditsGratuitsRestants + creditsPayesRestants,
+    credits_gratuits_utilises: creditsGratuitsUtilises,
+    total_analyses_effectuees: totalAnalysesEffectuees,
+  };
+};
 
 export const formatMad = (value: number) =>
   `${new Intl.NumberFormat('fr-FR', {
@@ -191,6 +238,8 @@ export const mapManualSalesInvoiceToVatInvoice = (
   subtotal: Number(invoice.montant_ht || 0),
   totalVat: Number(invoice.montant_tva || 0),
   totalTTC: Number(invoice.montant_ttc || 0),
+  mode_paiement: invoice.mode_paiement || null,
+  numero_piece: invoice.numero_piece || null,
   clientName: invoice.client_name,
   description: invoice.description,
   client: {
@@ -231,6 +280,8 @@ export const resolveSalesVatInvoices = (
         sourceInvoiceId: invoice.id,
         originalDate: invoice.date,
         date: effectiveDate,
+        mode_paiement: invoice.mode_paiement || null,
+        numero_piece: invoice.numero_piece || null,
         clientName: invoice.client?.name || invoice.clientName,
         description: invoice.items?.[0]?.description || invoice.description || invoice.number || 'Facture de vente',
         isAdjusted: Boolean(adjustment),
