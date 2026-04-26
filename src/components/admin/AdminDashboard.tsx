@@ -17,9 +17,11 @@ import {
   LogIn,
   Trash2,
   FileText,
-  Search
+  Search,
+  Sparkles
 } from 'lucide-react';
 import EditCompanyModal from './EditCompanyModal';
+import AdminVatCreditsRechargeModal from './AdminVatCreditsRechargeModal';
 import ReferralSourceChart from './ReferralSourceChart';
 import BlogManager from './BlogManager';
 import {
@@ -28,7 +30,13 @@ import {
   type FreeInvoiceGeneratorLead,
   type FreeInvoiceGeneratorStats,
 } from '../../services/publicUsageService';
-import { TVA_AI_SETTINGS_COLLECTION, TVA_AI_SETTINGS_DOC } from '../../utils/vat';
+import {
+  buildDefaultVatAnalysisCredits,
+  buildVatAnalysisCreditsSummary,
+  TVA_AI_SETTINGS_COLLECTION,
+  TVA_AI_SETTINGS_DOC,
+  TVA_ANALYSIS_CREDITS_COLLECTION,
+} from '../../utils/vat';
 
 interface Company {
   id: string;
@@ -63,29 +71,230 @@ interface VatAiSettingsForm {
   updatedAt?: string;
 }
 
-const DEFAULT_TVA_AI_MODEL = 'gpt-4.1';
-const DEFAULT_TVA_AI_PROMPT = `Tu es un assistant comptable marocain. Analyse cette facture et extrais en JSON uniquement ces champs :
-{
-  date: (format YYYY-MM-DD),
-  fournisseur: (nom du fournisseur),
-  description: (designation du produit ou service),
-  montant_ttc: (nombre),
-  taux_tva: (20 | 10 | 7 | 0),
-  montant_tva: (nombre),
-  montant_ht: (nombre),
-  mode_paiement: (virement | cheque | effet | especes | autre),
-  numero_piece: (numero cheque ou effet si applicable, sinon null),
-  ice_fournisseur: (ICE 15 chiffres si visible, sinon null)
+interface CompanyVatCreditsSummary {
+  totalDisponible: number;
+  creditsGratuitsRestants: number;
+  creditsPayesRestants: number;
 }
-Reponds uniquement avec le JSON, sans texte avant ou apres.`;
+
+const DEFAULT_TVA_AI_MODEL = 'gpt-4o';
+const DEFAULT_TVA_AI_PROMPT = `Tu es un assistant comptable marocain expert en TVA.
+Analyse ce document (releve bancaire ou facture) et extrais uniquement les operations comptables valides selon ces regles strictes.
+
+====================================
+REGLES DE FILTRAGE - LIS ATTENTIVEMENT
+====================================
+
+COLONNE DEBIT (factures achat) - N'extraire QUE :
+- Paiements a des SOCIETES ou ENTREPRISES (SARL, SA, SAS, Auto-entrepreneur)
+- Modes acceptes : virement societe, cheque, effet de commerce (traite/LCN)
+- La description doit correspondre a un achat de bien ou service professionnel
+
+IGNORER et NE PAS retourner :
+- Virements a des personnes physiques (noms propres sans forme juridique)
+- Commissions bancaires
+- Frais de tenue de compte
+- Taxes et impots (IR, IS, TVA DGI, TP, patente...)
+- Retraits especes / DAB
+- Frais de cheque, frais de virement
+- Remboursements de pret / echeances credit
+- Salaires et avances sur salaire
+- Cotisations CNSS / AMO
+- Paiements assurance
+- Tout virement avec libelle personnel ou ambigu
+
+COLONNE CREDIT (factures vente) - N'extraire QUE :
+- Paiements recus de CLIENTS (entreprises ou particuliers) pour des ventes
+- Encaissements de cheques clients
+- Virements recus avec reference facture ou nom client identifiable
+- Reglement d'effets de commerce a l'echeance
+
+IGNORER et NE PAS retourner :
+- Virements recus de banques (credits, prets)
+- Remises en especes
+- Interets crediteurs
+- Remboursements recus
+- Operations inter-comptes
+
+==================
+FORMAT DE REPONSE
+==================
+
+Si le document contient UNE SEULE facture, retourne :
+{
+  "type_document": "facture_unique",
+  "factures": [
+    {
+      "sens": "achat" | "vente",
+      "date": "YYYY-MM-DD",
+      "numero_facture": "numero ou null",
+      "fournisseur_client": "nom societe ou client",
+      "description": "designation du produit ou service",
+      "montant_ttc": nombre,
+      "taux_tva": 20 | 10 | 7 | 0,
+      "montant_tva": nombre,
+      "montant_ht": nombre,
+      "mode_paiement": "virement" | "cheque" | "effet" | "especes",
+      "numero_piece": "numero cheque ou effet ou null",
+      "ice": "15 chiffres ou null"
+    }
+  ]
+}
+
+Si le document contient PLUSIEURS factures ou est un releve bancaire, retourne :
+{
+  "type_document": "releve_bancaire" | "factures_multiples",
+  "periode": "YYYY-MM ou null",
+  "factures": [
+    {
+      "sens": "achat" | "vente",
+      "date": "YYYY-MM-DD",
+      "numero_facture": "numero ou null",
+      "fournisseur_client": "nom societe ou client",
+      "description": "designation",
+      "montant_ttc": nombre,
+      "taux_tva": 20 | 10 | 7 | 0,
+      "montant_tva": nombre,
+      "montant_ht": nombre,
+      "mode_paiement": "virement" | "cheque" | "effet" | "especes",
+      "numero_piece": "numero ou null",
+      "ice": "15 chiffres ou null",
+      "ignoree": false
+    }
+  ],
+  "operations_ignorees": [
+    {
+      "date": "YYYY-MM-DD",
+      "libelle": "libelle original",
+      "montant": nombre,
+      "raison_exclusion": "commission bancaire | virement personnel | taxe | salaire | etc."
+    }
+  ]
+}
+
+REGLES DE CALCUL TVA :
+- Si TVA non visible sur le document, supposer 20% par defaut
+- montant_ht = montant_ttc / (1 + taux_tva/100)
+- montant_tva = montant_ttc - montant_ht
+- Arrondir a 2 decimales
+
+Reponds UNIQUEMENT avec le JSON. Aucun texte avant ou apres.
+Aucun markdown. Aucune explication.`;
+
+const STRICT_BANK_STATEMENT_TVA_AI_PROMPT = `Voici un releve bancaire marocain.
+
+ETAPE 1 - COMPRENDRE LA STRUCTURE DU DOCUMENT
+Un releve bancaire marocain contient toujours ces colonnes :
+DATE | LIBELLE | DEBIT | CREDIT | SOLDE
+
+DEBIT  = colonne de gauche = argent qui SORT  = ACHAT
+CREDIT = colonne de droite = argent qui ENTRE = VENTE
+
+Un meme releve contient DES ACHATS ET DES VENTES EN MEME TEMPS.
+Tu dois retourner LES DEUX categories ensemble dans le JSON.
+Ne retourne JAMAIS une seule categorie si les deux existent.
+
+ETAPE 2 - REGLES DE FILTRAGE
+
+DEBITS (achats) - Inclure UNIQUEMENT si :
+- Le beneficiaire est une societe : SARL, SA, SARLAU, SNC, AUTO-ENTREPRENEUR
+- Le libelle correspond a un achat professionnel
+- Mode de paiement : CHQ (cheque), VIR (virement societe), EFF (effet)
+
+DEBITS (achats) - EXCLURE et mettre dans operations_ignorees :
+- RETRAIT, DAB, ESPECES -> raison : retrait especes
+- COMMISSION, FRAIS, AGIOS, INTERET -> raison : frais bancaires
+- TVA, IR, IS, TP, IMPOT, TAXE, DGI -> raison : impot ou taxe
+- CNSS, AMO, CIMR -> raison : cotisations sociales
+- SALAIRE, AVANCE, PAIE -> raison : salaire
+- CREDIT, PRET, ECHEANCE, REMBOURSEMENT -> raison : credit bancaire
+- ASSURANCE -> raison : assurance
+- Virements vers un prenom + nom de personne physique -> raison : virement personnel
+- Tout libelle ambigu ou personnel -> raison : operation non professionnelle
+
+CREDITS (ventes) - Inclure UNIQUEMENT si :
+- Remise cheque client
+- Virement recu d'un client (societe ou particulier)
+- Encaissement effet ou traite client
+- Le libelle contient : REMISE CHQ, VIR RECU, ENCAISSEMENT, REGLEMENT CLIENT
+
+CREDITS (ventes) - EXCLURE et mettre dans operations_ignorees :
+- VIREMENT PROPRE, ENTRE COMPTES -> raison : virement interne
+- CREDIT, DEBLOCAGE, PRET -> raison : credit bancaire recu
+- INTERETS CREDITEURS -> raison : interets bancaires
+- REMISE ESPECES -> raison : remise especes
+
+ETAPE 3 - CALCUL TVA
+Si TVA non visible sur le document :
+taux_tva par defaut = 20
+montant_ht  = montant_ttc / 1.20  (arrondi 2 decimales)
+montant_tva = montant_ttc - montant_ht  (arrondi 2 decimales)
+
+ETAPE 4 - FORMAT JSON DE REPONSE
+{
+  "type_document": "releve_bancaire",
+  "periode": "YYYY-MM",
+  "resume": {
+    "total_achats": nombre,
+    "total_ventes": nombre,
+    "nb_achats": nombre,
+    "nb_ventes": nombre,
+    "nb_ignores": nombre
+  },
+  "factures": [
+    {
+      "sens": "achat",
+      "date": "YYYY-MM-DD",
+      "fournisseur_client": "nom exact du beneficiaire",
+      "description": "libelle nettoye et lisible",
+      "montant_ttc": 1200.00,
+      "taux_tva": 20,
+      "montant_tva": 200.00,
+      "montant_ht": 1000.00,
+      "mode_paiement": "cheque",
+      "numero_piece": "CHQ2100244 ou null"
+    },
+    {
+      "sens": "vente",
+      "date": "YYYY-MM-DD",
+      "fournisseur_client": "nom du client",
+      "description": "libelle nettoye et lisible",
+      "montant_ttc": 6000.00,
+      "taux_tva": 20,
+      "montant_tva": 1000.00,
+      "montant_ht": 5000.00,
+      "mode_paiement": "virement",
+      "numero_piece": null
+    }
+  ],
+  "operations_ignorees": [
+    {
+      "date": "YYYY-MM-DD",
+      "libelle": "libelle original exact",
+      "montant": 500.00,
+      "sens": "debit",
+      "raison_exclusion": "frais bancaires"
+    }
+  ]
+}
+
+REGLE FINALE ABSOLUE :
+Si tu vois 10 debits valides et 5 credits valides dans le releve,
+tu retournes 10 achats ET 5 ventes dans le tableau factures.
+Tu ne retournes JAMAIS une seule categorie si les deux existent.
+Aucun texte avant ou apres le JSON.`;
+
+const sanitizeSecretValue = (value: string) => value.trim().replace(/^['"]+|['"]+$/g, '');
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { startSupportAccess, logout } = useAuth();
+  const { user, startSupportAccess, logout } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [companyVatCredits, setCompanyVatCredits] = useState<Record<string, CompanyVatCreditsSummary>>({});
   const [supportLogs, setSupportLogs] = useState<SupportAccessLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [rechargingCompany, setRechargingCompany] = useState<Company | null>(null);
   const [supportLoadingId, setSupportLoadingId] = useState<string | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
   const [generatorLeads, setGeneratorLeads] = useState<FreeInvoiceGeneratorLead[]>([]);
@@ -102,7 +311,7 @@ export default function AdminDashboard() {
   const [vatAiSettings, setVatAiSettings] = useState<VatAiSettingsForm>({
     apiKey: '',
     model: DEFAULT_TVA_AI_MODEL,
-    prompt: DEFAULT_TVA_AI_PROMPT,
+    prompt: STRICT_BANK_STATEMENT_TVA_AI_PROMPT,
   });
   const [isSavingVatAiSettings, setIsSavingVatAiSettings] = useState(false);
   const [vatAiSettingsMessage, setVatAiSettingsMessage] = useState('');
@@ -114,7 +323,14 @@ export default function AdminDashboard() {
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [companiesSnapshot, supportLogsSnapshot, freeInvoiceGeneratorStats, freeInvoiceGeneratorLeads, vatAiSettingsSnapshot] = await Promise.all([
+      const [
+        companiesSnapshot,
+        supportLogsSnapshot,
+        freeInvoiceGeneratorStats,
+        freeInvoiceGeneratorLeads,
+        vatAiSettingsSnapshot,
+        vatCreditsSnapshot,
+      ] = await Promise.all([
         getDocs(collection(db, 'entreprises')),
         getDocs(collection(db, 'supportAccessLogs')),
         fetchFreeInvoiceGeneratorStats().catch((error) => {
@@ -127,6 +343,10 @@ export default function AdminDashboard() {
         }),
         getDoc(doc(db, TVA_AI_SETTINGS_COLLECTION, TVA_AI_SETTINGS_DOC)).catch((error) => {
           console.warn('Configuration TVA IA indisponible:', error);
+          return null;
+        }),
+        getDocs(collection(db, TVA_ANALYSIS_CREDITS_COLLECTION)).catch((error) => {
+          console.warn('Credits analyses TVA indisponibles:', error);
           return null;
         }),
       ]);
@@ -146,6 +366,33 @@ export default function AdminDashboard() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       ));
       setSupportLogs(supportLogsData);
+      const vatCreditsMap = Object.fromEntries(
+        (vatCreditsSnapshot?.docs || []).map((creditsDoc) => {
+          const summary = buildVatAnalysisCreditsSummary(creditsDoc.data() as Record<string, unknown>);
+          return [
+            creditsDoc.id,
+            {
+              totalDisponible: summary.total_disponible,
+              creditsGratuitsRestants: summary.credits_gratuits_restants,
+              creditsPayesRestants: summary.credits_payes_restants,
+            } satisfies CompanyVatCreditsSummary,
+          ];
+        }),
+      );
+      await Promise.all(
+        companiesData
+          .filter((company) => !vatCreditsMap[company.id])
+          .map(async (company) => {
+            const defaults = buildDefaultVatAnalysisCredits(company.id, company.id);
+            await setDoc(doc(db, TVA_ANALYSIS_CREDITS_COLLECTION, company.id), defaults, { merge: true });
+            vatCreditsMap[company.id] = {
+              totalDisponible: 3,
+              creditsGratuitsRestants: 3,
+              creditsPayesRestants: 0,
+            };
+          }),
+      );
+      setCompanyVatCredits(vatCreditsMap);
       if (freeInvoiceGeneratorStats) {
         setGeneratorStats(freeInvoiceGeneratorStats);
       }
@@ -155,14 +402,14 @@ export default function AdminDashboard() {
         setVatAiSettings({
           apiKey: settingsData.apiKey || '',
           model: settingsData.model || DEFAULT_TVA_AI_MODEL,
-          prompt: settingsData.prompt || DEFAULT_TVA_AI_PROMPT,
+          prompt: settingsData.prompt || STRICT_BANK_STATEMENT_TVA_AI_PROMPT,
           updatedAt: settingsData.updatedAt,
         });
       } else {
         setVatAiSettings({
           apiKey: '',
           model: DEFAULT_TVA_AI_MODEL,
-          prompt: DEFAULT_TVA_AI_PROMPT,
+          prompt: STRICT_BANK_STATEMENT_TVA_AI_PROMPT,
         });
       }
     } catch (error) {
@@ -170,6 +417,44 @@ export default function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRechargeVatCredits = async ({
+    companyId,
+    credits,
+    note,
+    type,
+  }: {
+    companyId: string;
+    credits: number;
+    note: string;
+    type: 'pack_5' | 'pack_10' | 'pack_20' | 'custom_admin';
+  }) => {
+    const response = await fetch(`/api/admin/users/${companyId}/tva-credits`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-factourati-is-admin': String(Boolean(user?.isAdmin)),
+        'x-factourati-user-id': user?.id || 'facture-admin',
+        'x-factourati-user-email': user?.email || '',
+      },
+      body: JSON.stringify({ credits, note, type }),
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(payload?.message || 'Impossible de recharger les analyses IA.');
+    }
+
+    const summary = payload?.summary || {};
+    setCompanyVatCredits((prev) => ({
+      ...prev,
+      [companyId]: {
+        totalDisponible: Number(summary.total_disponible || 0),
+        creditsGratuitsRestants: Number(summary.credits_gratuits_restants || 0),
+        creditsPayesRestants: Number(summary.credits_payes_restants || 0),
+      },
+    }));
   };
 
   const handleLogout = async () => {
@@ -275,9 +560,9 @@ export default function AdminDashboard() {
   };
 
   const handleSaveVatAiSettings = async () => {
-    const trimmedApiKey = vatAiSettings.apiKey.trim();
+    const trimmedApiKey = sanitizeSecretValue(vatAiSettings.apiKey);
     const trimmedModel = vatAiSettings.model.trim() || DEFAULT_TVA_AI_MODEL;
-    const trimmedPrompt = vatAiSettings.prompt.trim() || DEFAULT_TVA_AI_PROMPT;
+    const trimmedPrompt = vatAiSettings.prompt.trim() || STRICT_BANK_STATEMENT_TVA_AI_PROMPT;
 
     if (!trimmedApiKey) {
       setVatAiSettingsMessage('La cle OpenAI est obligatoire pour analyser les PDF.');
@@ -783,6 +1068,72 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Recharges Analyses IA</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Suivez les credits TVA restants et rechargez gratuitement un client si besoin.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Client
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Analyses IA
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Detail
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {companies.map((company) => {
+                  const credits = companyVatCredits[company.id];
+
+                  return (
+                    <tr key={`credits-${company.id}`} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{company.name}</div>
+                        <div className="text-xs text-gray-500">ICE: {company.ice}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{company.ownerEmail}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                          {credits?.totalDisponible ?? 0} credits restants
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {credits?.creditsGratuitsRestants ?? 0} incluses • {credits?.creditsPayesRestants ?? 0} payees
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setRechargingCompany(company)}
+                          className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          Recharger IA
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Liste des entreprises */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -949,6 +1300,23 @@ export default function AdminDashboard() {
           company={editingCompany}
           onSave={handleSaveCompany}
           onClose={() => setEditingCompany(null)}
+        />
+      )}
+
+      {rechargingCompany && (
+        <AdminVatCreditsRechargeModal
+          isOpen={!!rechargingCompany}
+          onClose={() => setRechargingCompany(null)}
+          companyName={rechargingCompany.name}
+          currentCredits={companyVatCredits[rechargingCompany.id]?.totalDisponible ?? 0}
+          onSubmit={({ credits, note, type }) =>
+            handleRechargeVatCredits({
+              companyId: rechargingCompany.id,
+              credits,
+              note,
+              type,
+            })
+          }
         />
       )}
     </div>
