@@ -1,8 +1,9 @@
 import React from 'react';
 import Modal from '../common/Modal';
+import { AlertTriangle } from 'lucide-react';
 import { useVat } from '../../contexts/VatContext';
-import type { ManualSalesVatInvoice, ManualSalesVatInvoiceInput, MoroccanVatRate } from '../../types/vat';
-import { calculateVatFromTTC, formatMad, VAT_RATE_OPTIONS } from '../../utils/vat';
+import type { ManualSalesVatInvoice, ManualSalesVatInvoiceInput, MoroccanVatRate, PurchaseVatPaymentMode } from '../../types/vat';
+import { calculateVatFromTTC, formatMad, PAYMENT_MODE_OPTIONS, VAT_RATE_OPTIONS } from '../../utils/vat';
 
 interface SalesVatInvoiceModalProps {
   isOpen: boolean;
@@ -12,18 +13,24 @@ interface SalesVatInvoiceModalProps {
 
 interface FormState {
   date: string;
+  numero_facture: string;
   client_name: string;
   description: string;
   montant_ttc: string;
   taux_tva: MoroccanVatRate;
+  mode_paiement: PurchaseVatPaymentMode;
+  numero_piece: string;
 }
 
 const defaultFormState = (): FormState => ({
   date: new Date().toISOString().split('T')[0],
+  numero_facture: '',
   client_name: '',
   description: '',
   montant_ttc: '',
   taux_tva: 20,
+  mode_paiement: 'virement',
+  numero_piece: '',
 });
 
 const inputClassName =
@@ -45,10 +52,13 @@ export default function SalesVatInvoiceModal({
     if (invoice) {
       setForm({
         date: invoice.date,
+        numero_facture: invoice.numero_facture || '',
         client_name: invoice.client_name,
         description: invoice.description,
         montant_ttc: String(invoice.montant_ttc),
         taux_tva: invoice.taux_tva,
+        mode_paiement: invoice.mode_paiement || 'virement',
+        numero_piece: invoice.numero_piece || '',
       });
       setErrorMessage('');
       setIsSaving(false);
@@ -64,6 +74,7 @@ export default function SalesVatInvoiceModal({
     () => calculateVatFromTTC(Number(form.montant_ttc || 0), form.taux_tva),
     [form.montant_ttc, form.taux_tva],
   );
+  const isPieceRequired = form.mode_paiement === 'cheque' || form.mode_paiement === 'effet';
 
   const handleChange = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -91,14 +102,22 @@ export default function SalesVatInvoiceModal({
       return null;
     }
 
+    if (isPieceRequired && !form.numero_piece.trim()) {
+      setErrorMessage("Le numero de cheque ou d'effet est obligatoire.");
+      return null;
+    }
+
     return {
       date: form.date,
+      numero_facture: form.numero_facture.trim() || null,
       client_name: form.client_name.trim(),
       description: form.description.trim(),
       montant_ttc: montantTtc,
       montant_ht: amounts.ht,
       taux_tva: form.taux_tva,
       montant_tva: amounts.vat,
+      mode_paiement: form.mode_paiement,
+      numero_piece: isPieceRequired ? form.numero_piece.trim() : null,
     };
   };
 
@@ -161,6 +180,19 @@ export default function SalesVatInvoiceModal({
             />
           </div>
 
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">
+              Numero de facture
+            </label>
+            <input
+              type="text"
+              value={form.numero_facture}
+              onChange={(event) => handleChange('numero_facture', event.target.value)}
+              className={inputClassName}
+              placeholder="Ex: FAC-VENTE-2026-001"
+            />
+          </div>
+
           <div className="md:col-span-2">
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">
               Description *
@@ -205,11 +237,50 @@ export default function SalesVatInvoiceModal({
               ))}
             </select>
           </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">
+              Mode de paiement
+            </label>
+            <select
+              value={form.mode_paiement}
+              onChange={(event) => handleChange('mode_paiement', event.target.value as PurchaseVatPaymentMode)}
+              className={inputClassName}
+            >
+              {PAYMENT_MODE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {isPieceRequired ? (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Numero cheque / effet *
+              </label>
+              <input
+                type="text"
+                value={form.numero_piece}
+                onChange={(event) => handleChange('numero_piece', event.target.value)}
+                className={inputClassName}
+                placeholder="Numero de piece"
+              />
+            </div>
+          ) : null}
         </div>
 
         <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-800 dark:border-teal-800 dark:bg-teal-950/30 dark:text-teal-300">
           HT : {formatMad(amounts.ht)} | TVA : {formatMad(amounts.vat)}
         </div>
+
+        {isPieceRequired ? (
+          <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <span>Le numero de piece est requis si la vente est reglee par cheque ou effet.</span>
+          </div>
+        ) : null}
 
         {errorMessage ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
