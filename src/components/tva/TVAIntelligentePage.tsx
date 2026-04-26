@@ -1,12 +1,22 @@
 import React from 'react';
-import { AlertTriangle, BarChart3, CalendarDays, Download, FileUp, Pencil, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, CreditCard, Download, FileUp, Pencil, Plus, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useData } from '../../contexts/DataContext';
 import { useVat } from '../../contexts/VatContext';
-import type { ManualSalesVatInvoice, MoroccanVatRate, PurchaseVatInvoice, PurchaseVatPaymentMode, SalesVatInvoiceLike } from '../../types/vat';
+import type {
+  ManualSalesVatInvoice,
+  MoroccanVatRate,
+  PurchaseVatExtractionResult,
+  PurchaseVatInvoice,
+  PurchaseVatPaymentMode,
+  SalesVatInvoiceLike,
+  VatAnalysisCacheEntry,
+} from '../../types/vat';
 import { buildVatHistory, buildVatSummary, formatMad, getCurrentVatPeriod, PAYMENT_MODE_OPTIONS, VAT_RATE_OPTIONS } from '../../utils/vat';
 import PurchaseVatInvoiceModal from './PurchaseVatInvoiceModal';
 import SalesVatInvoiceModal from './SalesVatInvoiceModal';
 import SalesVatMonthModal from './SalesVatMonthModal';
+import TvaAnalysisCreditsPurchaseModal from './TvaAnalysisCreditsPurchaseModal';
 import TVAComparisonChart from './TVAComparisonChart';
 
 type SortField = 'date' | 'montant' | 'fournisseur';
@@ -14,6 +24,10 @@ type SortField = 'date' | 'montant' | 'fournisseur';
 const PAYMENT_LABELS = Object.fromEntries(PAYMENT_MODE_OPTIONS.map((option) => [option.value, option.label])) as Record<PurchaseVatPaymentMode, string>;
 const KPI_CARD_CLASS =
   'rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800';
+const TABLE_CONTAINER_CLASS =
+  'mt-6 overflow-x-auto overscroll-x-contain rounded-3xl border border-gray-200 bg-white pb-2 shadow-sm dark:border-gray-700 dark:bg-gray-800';
+const TABLE_HINT_CLASS =
+  'mt-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300';
 
 const periodLabel = (period: string) => {
   const [year, month] = period.split('-').map(Number);
@@ -25,18 +39,42 @@ const periodLabel = (period: string) => {
   });
 };
 
+const getAnalysisPeriodValue = (entry: VatAnalysisCacheEntry) => {
+  const cachedPeriod = entry.resultat_json?.periode;
+  if (typeof cachedPeriod === 'string' && /^\d{4}-\d{2}$/.test(cachedPeriod)) {
+    return cachedPeriod;
+  }
+
+  const firstOperationDate = entry.resultat_json?.factures?.[0]?.date;
+  if (typeof firstOperationDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(firstOperationDate)) {
+    return firstOperationDate.slice(0, 7);
+  }
+
+  return null;
+};
+
+const getAnalysisPeriodLabel = (entry: VatAnalysisCacheEntry) => {
+  const analysisPeriod = getAnalysisPeriodValue(entry);
+  return analysisPeriod ? periodLabel(analysisPeriod) : 'Mois non determine';
+};
+
 const getSalesCounterpart = (invoice: SalesVatInvoiceLike) => invoice.clientName || invoice.client?.name || 'Client';
 const getSalesDescription = (invoice: SalesVatInvoiceLike) =>
   invoice.description || invoice.items?.[0]?.description || invoice.number || 'Facture de vente';
 
 export default function TVAIntelligentePage() {
   const { user } = useAuth();
+  const { invoices: applicationInvoices } = useData();
   const {
     purchaseInvoices,
     salesInvoices,
     manualSalesInvoices,
+    salesAdjustments,
+    analysisCacheEntries,
+    analysisCredits,
     isLoading,
     deletePurchaseInvoice,
+    deleteAnalysisCacheEntry,
     deleteManualSalesInvoice,
     excludeApplicationSalesInvoice,
     moveApplicationSalesInvoiceToDate,
@@ -56,8 +94,15 @@ export default function TVAIntelligentePage() {
   const [isMoveSalesModalOpen, setIsMoveSalesModalOpen] = React.useState(false);
   const [movingSalesInvoice, setMovingSalesInvoice] = React.useState<SalesVatInvoiceLike | null>(null);
   const [actionError, setActionError] = React.useState('');
+  const [actionSuccess, setActionSuccess] = React.useState('');
   const [isExporting, setIsExporting] = React.useState(false);
   const [salesActionLoadingId, setSalesActionLoadingId] = React.useState<string | null>(null);
+  const [analysisActionLoadingId, setAnalysisActionLoadingId] = React.useState<string | null>(null);
+  const [isExcludedSalesPanelOpen, setIsExcludedSalesPanelOpen] = React.useState(false);
+  const [importCelebration, setImportCelebration] = React.useState<string | null>(null);
+  const [prefilledAnalysisResult, setPrefilledAnalysisResult] = React.useState<PurchaseVatExtractionResult | null>(null);
+  const [prefilledAnalysisFileName, setPrefilledAnalysisFileName] = React.useState<string | null>(null);
+  const [isCreditsPurchaseModalOpen, setIsCreditsPurchaseModalOpen] = React.useState(false);
 
   const isProActive =
     user?.company.subscription === 'pro' &&
@@ -75,6 +120,18 @@ export default function TVAIntelligentePage() {
     () => salesInvoices.filter((invoice) => invoice.date.startsWith(selectedPeriod)).sort((a, b) => b.date.localeCompare(a.date)),
     [salesInvoices, selectedPeriod],
   );
+
+  const excludedSalesInvoices = React.useMemo(() => {
+    const excludedIds = new Set(
+      salesAdjustments
+        .filter((adjustment) => adjustment.action === 'exclude')
+        .map((adjustment) => adjustment.sourceInvoiceId),
+    );
+
+    return applicationInvoices
+      .filter((invoice) => excludedIds.has(invoice.id) && invoice.date.startsWith(selectedPeriod))
+      .sort((left, right) => right.date.localeCompare(left.date));
+  }, [applicationInvoices, salesAdjustments, selectedPeriod]);
 
   const summary = React.useMemo(
     () => buildVatSummary(periodPurchaseInvoices, periodSalesInvoices, selectedPeriod),
@@ -124,22 +181,36 @@ export default function TVAIntelligentePage() {
   }, [periodPurchaseInvoices, periodSalesInvoices]);
 
   const openCreatePurchaseModal = (mode: 'manual' | 'pdf') => {
+    if (mode === 'pdf' && analysisCredits.total_disponible <= 0) {
+      setIsCreditsPurchaseModalOpen(true);
+      setActionError('');
+      setActionSuccess('');
+      return;
+    }
+
     setEditingPurchaseInvoice(null);
+    setPrefilledAnalysisResult(null);
+    setPrefilledAnalysisFileName(null);
     setPurchaseInitialMode(mode);
     setActionError('');
+    setActionSuccess('');
     setIsPurchaseModalOpen(true);
   };
 
   const openEditPurchaseModal = (invoice: PurchaseVatInvoice) => {
     setEditingPurchaseInvoice(invoice);
+    setPrefilledAnalysisResult(null);
+    setPrefilledAnalysisFileName(null);
     setPurchaseInitialMode(invoice.source === 'pdf_ia' ? 'pdf' : 'manual');
     setActionError('');
+    setActionSuccess('');
     setIsPurchaseModalOpen(true);
   };
 
   const openCreateSalesModal = () => {
     setEditingSalesInvoice(null);
     setActionError('');
+    setActionSuccess('');
     setIsSalesModalOpen(true);
   };
 
@@ -152,14 +223,121 @@ export default function TVAIntelligentePage() {
 
     setEditingSalesInvoice(manualInvoice);
     setActionError('');
+    setActionSuccess('');
     setIsSalesModalOpen(true);
   };
 
   const openMoveSalesModal = (invoice: SalesVatInvoiceLike) => {
     setMovingSalesInvoice(invoice);
     setActionError('');
+    setActionSuccess('');
     setIsMoveSalesModalOpen(true);
   };
+
+  const handlePurchaseImportComplete = React.useCallback(
+    ({ achats, ventes, periods }: { achats: number; ventes: number; periods: string[] }) => {
+      const primaryPeriod = periods[0];
+      if (primaryPeriod) {
+        setSelectedPeriod(primaryPeriod);
+      }
+      setPaymentFilter('all');
+      setVatRateFilter('all');
+      setSortField('date');
+
+      const importedTotal = achats + ventes;
+      const periodMessage =
+        periods.length === 0
+          ? ''
+          : periods.length === 1
+            ? ` Affichage bascule sur ${periodLabel(periods[0])}.`
+            : ` Les lignes couvrent ${periods.length} mois (${periods.map((period) => periodLabel(period)).join(', ')}). Affichage place sur ${periodLabel(periods[0])}.`;
+
+      setActionError('');
+      setActionSuccess(
+        `${importedTotal} ligne${importedTotal > 1 ? 's' : ''} importee${importedTotal > 1 ? 's' : ''} : ${achats} achat${achats > 1 ? 's' : ''} et ${ventes} vente${ventes > 1 ? 's' : ''}.${periodMessage}`,
+      );
+      setImportCelebration(
+        `${importedTotal} ligne${importedTotal > 1 ? 's' : ''} importee${importedTotal > 1 ? 's' : ''} avec succes`,
+      );
+    },
+    [],
+  );
+
+  const handleCreditsPurchased = (addedCredits: number) => {
+    setActionError('');
+    setActionSuccess(`${addedCredits} analyses ajoutees a votre compte !`);
+    setImportCelebration(`${addedCredits} analyses IA rechargees`);
+    openCreatePurchaseModal('pdf');
+  };
+
+  React.useEffect(() => {
+    if (!importCelebration) return undefined;
+
+    const timeout = window.setTimeout(() => {
+      setImportCelebration(null);
+    }, 3200);
+
+    return () => window.clearTimeout(timeout);
+  }, [importCelebration]);
+
+  const openCachedAnalysis = React.useCallback((entry: VatAnalysisCacheEntry) => {
+    setEditingPurchaseInvoice(null);
+    setPurchaseInitialMode('pdf');
+    setPrefilledAnalysisFileName(entry.nom_fichier_original);
+    setPrefilledAnalysisResult({
+      ...entry.resultat_json,
+      cache_info: {
+        cacheHit: true,
+        cacheEntryId: entry.id,
+        hash_fichier: entry.hash_fichier,
+        nom_fichier_original: entry.nom_fichier_original,
+        analyse_date: entry.analyse_date,
+        nb_factures_achat: entry.nb_factures_achat,
+        nb_factures_vente: entry.nb_factures_vente,
+        nb_operations_ignorees: entry.nb_operations_ignorees,
+      },
+    });
+    setActionError('');
+    setActionSuccess('');
+    setIsPurchaseModalOpen(true);
+  }, []);
+
+  const previewCachedAnalysis = React.useCallback(
+    (entry: VatAnalysisCacheEntry) => {
+      const analysisPeriod = getAnalysisPeriodValue(entry);
+      if (analysisPeriod) {
+        setSelectedPeriod(analysisPeriod);
+        setActionSuccess(`Affichage positionne sur ${periodLabel(analysisPeriod)}.`);
+      } else {
+        setActionSuccess('Le mois analyse n a pas pu etre determine pour ce releve.');
+      }
+      setActionError('');
+    },
+    [],
+  );
+
+  const handleDeleteAnalysisCacheEntry = React.useCallback(
+    async (entry: VatAnalysisCacheEntry) => {
+      const confirmed = window.confirm(
+        `Supprimer le releve analyse "${entry.nom_fichier_original}" de l'historique ?`,
+      );
+
+      if (!confirmed) return;
+
+      try {
+        setAnalysisActionLoadingId(entry.id);
+        setActionError('');
+        await deleteAnalysisCacheEntry(entry.id);
+        setActionSuccess(`Le releve "${entry.nom_fichier_original}" a ete supprime de l'historique.`);
+      } catch (error) {
+        console.error("Erreur suppression releve analyse TVA:", error);
+        setActionError("Impossible de supprimer ce releve analyse pour le moment.");
+      } finally {
+        setAnalysisActionLoadingId(null);
+      }
+    },
+    [deleteAnalysisCacheEntry],
+  );
 
   const handleDeletePurchase = async (invoice: PurchaseVatInvoice) => {
     const confirmed = window.confirm(`Supprimer la facture achat "${invoice.fournisseur}" ?`);
@@ -220,6 +398,18 @@ export default function TVAIntelligentePage() {
       await restoreApplicationSalesInvoice(invoice.sourceInvoiceId);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Impossible de restaurer cette vente.");
+    } finally {
+      setSalesActionLoadingId(null);
+    }
+  };
+
+  const handleRestoreExcludedSale = async (invoiceId: string) => {
+    try {
+      setSalesActionLoadingId(invoiceId);
+      setActionError('');
+      await restoreApplicationSalesInvoice(invoiceId);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Impossible de reajouter cette vente au tableau TVA.");
     } finally {
       setSalesActionLoadingId(null);
     }
@@ -368,14 +558,69 @@ export default function TVAIntelligentePage() {
             </button>
           </div>
         </section>
+
+        <section
+          className={`rounded-[2rem] border p-5 shadow-sm ${
+            analysisCredits.total_disponible > 0
+              ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20'
+              : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20'
+          }`}
+        >
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p
+                className={`text-xs font-semibold uppercase tracking-[0.24em] ${
+                  analysisCredits.total_disponible > 0
+                    ? 'text-blue-700 dark:text-blue-300'
+                    : 'text-red-700 dark:text-red-300'
+                }`}
+              >
+                Credits analyses IA
+              </p>
+              <h2
+                className={`mt-2 text-2xl font-bold ${
+                  analysisCredits.total_disponible > 0
+                    ? 'text-blue-900 dark:text-blue-100'
+                    : 'text-red-900 dark:text-red-100'
+                }`}
+              >
+                {analysisCredits.total_disponible > 0
+                  ? `Analyses IA disponibles : ${analysisCredits.total_disponible}`
+                  : 'Analyses IA epuisees'}
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-gray-700 dark:text-gray-300">
+                {analysisCredits.total_disponible > 0
+                  ? `(${analysisCredits.credits_gratuits_restants} incluses restantes + ${analysisCredits.credits_payes_restants} payees) - Les credits payes sont utilises en priorite.`
+                  : 'Rechargez votre compte pour continuer a analyser vos releves bancaires avec l IA TVA.'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsCreditsPurchaseModalOpen(true)}
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition ${
+                analysisCredits.total_disponible > 0
+                  ? 'bg-blue-700 text-white hover:bg-blue-800'
+                  : 'bg-red-700 text-white hover:bg-red-800'
+              }`}
+            >
+              <CreditCard className="h-4 w-4" />
+              Acheter des analyses
+            </button>
+          </div>
+        </section>
+
         <section className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-6 shadow-sm dark:border-slate-700 dark:from-slate-900 dark:to-slate-800">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">Analyse avec IA</p>
-                <h2 className="mt-2 text-xl font-bold text-gray-900 dark:text-gray-100">Importer un PDF fournisseur</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">Analysez votre relevé bancaire en quelques secondes</p>
+                <h2 className="mt-2 text-xl font-bold text-gray-900 dark:text-gray-100">Importez votre relevé bancaire</h2>
                 <p className="mt-3 text-sm leading-7 text-gray-600 dark:text-gray-300">
-                  Le PDF est analyse automatiquement puis vous validez un formulaire pre-rempli.
+                  Importez votre relevé bancaire — Factourati s&apos;occupe du reste.
+                  Notre IA détecte automatiquement vos factures achat et vente,
+                  filtre les opérations non comptables, et prépare votre déclaration TVA.
+                  Vous n&apos;avez qu&apos;à vérifier et valider.
                 </p>
               </div>
               <div className="rounded-2xl bg-white/80 p-3 text-emerald-700 shadow-sm dark:bg-slate-700 dark:text-emerald-300">
@@ -388,8 +633,11 @@ export default function TVAIntelligentePage() {
               className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
               <FileUp className="h-4 w-4" />
-              Lancer l'analyse PDF
+              Importer mon relevé bancaire
             </button>
+            <p className="mt-3 text-xs font-medium text-gray-500 dark:text-gray-400">
+              Formats acceptés : PDF — Taille max : 10 MB
+            </p>
           </div>
 
           <div className="rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-6 shadow-sm dark:border-slate-700 dark:from-slate-900 dark:to-slate-800">
@@ -413,6 +661,114 @@ export default function TVAIntelligentePage() {
               <Plus className="h-4 w-4" />
               Ajouter une facture achat
             </button>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Releves deja analyses</h2>
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                Rechargez un resultat mis en cache sans relancer l'analyse OpenAI.
+              </p>
+            </div>
+
+            <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 dark:bg-gray-900 dark:text-gray-200">
+              <FileUp className="h-4 w-4" />
+              {analysisCacheEntries.length} releve{analysisCacheEntries.length > 1 ? 's' : ''}
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-3xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+            Chaque releve conserve son mois analyse, ses compteurs achat / vente et les actions utiles pour le recharger ou le supprimer.
+          </div>
+
+          <div className={`${TABLE_CONTAINER_CLASS} overflow-x-hidden`}>
+            <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
+              <colgroup>
+                <col style={{ width: '27%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '17%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '16%' }} />
+              </colgroup>
+              <thead className="bg-gray-50 dark:bg-gray-900/60">
+                <tr>
+                  {['Fichier', 'Mois analyse', 'Date analyse', 'Factures achat', 'Factures vente', 'Actions'].map((label) => (
+                    <th
+                      key={label}
+                      className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400"
+                    >
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {analysisCacheEntries.map((entry) => (
+                  <tr key={entry.id}>
+                    <td className="min-w-[260px] px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <div>{entry.nom_fichier_original}</div>
+                      <div className="mt-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+                        {entry.nb_operations_ignorees} operation{entry.nb_operations_ignorees > 1 ? 's' : ''} exclue{entry.nb_operations_ignorees > 1 ? 's' : ''}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
+                      {getAnalysisPeriodLabel(entry)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
+                      {entry.analyse_date ? new Date(entry.analyse_date).toLocaleString('fr-FR') : '—'}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
+                      {entry.nb_factures_achat}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
+                      {entry.nb_factures_vente}
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-col items-start gap-2">
+                        <button
+                          type="button"
+                          onClick={() => previewCachedAnalysis(entry)}
+                          disabled={analysisActionLoadingId === entry.id}
+                          className="inline-flex w-full items-center justify-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50"
+                        >
+                          <FileUp className="h-3.5 w-3.5" />
+                          Apercu
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openCachedAnalysis(entry)}
+                          disabled={analysisActionLoadingId === entry.id}
+                          className="inline-flex w-full items-center justify-center gap-1 rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Recharger
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAnalysisCacheEntry(entry)}
+                          disabled={analysisActionLoadingId === entry.id}
+                          className="inline-flex w-full items-center justify-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {analysisActionLoadingId === entry.id ? 'Suppression...' : 'Supprimer'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+
+                {!isLoading && analysisCacheEntries.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                      Aucun releve analyse pour le moment.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -504,11 +860,22 @@ export default function TVAIntelligentePage() {
             </div>
           ) : null}
 
-          <div className="mt-6 overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          {actionSuccess ? (
+            <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+              {actionSuccess}
+            </div>
+          ) : null}
+
+          <div className={TABLE_HINT_CLASS}>
+            <Sparkles className="h-3.5 w-3.5" />
+            Faites defiler horizontalement pour voir toutes les colonnes du tableau.
+          </div>
+
+          <div className={TABLE_CONTAINER_CLASS}>
+            <table className="min-w-[1480px] divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
-                  {['Date', 'Fournisseur', 'Description', 'TTC', 'Taux TVA', 'TVA', 'HT', 'Paiement', 'N° piece', 'ICE', 'Actions'].map((label) => (
+                  {['Date', 'N° facture', 'Fournisseur', 'Description', 'TTC', 'Taux TVA', 'TVA', 'HT', 'Paiement', 'N° piece', 'ICE', 'Actions'].map((label) => (
                     <th
                       key={label}
                       className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400"
@@ -523,6 +890,9 @@ export default function TVAIntelligentePage() {
                   <tr key={invoice.id} className="align-top">
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
                       {new Date(invoice.date).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {invoice.numero_facture || '—'}
                     </td>
                     <td className="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                       <div>{invoice.fournisseur}</div>
@@ -571,7 +941,7 @@ export default function TVAIntelligentePage() {
 
                 {!isLoading && filteredPurchaseInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <td colSpan={12} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
                       Aucune facture achat pour cette periode avec les filtres actuels.
                     </td>
                   </tr>
@@ -589,21 +959,93 @@ export default function TVAIntelligentePage() {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={openCreateSalesModal}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-700 px-5 py-3 text-sm font-semibold text-white transition hover:from-indigo-700 hover:to-blue-800"
-            >
-              <Plus className="h-4 w-4" />
-              Ajouter une facture vente manuelle
-            </button>
+            <div className="w-full xl:w-auto xl:min-w-[360px]">
+              <div className="rounded-3xl border border-gray-200 bg-gray-50/80 p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                <p className="px-1 text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                  Actions ventes TVA
+                </p>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row xl:flex-col">
+                  <button
+                    type="button"
+                    onClick={openCreateSalesModal}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-700 px-5 py-3 text-sm font-semibold text-white transition hover:from-indigo-700 hover:to-blue-800"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Ajouter une facture vente manuelle
+                  </button>
+
+                  {excludedSalesInvoices.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsExcludedSalesPanelOpen((prev) => !prev)}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      {isExcludedSalesPanelOpen ? 'Masquer les ventes retirees' : `Reajouter une vente retiree (${excludedSalesInvoices.length})`}
+                    </button>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-gray-200 px-4 py-3 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                      Aucune vente retiree a reafficher.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-6 overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          {isExcludedSalesPanelOpen ? (
+            <div className="mt-5 rounded-3xl border border-amber-200 bg-amber-50/70 p-5 dark:border-amber-800 dark:bg-amber-950/20">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">Ventes retirees du tableau TVA</h3>
+                  <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
+                    Vous pouvez les remettre sans recréer la facture de vente dans l'application.
+                  </p>
+                </div>
+                <span className="inline-flex w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-700 shadow-sm dark:bg-slate-900 dark:text-amber-300">
+                  {excludedSalesInvoices.length} facture{excludedSalesInvoices.length > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                {excludedSalesInvoices.map((invoice) => (
+                  <div
+                    key={invoice.id}
+                    className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-white px-4 py-4 dark:border-amber-900 dark:bg-slate-900/80 lg:flex-row lg:items-center lg:justify-between"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{invoice.number || 'Sans numero'}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">{invoice.client?.name || 'Client'}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(invoice.date).toLocaleDateString('fr-FR')} • {formatMad(invoice.totalTTC)}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreExcludedSale(invoice.id)}
+                      disabled={salesActionLoadingId === invoice.id}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-60"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      {salesActionLoadingId === invoice.id ? 'Reintegration...' : 'Reintegrer au tableau TVA'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className={TABLE_HINT_CLASS}>
+            <Sparkles className="h-3.5 w-3.5" />
+            Faites defiler horizontalement pour voir toutes les colonnes du tableau.
+          </div>
+
+          <div className={TABLE_CONTAINER_CLASS}>
+            <table className="min-w-[1520px] divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
-                  {['Date TVA', 'Source', 'Client', 'Description', 'HT', 'TVA', 'TTC', 'Statut', 'Actions'].map((label) => (
+                  {['Date TVA', 'N° facture', 'Source', 'Client', 'Description', 'Paiement', 'N° piece', 'HT', 'TVA', 'TTC', 'Statut', 'Actions'].map((label) => (
                     <th
                       key={label}
                       className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400"
@@ -628,6 +1070,9 @@ export default function TVAIntelligentePage() {
                           </div>
                         ) : null}
                       </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {invoice.number || '—'}
+                      </td>
                       <td className="whitespace-nowrap px-4 py-4">
                         <span
                           className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
@@ -644,6 +1089,12 @@ export default function TVAIntelligentePage() {
                       </td>
                       <td className="min-w-[260px] px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
                         {getSalesDescription(invoice)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
+                        {invoice.mode_paiement ? PAYMENT_LABELS[invoice.mode_paiement] : '—'}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
+                        {invoice.numero_piece || '—'}
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(invoice.subtotal)}</td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(invoice.totalVat)}</td>
@@ -712,7 +1163,7 @@ export default function TVAIntelligentePage() {
 
                 {!isLoading && periodSalesInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <td colSpan={12} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
                       Aucune facture vente sur cette periode.
                     </td>
                   </tr>
@@ -737,8 +1188,13 @@ export default function TVAIntelligentePage() {
             </div>
           </div>
 
-          <div className="mt-6 overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <div className={TABLE_HINT_CLASS}>
+            <Sparkles className="h-3.5 w-3.5" />
+            Faites defiler horizontalement pour voir toutes les colonnes du tableau.
+          </div>
+
+          <div className={TABLE_CONTAINER_CLASS}>
+            <table className="min-w-[980px] divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
                   {['Date', 'Type', 'Tiers', 'Description', 'HT', 'TVA', 'TTC'].map((label) => (
@@ -792,9 +1248,14 @@ export default function TVAIntelligentePage() {
         onClose={() => {
           setIsPurchaseModalOpen(false);
           setEditingPurchaseInvoice(null);
+          setPrefilledAnalysisResult(null);
+          setPrefilledAnalysisFileName(null);
         }}
         initialMode={purchaseInitialMode}
         invoice={editingPurchaseInvoice}
+        prefilledExtractionResult={prefilledAnalysisResult}
+        prefilledFileName={prefilledAnalysisFileName}
+        onImported={handlePurchaseImportComplete}
       />
 
       <SalesVatInvoiceModal
@@ -815,6 +1276,32 @@ export default function TVAIntelligentePage() {
         invoice={movingSalesInvoice}
         onSubmit={handleMoveSaleToMonth}
       />
+
+      <TvaAnalysisCreditsPurchaseModal
+        isOpen={isCreditsPurchaseModalOpen}
+        onClose={() => setIsCreditsPurchaseModalOpen(false)}
+        onPurchased={handleCreditsPurchased}
+      />
+
+      <div
+        className={`pointer-events-none fixed right-6 top-6 z-[90] transition-all duration-500 ${
+          importCelebration ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
+        }`}
+      >
+        <div className="relative overflow-hidden rounded-3xl border border-emerald-200 bg-white/95 px-5 py-4 shadow-2xl backdrop-blur dark:border-emerald-800 dark:bg-slate-900/95">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10" />
+          <div className="relative flex items-center gap-3">
+            <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+              <span className="absolute inset-0 rounded-2xl bg-emerald-400/20 animate-ping" />
+              <CheckCircle2 className="relative h-6 w-6 animate-bounce" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Import TVA termine</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300">{importCelebration || ''}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
