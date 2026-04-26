@@ -63,6 +63,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/admin/users/:id/tva-credits"
+  to = "/.netlify/functions/tva/admin/users/:id/tva-credits"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
