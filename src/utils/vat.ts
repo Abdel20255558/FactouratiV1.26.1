@@ -12,7 +12,7 @@ import type {
   VatSummary,
 } from '../types/vat';
 
-export const VAT_RATE_OPTIONS: MoroccanVatRate[] = [20, 10, 7, 0];
+export const VAT_RATE_OPTIONS: MoroccanVatRate[] = [20, 14, 13, 10, 7, 0];
 
 export const PAYMENT_MODE_OPTIONS: Array<{ value: PurchaseVatPaymentMode; label: string }> = [
   { value: 'virement', label: 'Virement bancaire' },
@@ -148,7 +148,7 @@ export const calculateVatFromTTC = (ttc: number, rate: number) => {
 };
 
 export const normalizeVatRate = (value: number): MoroccanVatRate => {
-  if (value === 20 || value === 10 || value === 7 || value === 0) {
+  if (value === 20 || value === 14 || value === 13 || value === 10 || value === 7 || value === 0) {
     return value;
   }
 
