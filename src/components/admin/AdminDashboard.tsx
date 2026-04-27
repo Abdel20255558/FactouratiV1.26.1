@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -36,6 +36,7 @@ import {
   TVA_AI_SETTINGS_COLLECTION,
   TVA_AI_SETTINGS_DOC,
   TVA_ANALYSIS_CREDITS_COLLECTION,
+  TVA_ANALYSIS_TRANSACTIONS_COLLECTION,
 } from '../../utils/vat';
 
 interface Company {
@@ -76,6 +77,8 @@ interface CompanyVatCreditsSummary {
   creditsGratuitsRestants: number;
   creditsPayesRestants: number;
 }
+
+const ADMIN_TVA_CREDITS_API_BASES = ['/api/admin/users', '/.netlify/functions/tva/admin/users'];
 
 const DEFAULT_TVA_AI_MODEL = 'gpt-4o';
 const DEFAULT_TVA_AI_PROMPT = `Tu es un assistant comptable marocain expert en TVA.
@@ -424,37 +427,117 @@ export default function AdminDashboard() {
     credits,
     note,
     type,
+    action,
   }: {
     companyId: string;
     credits: number;
     note: string;
     type: 'pack_5' | 'pack_10' | 'pack_20' | 'custom_admin';
+    action: 'add' | 'remove';
   }) => {
-    const response = await fetch(`/api/admin/users/${companyId}/tva-credits`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-factourati-is-admin': String(Boolean(user?.isAdmin)),
-        'x-factourati-user-id': user?.id || 'facture-admin',
-        'x-factourati-user-email': user?.email || '',
-      },
-      body: JSON.stringify({ credits, note, type }),
-    });
+    const requestPayload = JSON.stringify({ credits, note, type, action });
+    let lastErrorMessage = action === 'remove'
+      ? 'Impossible de retirer les credits IA.'
+      : 'Impossible de recharger les analyses IA.';
 
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-      throw new Error(payload?.message || 'Impossible de recharger les analyses IA.');
+    for (const apiBase of ADMIN_TVA_CREDITS_API_BASES) {
+      try {
+        const response = await fetch(`${apiBase}/${companyId}/tva-credits`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-factourati-is-admin': String(Boolean(user?.isAdmin)),
+            'x-factourati-user-id': user?.id || 'facture-admin',
+            'x-factourati-user-email': user?.email || '',
+            'x-factourati-entreprise-id': companyId,
+          },
+          body: requestPayload,
+        });
+
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          lastErrorMessage = payload?.message || `Erreur API (${response.status})`;
+          continue;
+        }
+
+        const summary = payload?.summary || payload || {};
+        setCompanyVatCredits((prev) => ({
+          ...prev,
+          [companyId]: {
+            totalDisponible: Number(summary.total_disponible || 0),
+            creditsGratuitsRestants: Number(summary.credits_gratuits_restants || 0),
+            creditsPayesRestants: Number(summary.credits_payes_restants || 0),
+          },
+        }));
+        return;
+      } catch (error) {
+        lastErrorMessage = error instanceof Error ? error.message : 'Impossible de joindre le service TVA.';
+      }
     }
 
-    const summary = payload?.summary || {};
-    setCompanyVatCredits((prev) => ({
-      ...prev,
-      [companyId]: {
-        totalDisponible: Number(summary.total_disponible || 0),
-        creditsGratuitsRestants: Number(summary.credits_gratuits_restants || 0),
-        creditsPayesRestants: Number(summary.credits_payes_restants || 0),
-      },
-    }));
+    try {
+      const creditsRef = doc(db, TVA_ANALYSIS_CREDITS_COLLECTION, companyId);
+      const creditsSnapshot = await getDoc(creditsRef);
+      const currentCredits = creditsSnapshot.exists()
+        ? creditsSnapshot.data()
+        : buildDefaultVatAnalysisCredits(companyId, companyId);
+      const currentPaidCredits = Math.max(0, Number(currentCredits.credits_payes_restants || 0));
+      if (action === 'remove' && Number(credits) > currentPaidCredits) {
+        throw new Error(`Vous ne pouvez retirer que ${currentPaidCredits} credits payes restants.`);
+      }
+      const nextPaidCredits =
+        action === 'remove'
+          ? Math.max(0, currentPaidCredits - Number(credits))
+          : currentPaidCredits + Number(credits);
+      const now = new Date().toISOString();
+
+      await setDoc(
+        creditsRef,
+        {
+          user_id: companyId,
+          entrepriseId: companyId,
+          credits_gratuits_utilises: Math.max(0, Number(currentCredits.credits_gratuits_utilises || 0)),
+          credits_payes_restants: nextPaidCredits,
+          total_analyses_effectuees: Math.max(0, Number(currentCredits.total_analyses_effectuees || 0)),
+          created_at: currentCredits.created_at || now,
+          updated_at: now,
+        },
+        { merge: true },
+      );
+
+      await addDoc(collection(db, TVA_ANALYSIS_TRANSACTIONS_COLLECTION), {
+        user_id: companyId,
+        entrepriseId: companyId,
+        type: action === 'remove' ? 'retrait_admin' : type,
+        credits_ajoutes: action === 'remove' ? -Number(credits) : Number(credits),
+        montant_paye: 0,
+        recharge_par_admin: true,
+        admin_id: user?.id || 'facture-admin',
+        note: note.trim() || (action === 'remove' ? 'Retrait admin de credits IA' : null),
+        created_at: now,
+      });
+
+      const summary = buildVatAnalysisCreditsSummary({
+        credits_gratuits_utilises: Math.max(0, Number(currentCredits.credits_gratuits_utilises || 0)),
+        credits_payes_restants: nextPaidCredits,
+        total_analyses_effectuees: Math.max(0, Number(currentCredits.total_analyses_effectuees || 0)),
+      });
+
+      setCompanyVatCredits((prev) => ({
+        ...prev,
+        [companyId]: {
+          totalDisponible: summary.total_disponible,
+          creditsGratuitsRestants: summary.credits_gratuits_restants,
+          creditsPayesRestants: summary.credits_payes_restants,
+        },
+      }));
+    } catch (error) {
+      throw new Error(
+        error instanceof Error && error.message
+          ? error.message
+          : lastErrorMessage || 'Impossible de recharger les analyses IA.',
+      );
+    }
   };
 
   const handleLogout = async () => {
@@ -1309,12 +1392,13 @@ export default function AdminDashboard() {
           onClose={() => setRechargingCompany(null)}
           companyName={rechargingCompany.name}
           currentCredits={companyVatCredits[rechargingCompany.id]?.totalDisponible ?? 0}
-          onSubmit={({ credits, note, type }) =>
+          onSubmit={({ credits, note, type, action }) =>
             handleRechargeVatCredits({
               companyId: rechargingCompany.id,
               credits,
               note,
               type,
+              action,
             })
           }
         />
