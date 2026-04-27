@@ -12,6 +12,7 @@ interface AdminVatCreditsRechargeModalProps {
     credits: number;
     note: string;
     type: 'pack_5' | 'pack_10' | 'pack_20' | 'custom_admin';
+    action: 'add' | 'remove';
   }) => Promise<void>;
 }
 
@@ -27,6 +28,7 @@ export default function AdminVatCreditsRechargeModal({
   const [note, setNote] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
+  const [submitAction, setSubmitAction] = React.useState<'add' | 'remove'>('add');
 
   React.useEffect(() => {
     if (!isOpen) {
@@ -35,6 +37,7 @@ export default function AdminVatCreditsRechargeModal({
       setNote('');
       setIsSubmitting(false);
       setErrorMessage('');
+      setSubmitAction('add');
     }
   }, [isOpen]);
 
@@ -44,7 +47,7 @@ export default function AdminVatCreditsRechargeModal({
       ? Math.max(0, Number(customCredits || 0))
       : selectedPreset?.credits || 0;
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (action: 'add' | 'remove') => {
     if (!creditsToAdd || creditsToAdd <= 0) {
       setErrorMessage('Le nombre de credits a ajouter doit etre superieur a 0.');
       return;
@@ -53,10 +56,12 @@ export default function AdminVatCreditsRechargeModal({
     try {
       setIsSubmitting(true);
       setErrorMessage('');
+      setSubmitAction(action);
       await onSubmit({
         credits: creditsToAdd,
         note,
         type: selectedType,
+        action,
       });
       onClose();
     } catch (error) {
@@ -69,7 +74,7 @@ export default function AdminVatCreditsRechargeModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Recharger analyses IA" size="lg">
       <div className="space-y-6">
-        <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-950/30">
+        <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30">
           <div className="flex items-start gap-3">
             <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
               <Sparkles className="h-5 w-5" />
@@ -102,9 +107,12 @@ export default function AdminVatCreditsRechargeModal({
                 />
                 <div>
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{pack.label}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{pack.price} DH</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{pack.price} DH offerts par l'admin</p>
                 </div>
               </div>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:bg-gray-900/60 dark:text-gray-300">
+                +{pack.credits}
+              </span>
             </label>
           ))}
 
@@ -125,7 +133,7 @@ export default function AdminVatCreditsRechargeModal({
               />
               <div className="flex-1">
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Personnalise</p>
-                <div className="mt-2 flex items-center gap-3">
+                <div className="mt-2 flex flex-wrap items-center gap-3">
                   <input
                     type="number"
                     min="1"
@@ -134,7 +142,7 @@ export default function AdminVatCreditsRechargeModal({
                     className="w-28 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                     placeholder="Analyses"
                   />
-                  <span className="text-sm text-gray-500 dark:text-gray-400">analyses</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">analyses a ajouter</span>
                 </div>
               </div>
             </div>
@@ -169,12 +177,22 @@ export default function AdminVatCreditsRechargeModal({
           <button
             type="button"
             onClick={() => {
-              void handleSubmit();
+              void handleSubmit('remove');
+            }}
+            disabled={isSubmitting}
+            className="rounded-2xl border border-red-300 px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950/30"
+          >
+            {isSubmitting && submitAction === 'remove' ? 'Retrait...' : 'Retirer les credits'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void handleSubmit('add');
             }}
             disabled={isSubmitting}
             className="rounded-2xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
           >
-            {isSubmitting ? 'Recharge...' : 'Recharger gratuitement'}
+            {isSubmitting && submitAction === 'add' ? 'Recharge...' : 'Recharger gratuitement'}
           </button>
         </div>
       </div>
