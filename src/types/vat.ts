@@ -1,9 +1,9 @@
-export type MoroccanVatRate = 0 | 7 | 10 | 20;
+export type MoroccanVatRate = 0 | 7 | 10 | 13 | 14 | 20;
 
 export type PurchaseVatPaymentMode = 'virement' | 'cheque' | 'effet' | 'especes';
 export type VatOperationDirection = 'achat' | 'vente';
 export type VatExtractionDocumentType = 'facture_unique' | 'releve_bancaire' | 'factures_multiples';
-export type VatAnalysisTransactionType = 'gratuit' | 'pack_5' | 'pack_10' | 'pack_20' | 'custom_admin';
+export type VatAnalysisTransactionType = 'gratuit' | 'pack_5' | 'pack_10' | 'pack_20' | 'custom_admin' | 'retrait_admin';
 
 export type PurchaseVatInvoiceSource = 'pdf_ia' | 'manuelle';
 export type SalesVatInvoiceSource = 'application' | 'manuelle';
