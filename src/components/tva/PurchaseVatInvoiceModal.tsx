@@ -551,17 +551,17 @@ export default function PurchaseVatInvoiceModal({
           </div>
         </div>
         <div className="overflow-x-auto px-4 pb-5 pt-4">
-          <table className="min-w-[1030px] w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
+          <table className="min-w-[1120px] w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
             <colgroup>
               <col style={{ width: '40px' }} />
-              <col style={{ width: '90px' }} />
+              <col style={{ width: '94px' }} />
+              <col style={{ width: '118px' }} />
               <col style={{ width: '120px' }} />
-              <col style={{ width: '120px' }} />
-              <col style={{ width: '160px' }} />
-              <col style={{ width: '110px' }} />
-              <col style={{ width: '90px' }} />
-              <col style={{ width: '110px' }} />
-              <col style={{ width: '120px' }} />
+              <col style={{ width: '178px' }} />
+              <col style={{ width: '128px' }} />
+              <col style={{ width: '124px' }} />
+              <col style={{ width: '138px' }} />
+              <col style={{ width: '130px' }} />
             </colgroup>
             <thead className="bg-white/80 dark:bg-slate-900/70">
               <tr>
@@ -612,17 +612,27 @@ export default function PurchaseVatInvoiceModal({
                       <div className={compactReadOnlyClass}>
                         {formatMad(op.montant_ttc)}
                       </div>
+                      <span className="mt-1 block text-[10px] text-gray-500 dark:text-gray-400">
+                        HT : {formatMad(op.montant_ht)}
+                      </span>
                     </td>
                     <td className={tableCellClass}>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={Number.isFinite(op.montant_tva) ? op.montant_tva : 0}
-                        onChange={(event) => handleDraftChange(op.id, 'montant_tva', event.target.value)}
-                        className={compactInputClass}
-                        placeholder="TVA"
-                      />
+                      <div className="space-y-1">
+                        <select
+                          value={op.taux_tva}
+                          onChange={(event) => handleDraftChange(op.id, 'taux_tva', event.target.value)}
+                          className={compactInputClass}
+                        >
+                          {VAT_RATE_OPTIONS.map((rate) => (
+                            <option key={rate} value={rate}>
+                              {rate}%
+                            </option>
+                          ))}
+                        </select>
+                        <span className="block text-[10px] text-gray-500 dark:text-gray-400">
+                          {formatMad(op.montant_tva)}
+                        </span>
+                      </div>
                     </td>
                     <td className={tableCellClass}>
                       <select value={op.mode_paiement} onChange={(event) => handleDraftChange(op.id, 'mode_paiement', event.target.value)} className={compactInputClass}>
