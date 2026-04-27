@@ -38,7 +38,7 @@ const TVA_ANALYSIS_TRANSACTIONS_COLLECTION = 'tva_analyses_transactions';
 const TVA_AI_SETTINGS_COLLECTION = 'platformSettings';
 const TVA_AI_SETTINGS_DOC = 'openaiPdfAnalysis';
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
-const VALID_VAT_RATES = [20, 10, 7, 0];
+const VALID_VAT_RATES = [20, 14, 13, 10, 7, 0];
 const VALID_PAYMENT_MODES = ['virement', 'cheque', 'effet', 'especes'];
 const TVA_FREE_ANALYSIS_LIMIT = 3;
 const TVA_ANALYSIS_PACKS = {
@@ -921,6 +921,60 @@ const addVatAnalysisCredits = async ({
   });
 };
 
+const removeVatAnalysisCredits = async ({
+  ownerId,
+  entrepriseId = ownerId,
+  creditsToRemove,
+  adminId = null,
+  note = '',
+}) => {
+  if (!Number.isFinite(Number(creditsToRemove)) || Number(creditsToRemove) <= 0) {
+    throw new Error('Le nombre de credits a retirer est invalide.');
+  }
+
+  const creditsDoc = await ensureVatAnalysisCreditsDoc(ownerId, entrepriseId);
+  const currentPaidCredits = Math.max(0, Number(creditsDoc.credits_payes_restants || 0));
+
+  if (Number(creditsToRemove) > currentPaidCredits) {
+    throw new Error(`Vous ne pouvez retirer que ${currentPaidCredits} credits payes restants.`);
+  }
+
+  const nextPaid = Math.max(0, currentPaidCredits - Number(creditsToRemove));
+  const now = new Date().toISOString();
+
+  await setDoc(
+    doc(db, TVA_ANALYSIS_CREDITS_COLLECTION, ownerId),
+    {
+      user_id: ownerId,
+      entrepriseId,
+      credits_gratuits_utilises: Math.max(0, Number(creditsDoc.credits_gratuits_utilises || 0)),
+      credits_payes_restants: nextPaid,
+      total_analyses_effectuees: Math.max(0, Number(creditsDoc.total_analyses_effectuees || 0)),
+      created_at: creditsDoc.created_at || now,
+      updated_at: now,
+    },
+    { merge: true },
+  );
+
+  await addDoc(collection(db, TVA_ANALYSIS_TRANSACTIONS_COLLECTION), {
+    user_id: ownerId,
+    entrepriseId,
+    type: 'retrait_admin',
+    credits_ajoutes: -Number(creditsToRemove),
+    montant_paye: 0,
+    recharge_par_admin: true,
+    admin_id: adminId || null,
+    note: String(note || '').trim() || 'Retrait admin de credits IA',
+    created_at: now,
+  });
+
+  return buildVatAnalysisCreditsSummary({
+    credits_gratuits_utilises: Math.max(0, Number(creditsDoc.credits_gratuits_utilises || 0)),
+    credits_payes_restants: nextPaid,
+    total_analyses_effectuees: Math.max(0, Number(creditsDoc.total_analyses_effectuees || 0)),
+  });
+};
+
 const buildVatSummary = (purchaseInvoices, salesInvoices, period) => {
   const filteredPurchases = purchaseInvoices.filter((invoice) => isDateInPeriod(invoice.date, period));
   const filteredSales = salesInvoices.filter((invoice) => isDateInPeriod(invoice.date, period));
@@ -1071,11 +1125,6 @@ const validatePurchasePayload = (payload) => {
   const montantTtc = Number(payload.montant_ttc);
   if (!Number.isFinite(montantTtc) || montantTtc <= 0) {
     return 'Le montant TTC doit etre superieur a 0.';
-  }
-
-  const paymentMode = normalizePaymentMode(payload.mode_paiement);
-  if ((paymentMode === 'cheque' || paymentMode === 'effet') && !String(payload.numero_piece || '').trim()) {
-    return "Le numero de cheque ou d'effet est obligatoire.";
   }
 
   return null;
@@ -1455,21 +1504,34 @@ const handleAdminRechargeCredits = async (request, companyId) => {
   const body = await request.json();
   const credits = Number(body?.credits || 0);
   const type = String(body?.type || '').trim() || 'custom_admin';
+  const action = String(body?.action || 'add').trim().toLowerCase();
   const note = String(body?.note || '').trim();
 
-  const summary = await addVatAnalysisCredits({
-    ownerId: companyId,
-    entrepriseId: companyId,
-    transactionType: type,
-    creditsToAdd: credits,
-    amountPaid: 0,
-    rechargeParAdmin: true,
-    adminId: getUserId(request),
-    note,
-  });
+  const summary =
+    action === 'remove'
+      ? await removeVatAnalysisCredits({
+          ownerId: companyId,
+          entrepriseId: companyId,
+          creditsToRemove: credits,
+          adminId: getUserId(request),
+          note,
+        })
+      : await addVatAnalysisCredits({
+          ownerId: companyId,
+          entrepriseId: companyId,
+          transactionType: type,
+          creditsToAdd: credits,
+          amountPaid: 0,
+          rechargeParAdmin: true,
+          adminId: getUserId(request),
+          note,
+        });
 
   return jsonResponse({
-    message: `${credits} analyses ont ete ajoutees gratuitement.`,
+    message:
+      action === 'remove'
+        ? `${credits} analyses ont ete retirees du compte.`
+        : `${credits} analyses ont ete ajoutees gratuitement.`,
     summary,
   });
 };
