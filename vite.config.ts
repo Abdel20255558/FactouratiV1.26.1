@@ -14,6 +14,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/tva/, '/.netlify/functions/tva'),
       },
+      '/api/admin/users': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/admin\/users/, '/.netlify/functions/tva/admin/users'),
+      },
       '/.netlify/functions/tva': {
         target: 'http://localhost:8888',
         changeOrigin: true,
