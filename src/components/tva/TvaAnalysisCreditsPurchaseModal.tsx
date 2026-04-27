@@ -61,7 +61,7 @@ export default function TvaAnalysisCreditsPurchaseModal({
     <>
       <Modal isOpen={isOpen} onClose={onClose} title="Acheter des analyses IA" size="lg">
         <div className="space-y-6">
-          <div className="rounded-3xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-blue-50 p-5 dark:border-indigo-800 dark:from-indigo-950/30 dark:to-slate-900">
+          <div className="rounded-3xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-blue-50 p-4 dark:border-indigo-800 dark:from-indigo-950/30 dark:to-slate-900">
             <div className="flex items-start gap-3">
               <div className="rounded-2xl bg-indigo-100 p-3 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
                 <Sparkles className="h-5 w-5" />
@@ -87,7 +87,7 @@ export default function TvaAnalysisCreditsPurchaseModal({
                   key={pack.type}
                   type="button"
                   onClick={() => setSelectedPackType(pack.type)}
-                  className={`relative rounded-3xl border p-5 text-left transition ${
+                  className={`relative h-full rounded-3xl border p-4 text-left transition ${
                     isSelected
                       ? 'border-indigo-500 bg-indigo-50 shadow-md dark:border-indigo-400 dark:bg-indigo-950/30'
                       : 'border-gray-200 bg-white hover:border-indigo-300 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-indigo-700'
@@ -121,7 +121,7 @@ export default function TvaAnalysisCreditsPurchaseModal({
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 dark:border-gray-700 dark:bg-gray-900/50">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{selectedPack.label}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
