@@ -330,6 +330,13 @@ export default function HomePage() {
                       <p className="mt-3 text-base leading-7 text-slate-600">
                         Importez un PDF, detectez achats, ventes, virements personnels et operations hors TVA en quelques minutes.
                       </p>
+                      <a
+                        href="#tva-ia"
+                        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-sky-700 shadow-sm ring-1 ring-sky-100 transition hover:-translate-y-0.5 hover:bg-sky-100 hover:text-sky-800"
+                      >
+                        Voir le module TVA IA
+                        <ArrowRight className="h-4 w-4" />
+                      </a>
                     </div>
 
                     <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
@@ -516,29 +523,29 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="tva-ia" className="bg-slate-50 py-20 text-slate-900">
+        <section id="tva-ia" className="bg-slate-50 py-18 text-slate-900">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="relative overflow-hidden rounded-[2rem] border border-cyan-100/80 bg-[linear-gradient(135deg,#ecfeff_0%,#eff6ff_38%,#f0fdf4_100%)] shadow-[0_30px_90px_-35px_rgba(14,165,233,0.4)]">
               <div className="pointer-events-none absolute -left-20 top-10 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
               <div className="pointer-events-none absolute -right-16 bottom-0 h-72 w-72 rounded-full bg-emerald-300/20 blur-3xl" />
 
-              <div className="relative grid gap-10 px-6 py-8 lg:grid-cols-[1.08fr_0.92fr] lg:px-10 lg:py-12 xl:gap-14 xl:px-12">
+              <div className="relative grid gap-8 px-6 py-7 lg:grid-cols-[1.02fr_0.98fr] lg:px-9 lg:py-10 xl:gap-10 xl:px-10">
                 <div className="max-w-2xl">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/90 px-4 py-2 text-sm font-bold text-cyan-700 shadow-sm">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/90 px-4 py-2 text-xs font-bold text-cyan-700 shadow-sm sm:text-sm">
                     <BadgeCheck className="h-4 w-4" />
                     Premiere plateforme marocaine avec analyse TVA intelligente par IA
                   </div>
-                  <h2 className="mt-6 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                  <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl xl:text-[2.8rem]">
                     Analyse TVA intelligente avec IA
                   </h2>
-                  <p className="mt-5 text-xl leading-9 text-slate-700">
+                  <p className="mt-4 text-lg leading-8 text-slate-700 sm:text-xl">
                     Factourati analyse automatiquement vos releves bancaires PDF pour detecter les factures achats, ventes, virements personnels et operations hors TVA.
                   </p>
-                  <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+                  <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
                     Grace a notre systeme d analyse intelligent, importez simplement votre releve bancaire. Factourati prepare une analyse structuree de votre TVA, vous permet de verifier les operations, ajuster les taux TVA et preparer votre declaration plus rapidement.
                   </p>
 
-                  <div className="mt-7 flex flex-wrap gap-3">
+                  <div className="mt-6 flex flex-wrap gap-2.5">
                     {[
                       'Import PDF en quelques secondes',
                       'Tri achats / ventes automatique',
@@ -546,7 +553,7 @@ export default function HomePage() {
                     ].map((item) => (
                       <div
                         key={item}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200/80 bg-white/80 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200/80 bg-white/80 px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm"
                       >
                         <Sparkles className="h-4 w-4 text-cyan-600" />
                         {item}
@@ -554,7 +561,7 @@ export default function HomePage() {
                     ))}
                   </div>
 
-                  <div className="mt-7 grid gap-4 sm:grid-cols-3">
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
                     {[
                       { value: 'PDF', label: 'Import bancaire rapide' },
                       { value: 'IA', label: 'Classement intelligent' },
@@ -562,45 +569,45 @@ export default function HomePage() {
                     ].map((item) => (
                       <div
                         key={item.label}
-                        className="rounded-3xl border border-white/80 bg-white/75 p-4 shadow-sm backdrop-blur"
+                        className="rounded-3xl border border-white/80 bg-white/75 p-3.5 shadow-sm backdrop-blur"
                       >
-                        <p className="text-2xl font-black text-slate-950">{item.value}</p>
-                        <p className="mt-1 text-sm leading-6 text-slate-600">{item.label}</p>
+                        <p className="text-xl font-black text-slate-950">{item.value}</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-600 sm:text-sm">{item.label}</p>
                       </div>
                     ))}
                   </div>
 
-                  <div className="mt-8 flex flex-wrap gap-3">
+                  <div className="mt-7 flex flex-wrap gap-3">
                     <Link
                       to="/login?mode=register"
-                      className="inline-flex items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#0f172a_0%,#0369a1_52%,#10b981_100%)] px-7 py-4 text-sm font-bold text-white shadow-[0_18px_40px_-18px_rgba(14,165,233,0.6)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-18px_rgba(16,185,129,0.45)]"
+                      className="inline-flex items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#0f172a_0%,#0369a1_52%,#10b981_100%)] px-6 py-3.5 text-sm font-bold text-white shadow-[0_18px_40px_-18px_rgba(14,165,233,0.6)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-18px_rgba(16,185,129,0.45)]"
                     >
                       Tester l analyse TVA IA
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                     <Link
                       to="/login"
-                      className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-white/90 px-7 py-4 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-cyan-400 hover:bg-cyan-50 hover:text-cyan-700"
+                      className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-white/90 px-6 py-3.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-cyan-400 hover:bg-cyan-50 hover:text-cyan-700"
                     >
                       Voir l application
                     </Link>
                   </div>
 
-                  <p className="mt-6 max-w-xl text-sm leading-6 text-slate-500">
+                  <p className="mt-5 max-w-xl text-xs leading-6 text-slate-500 sm:text-sm">
                     Les resultats doivent etre verifies par l utilisateur ou son comptable avant declaration.
                   </p>
                 </div>
 
-                <div className="rounded-[1.9rem] border border-white/80 bg-white/80 p-6 shadow-[0_25px_60px_-30px_rgba(15,23,42,0.35)] backdrop-blur">
-                  <div className="rounded-[1.5rem] border border-cyan-100 bg-[linear-gradient(135deg,#0f172a_0%,#155e75_45%,#0f766e_100%)] p-5 text-white shadow-lg">
+                <div className="rounded-[1.7rem] border border-white/80 bg-white/80 p-5 shadow-[0_25px_60px_-30px_rgba(15,23,42,0.35)] backdrop-blur">
+                  <div className="rounded-[1.35rem] border border-cyan-100 bg-[linear-gradient(135deg,#0f172a_0%,#155e75_45%,#0f766e_100%)] p-4 text-white shadow-lg">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <div className="rounded-2xl bg-white/15 p-3 text-cyan-100 ring-1 ring-white/10">
-                          <Brain className="h-6 w-6" />
+                        <div className="rounded-2xl bg-white/15 p-2.5 text-cyan-100 ring-1 ring-white/10">
+                          <Brain className="h-5 w-5" />
                         </div>
                         <div>
                           <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-100/80">Nouveau module Factourati</p>
-                          <h3 className="mt-1 text-2xl font-black">Ce que Factourati prepare pour vous</h3>
+                          <h3 className="mt-1 text-xl font-black sm:text-2xl">Ce que Factourati prepare pour vous</h3>
                         </div>
                       </div>
                       <div className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-emerald-100">
@@ -612,40 +619,37 @@ export default function HomePage() {
                       Un flux simple pour logiciel TVA Maroc, verification comptable plus rapide et meilleure lecture de vos operations bancaires.
                     </p>
 
-                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
                       {[
                         { label: 'Achats detectes', value: 'Auto' },
                         { label: 'Ventes triees', value: 'Clair' },
                         { label: 'TVA estimee', value: 'Rapide' },
                       ].map((item) => (
-                        <div key={item.label} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-sm">
-                          <p className="text-lg font-black text-white">{item.value}</p>
+                        <div key={item.label} className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
+                          <p className="text-base font-black text-white">{item.value}</p>
                           <p className="mt-1 text-xs leading-5 text-cyan-50/80">{item.label}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="mt-6 grid gap-3">
+                  <div className="mt-5 grid gap-3 md:grid-cols-2">
                     {aiVatFeatures.map((feature, index) => (
                       <div
                         key={feature}
-                        className="group flex items-start gap-3 rounded-2xl border border-cyan-100 bg-white px-4 py-3.5 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
+                        className="group flex items-start gap-3 rounded-2xl border border-cyan-100 bg-white px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
                       >
                         <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-100 to-emerald-100 text-cyan-700">
                           {index < 3 ? <Sparkles className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold leading-6 text-slate-800">{feature}</p>
-                          <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                            Module intelligent Factourati pour accelerer la verification TVA.
-                          </p>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-800">
+                  <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-800">
                     Verification finale recommandee avant declaration comptable ou fiscale.
                   </div>
                 </div>
