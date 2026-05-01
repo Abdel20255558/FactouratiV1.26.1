@@ -1,17 +1,19 @@
 import React from 'react';
-import { AlertTriangle, ArrowDownLeft, ArrowUpRight, ChevronDown, FileUp, Loader2, PlusCircle, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, ChevronDown, FileUp, Loader2, Sparkles } from 'lucide-react';
 import Modal from '../common/Modal';
 import { useSupplier } from '../../contexts/SupplierContext';
 import { useVat } from '../../contexts/VatContext';
 import type {
   MoroccanVatRate,
+  PurchaseVatPaymentMode,
   PurchaseVatExtractionResult,
   PurchaseVatInvoice,
   PurchaseVatInvoiceInput,
   PurchaseVatInvoiceSource,
-  PurchaseVatPaymentMode,
+  VatBankOperation,
   VatExtractedOperation,
   VatIgnoredOperation,
+  VatOperationClassification,
 } from '../../types/vat';
 import { calculateVatFromTTC, formatMad, isValidMoroccanIce, PAYMENT_MODE_OPTIONS, VAT_RATE_OPTIONS } from '../../utils/vat';
 
@@ -52,6 +54,23 @@ const tableHintClass =
   'inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300';
 
 const roundToTwo = (value: number) => Math.round(value * 100) / 100;
+const formatModePaiementLabel = (mode: PurchaseVatPaymentMode, numeroPiece?: string | null) => {
+  const labels: Record<PurchaseVatPaymentMode, string> = {
+    virement: 'Virement',
+    cheque: 'Cheque',
+    effet: 'Effet',
+    paiement_en_ligne: 'Paiement en ligne',
+    carte: 'Carte',
+    especes: 'Especes',
+    autre: 'Autre',
+  };
+
+  if ((mode === 'cheque' || mode === 'effet') && numeroPiece) {
+    return `${labels[mode]} N° ${numeroPiece}`;
+  }
+
+  return labels[mode] || mode;
+};
 const inferClosestVatRate = (montantTtc: number, montantTva: number): MoroccanVatRate => {
   if (!Number.isFinite(montantTtc) || montantTtc <= 0 || !Number.isFinite(montantTva) || montantTva <= 0) return 0;
 
@@ -77,17 +96,92 @@ const defaultFormState = (): FormState => ({
 });
 
 const isPieceNumberRequired = (mode: PurchaseVatPaymentMode) => mode === 'cheque' || mode === 'effet';
+const getSensFromClassification = (
+  classification: VatOperationClassification,
+  fallback: DraftOp['sens'] = 'achat',
+) => {
+  if (classification === 'vente_propose') return 'vente';
+  if (classification === 'achat_propose') return 'achat';
+  return fallback;
+};
+const CLASSIFICATION_OPTIONS: Array<{ value: VatOperationClassification; label: string }> = [
+  { value: 'achat_propose', label: 'Achat propose' },
+  { value: 'vente_propose', label: 'Vente proposee' },
+  { value: 'a_verifier', label: 'A verifier' },
+  { value: 'ignore', label: 'Ignorer' },
+];
+const getConfidenceLabel = (value: DraftOp['niveau_confiance']) =>
+  value === 'eleve' ? 'Eleve' : value === 'moyen' ? 'Moyen' : 'Faible';
+const getConfidenceBadgeClass = (value: DraftOp['niveau_confiance']) =>
+  value === 'eleve'
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300'
+    : value === 'moyen'
+      ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300'
+      : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300';
+void inputClass;
+void CLASSIFICATION_OPTIONS;
+void getConfidenceLabel;
+void getConfidenceBadgeClass;
 
 const normalizeDraftOperation = (op: VatExtractedOperation): DraftOp =>
   syncDraftAmounts({
     ...op,
+    classification: op.classification === 'ignore' ? 'a_verifier' : op.classification,
     sens: op.sens === 'vente' ? 'vente' : 'achat',
+    libelle_original: op.libelle_original || op.description || op.fournisseur_client,
     fournisseur_client: `${op.fournisseur_client || ''}`.trim() || 'Tiers a verifier',
     description: `${op.description || ''}`.trim() || `${op.fournisseur_client || ''}`.trim() || 'Operation a verifier',
     numero_piece: op.numero_piece || null,
-    selected: true,
+    tva_modifiable: true,
+    niveau_confiance: op.niveau_confiance || 'moyen',
+    raison_classement: op.raison_classement || 'Operation proposee par l analyse IA.',
+    selected: op.classification !== 'a_verifier',
     source: 'ai',
   });
+
+const draftFromBankOperation = (op: VatBankOperation): DraftOp => {
+  const sens = op.sens_bancaire === 'credit' ? 'vente' : 'achat';
+  const classification = op.classification === 'ignore' ? 'a_verifier' : op.classification;
+  const montantTtc = sens === 'vente' ? Number(op.montant_credit || 0) : Number(op.montant_debit || 0);
+
+  return syncDraftAmounts({
+    id: `draft-${op.id_ligne}`,
+    id_ligne_source: op.id_ligne,
+    classification,
+    sens: getSensFromClassification(classification, sens),
+    date: op.date || new Date().toISOString().split('T')[0],
+    libelle_original: op.libelle_original,
+    numero_facture: null,
+    fournisseur_client: `${op.fournisseur_client || ''}`.trim() || 'Tiers a verifier',
+    description: `${op.description || ''}`.trim() || op.libelle_original || 'Operation a verifier',
+    montant_ttc: Math.abs(Number.isFinite(montantTtc) ? montantTtc : 0),
+    taux_tva: (op.taux_tva ?? 20) as MoroccanVatRate,
+    montant_tva: 0,
+    montant_ht: 0,
+    mode_paiement: op.mode_paiement_detecte,
+    numero_piece: op.numero_piece || null,
+    ice: null,
+    tva_modifiable: true,
+    niveau_confiance: op.niveau_confiance,
+    raison_classement: op.raison || 'Operation a verifier manuellement.',
+    ignoree: false,
+    selected: classification !== 'a_verifier',
+    source: 'ai',
+  });
+};
+
+const ignoredFromBankOperation = (op: VatBankOperation): VatIgnoredOperation => ({
+  id: `ignored-bank-${op.id_ligne}`,
+  id_ligne_source: op.id_ligne,
+  date: op.date || new Date().toISOString().split('T')[0],
+  libelle: `${op.fournisseur_client || ''}`.trim() || op.libelle_original || op.description || 'Operation a verifier',
+  montant: Math.abs(Number(op.montant_debit || op.montant_credit || 0)),
+  sens: op.sens_bancaire === 'credit' ? 'credit' : 'debit',
+  raison_exclusion: op.raison || 'Operation a verifier manuellement.',
+  bucket: 'hors_tva',
+  mode_paiement: op.mode_paiement_detecte,
+});
+void draftFromBankOperation;
 
 const syncDraftAmounts = (op: DraftOp): DraftOp => {
   const amounts = calculateVatFromTTC(Number(op.montant_ttc || 0), op.taux_tva);
@@ -97,10 +191,13 @@ const syncDraftAmounts = (op: DraftOp): DraftOp => {
 const draftFromIgnored = (op: VatIgnoredOperation): DraftOp =>
   syncDraftAmounts({
     id: `draft-${op.id}`,
-    selected: true,
+    id_ligne_source: op.id_ligne_source || op.id,
+    classification: 'a_verifier',
+    selected: false,
     source: 'ignored',
-    sens: 'achat',
+    sens: op.sens === 'credit' ? 'vente' : 'achat',
     date: op.date,
+    libelle_original: op.libelle,
     numero_facture: null,
     fournisseur_client: op.libelle,
     description: op.libelle,
@@ -108,11 +205,38 @@ const draftFromIgnored = (op: VatIgnoredOperation): DraftOp =>
     taux_tva: 20,
     montant_tva: 0,
     montant_ht: 0,
-    mode_paiement: 'virement',
+    mode_paiement: op.mode_paiement || 'virement',
     numero_piece: null,
     ice: null,
+    tva_modifiable: true,
+    niveau_confiance: 'faible',
+    raison_classement: op.raison_exclusion,
     ignoree: false,
   });
+
+const draftFromIgnoredWithTarget = (op: VatIgnoredOperation, target: 'achat' | 'vente'): DraftOp =>
+  syncDraftAmounts({
+    ...draftFromIgnored(op),
+    id: `draft-reclassified-${target}-${op.id}`,
+    classification: target === 'vente' ? 'vente_propose' : 'achat_propose',
+    sens: target,
+    selected: true,
+  });
+
+const ignoredFromDraft = (
+  op: DraftOp,
+  bucket: 'virements_personnels' | 'hors_tva',
+): VatIgnoredOperation => ({
+  id: `${bucket}-${op.id}`,
+  id_ligne_source: op.id_ligne_source || op.id,
+  date: op.date,
+  libelle: op.fournisseur_client || op.description || op.libelle_original,
+  montant: op.montant_ttc,
+  sens: op.sens === 'vente' ? 'credit' : 'debit',
+  raison_exclusion: bucket === 'virements_personnels' ? 'Reclasse manuellement en virement personnel.' : 'Reclasse manuellement hors TVA.',
+  bucket,
+  mode_paiement: op.mode_paiement,
+});
 
 const buildAiMetadata = (op: DraftOp) => {
   if (op.source !== 'ai') return { aiExtractedFields: [] as string[], aiMissingFields: [] as string[] };
@@ -136,12 +260,13 @@ const buildAiMetadata = (op: DraftOp) => {
 const buildPurchasePayload = (op: DraftOp): PurchaseVatInvoiceInput => {
   const metadata = buildAiMetadata(op);
   const source: PurchaseVatInvoiceSource = op.source === 'ai' ? 'pdf_ia' : 'manuelle';
+  const description = op.description.trim() || op.fournisseur_client.trim() || 'Operation importee via analyse TVA';
   return {
     date: op.date,
     numero_facture: op.numero_facture,
     fournisseur: op.fournisseur_client.trim(),
     ice_fournisseur: op.ice,
-    description: op.description.trim(),
+    description,
     montant_ttc: op.montant_ttc,
     montant_ht: op.montant_ht,
     taux_tva: op.taux_tva,
@@ -157,7 +282,6 @@ const buildPurchasePayload = (op: DraftOp): PurchaseVatInvoiceInput => {
 const validateDraft = (op: DraftOp) => {
   if (!op.date) return 'Chaque ligne importee doit avoir une date.';
   if (!op.fournisseur_client.trim()) return 'Chaque ligne importee doit avoir un fournisseur ou un client.';
-  if (!op.description.trim()) return 'Chaque ligne importee doit avoir une description.';
   if (!Number.isFinite(Number(op.montant_ttc)) || Number(op.montant_ttc) <= 0) return 'Chaque ligne importee doit avoir un montant TTC superieur a 0.';
   return null;
 };
@@ -207,12 +331,19 @@ export default function PurchaseVatInvoiceModal({
   const [aiFilledFields, setAiFilledFields] = React.useState<string[]>([]);
   const [missingFields, setMissingFields] = React.useState<string[]>([]);
   const [draftOperations, setDraftOperations] = React.useState<DraftOp[]>([]);
+  const [allOperations, setAllOperations] = React.useState<VatBankOperation[]>([]);
   const [ignoredOperations, setIgnoredOperations] = React.useState<VatIgnoredOperation[]>([]);
+  const [personalTransferOperations, setPersonalTransferOperations] = React.useState<VatIgnoredOperation[]>([]);
+  const [outsideVatOperations, setOutsideVatOperations] = React.useState<VatIgnoredOperation[]>([]);
   const [selectedIgnoredIds, setSelectedIgnoredIds] = React.useState<string[]>([]);
   const [addedIgnoredIds, setAddedIgnoredIds] = React.useState<string[]>([]);
   const [showIgnoredOperations, setShowIgnoredOperations] = React.useState(false);
+  const [showPersonalTransfers, setShowPersonalTransfers] = React.useState(false);
+  const [showOutsideVatOperations, setShowOutsideVatOperations] = React.useState(false);
+  const [showAllOperations, setShowAllOperations] = React.useState(false);
   const [documentType, setDocumentType] = React.useState<string | null>(null);
   const [detectedPeriod, setDetectedPeriod] = React.useState<string | null>(null);
+  const [analysisSummary, setAnalysisSummary] = React.useState<PurchaseVatExtractionResult['resume']>(null);
   const [analysisCacheInfo, setAnalysisCacheInfo] = React.useState<PurchaseVatExtractionResult['cache_info']>(null);
 
   React.useEffect(() => {
@@ -226,12 +357,19 @@ export default function PurchaseVatInvoiceModal({
     setExtractMessage('');
     setExtractWarnings([]);
     setDraftOperations([]);
+    setAllOperations([]);
     setIgnoredOperations([]);
+    setPersonalTransferOperations([]);
+    setOutsideVatOperations([]);
     setSelectedIgnoredIds([]);
     setAddedIgnoredIds([]);
     setShowIgnoredOperations(false);
+    setShowPersonalTransfers(false);
+    setShowOutsideVatOperations(false);
+    setShowAllOperations(false);
     setDocumentType(null);
     setDetectedPeriod(null);
+    setAnalysisSummary(null);
     setAnalysisCacheInfo(null);
     if (invoice) {
       setForm({ date: invoice.date, numero_facture: invoice.numero_facture || '', description: invoice.description, fournisseur: invoice.fournisseur, montant_ttc: String(invoice.montant_ttc), taux_tva: invoice.taux_tva, mode_paiement: invoice.mode_paiement, numero_piece: invoice.numero_piece || '', ice_fournisseur: invoice.ice_fournisseur || '' });
@@ -240,25 +378,52 @@ export default function PurchaseVatInvoiceModal({
       return;
     }
     if (initialMode === 'pdf' && prefilledExtractionResult) {
-      const rows = prefilledExtractionResult.factures.map((op) => normalizeDraftOperation(op));
+      const proposedRows = prefilledExtractionResult.factures.map((op) => normalizeDraftOperation(op));
+      const reviewRows = (prefilledExtractionResult.toutes_operations || [])
+        .filter((op) => op.classification === 'a_verifier')
+        .map((op) => ignoredFromBankOperation(op))
+        .filter((op) => !proposedRows.some((row) => row.id_ligne_source === op.id_ligne_source));
+      const rows = [...proposedRows];
       setDraftOperations(rows);
-      setIgnoredOperations(prefilledExtractionResult.operations_ignorees || []);
+      setAllOperations(prefilledExtractionResult.toutes_operations || []);
+      setIgnoredOperations([
+        ...(prefilledExtractionResult.operations_ignorees || []),
+        ...reviewRows,
+      ]);
+      setPersonalTransferOperations(prefilledExtractionResult.virements_personnels || []);
+      setOutsideVatOperations([
+        ...(prefilledExtractionResult.hors_tva || []),
+        ...reviewRows,
+      ]);
+      setSelectedIgnoredIds([
+        ...(prefilledExtractionResult.virements_personnels || []).map((op) => op.id),
+        ...(prefilledExtractionResult.hors_tva || []).map((op) => op.id),
+        ...(prefilledExtractionResult.operations_ignorees || []).map((op) => op.id),
+        ...reviewRows.map((op) => op.id),
+      ]);
       setDocumentType(prefilledExtractionResult.type_document);
       setDetectedPeriod(prefilledExtractionResult.periode);
-      setShowIgnoredOperations(Boolean(prefilledExtractionResult.operations_ignorees?.length));
+      setAnalysisSummary(prefilledExtractionResult.resume || null);
+      setShowIgnoredOperations(Boolean(
+        (prefilledExtractionResult.operations_ignorees || []).filter((op) => !op.bucket || op.bucket === 'ignore').length,
+      ));
+      setShowPersonalTransfers(Boolean(prefilledExtractionResult.virements_personnels?.length));
+      setShowOutsideVatOperations(Boolean((prefilledExtractionResult.hors_tva?.length || 0) + reviewRows.length));
+      setShowAllOperations(false);
       setAnalysisCacheInfo(prefilledExtractionResult.cache_info || null);
-      const achats = rows.filter((op) => op.sens === 'achat');
-      const ventes = rows.filter((op) => op.sens === 'vente');
+      const achats = rows.filter((op) => op.classification === 'achat_propose');
+      const ventes = rows.filter((op) => op.classification === 'vente_propose');
       console.log('Achats detectes:', achats.length);
       console.log('Ventes detectees:', ventes.length);
       setExtractWarnings([
         ...(achats.length === 0 ? ["Aucun achat detecte dans ce releve. Verifiez si c'est normal ou ajoutez manuellement."] : []),
         ...(ventes.length === 0 ? ["Aucune vente detectee dans ce releve. Verifiez si c'est normal ou ajoutez manuellement."] : []),
+        ...(reviewRows.length ? [`${reviewRows.length} operation${reviewRows.length > 1 ? 's' : ''} a ete classee dans Hors TVA pour verification manuelle.`] : []),
       ]);
       setExtractMessage(
         rows.length
-          ? 'Analyse terminee - Verifiez et validez vos operations'
-          : 'Aucune operation comptable valide detectee. Vous pouvez passer en saisie manuelle ou ajouter une operation exclue.',
+          ? 'Analyse terminee - Verifiez les achats, les ventes, les virements personnels et les lignes hors TVA avant import.'
+          : 'Aucune operation comptable valide detectee. Vous pouvez passer en saisie manuelle.',
       );
     }
     setForm(defaultFormState());
@@ -271,12 +436,60 @@ export default function PurchaseVatInvoiceModal({
   const isPieceRequired = isPieceNumberRequired(form.mode_paiement);
   const hasInvalidIce = Boolean(form.ice_fournisseur.trim()) && !isValidMoroccanIce(form.ice_fournisseur);
   const isHighlightedByAi = (field: string, value: string | number | null | undefined) => missingFields.includes(field) && `${value ?? ''}`.trim() === '';
-  const selectedOperations = draftOperations.filter((op) => op.selected);
-  const purchaseDraftOperations = draftOperations.filter((op) => op.sens === 'achat');
-  const salesDraftOperations = draftOperations.filter((op) => op.sens === 'vente');
-  const selectedPurchaseCount = purchaseDraftOperations.filter((op) => op.selected).length;
-  const selectedSalesCount = salesDraftOperations.filter((op) => op.selected).length;
+  const selectedOperations = draftOperations.filter(
+    (op) => op.selected && (op.classification === 'achat_propose' || op.classification === 'vente_propose'),
+  );
+  const purchaseDraftOperations = draftOperations.filter((op) => op.classification === 'achat_propose');
+  const salesDraftOperations = draftOperations.filter((op) => op.classification === 'vente_propose');
+  const reviewDraftOperations = draftOperations.filter((op) => op.classification === 'a_verifier');
+  const genericIgnoredOperations = ignoredOperations.filter((op) => !op.bucket || op.bucket === 'ignore');
+  const outsideVatRows = [...outsideVatOperations, ...genericIgnoredOperations];
+  const selectedPersonalTransferRows = personalTransferOperations.filter((op) => selectedIgnoredIds.includes(op.id));
+  const selectedOutsideVatRows = outsideVatRows.filter((op) => selectedIgnoredIds.includes(op.id));
+  const selectedPurchaseCount = selectedOperations.filter((op) => op.sens === 'achat').length;
+  const selectedSalesCount = selectedOperations.filter((op) => op.sens === 'vente').length;
   const importButtonLabel = `Importer tout (${selectedPurchaseCount} achats + ${selectedSalesCount} ventes)`;
+  const selectedTotals = React.useMemo(() => {
+    const achats = selectedOperations.filter((op) => op.classification === 'achat_propose');
+    const ventes = selectedOperations.filter((op) => op.classification === 'vente_propose');
+
+    return {
+      achatsTtc: achats.reduce((sum, op) => sum + Number(op.montant_ttc || 0), 0),
+      achatsHt: achats.reduce((sum, op) => sum + Number(op.montant_ht || 0), 0),
+      tvaDeductible: achats.reduce((sum, op) => sum + Number(op.montant_tva || 0), 0),
+      ventesTtc: ventes.reduce((sum, op) => sum + Number(op.montant_ttc || 0), 0),
+      ventesHt: ventes.reduce((sum, op) => sum + Number(op.montant_ht || 0), 0),
+      tvaCollectee: ventes.reduce((sum, op) => sum + Number(op.montant_tva || 0), 0),
+    };
+  }, [selectedOperations]);
+  const selectedPersonalTransfersTotal = React.useMemo(
+    () => selectedPersonalTransferRows.reduce((sum, op) => sum + Number(op.montant || 0), 0),
+    [selectedPersonalTransferRows],
+  );
+  const selectedOutsideVatTotal = React.useMemo(
+    () => selectedOutsideVatRows.reduce((sum, op) => sum + Number(op.montant || 0), 0),
+    [selectedOutsideVatRows],
+  );
+  const summaryTotals = React.useMemo(() => ({
+    nombreAchats: selectedOperations.filter((op) => op.classification === 'achat_propose').length,
+    totalAchatsTtc: selectedTotals.achatsTtc,
+    tvaDeductibleAchats: selectedTotals.tvaDeductible,
+    nombreVentes: selectedOperations.filter((op) => op.classification === 'vente_propose').length,
+    totalVentesTtc: selectedTotals.ventesTtc,
+    tvaCollecteeVentes: selectedTotals.tvaCollectee,
+    tvaEstimee: selectedTotals.tvaCollectee - selectedTotals.tvaDeductible,
+    nombreVirementsPersonnels: selectedPersonalTransferRows.length,
+    totalVirementsPersonnels: selectedPersonalTransfersTotal,
+    nombreHorsTva: selectedOutsideVatRows.length,
+    totalHorsTva: selectedOutsideVatTotal,
+  }), [
+    selectedOperations,
+    selectedOutsideVatRows.length,
+    selectedOutsideVatTotal,
+    selectedPersonalTransferRows.length,
+    selectedPersonalTransfersTotal,
+    selectedTotals,
+  ]);
 
   const syncSupplierMetadata = (name: string) => {
     const supplier = suppliers.find((item) => item.name.trim().toLowerCase() === name.trim().toLowerCase());
@@ -292,38 +505,82 @@ export default function PurchaseVatInvoiceModal({
     if (!selectedFile) return setErrorMessage("Selectionnez un PDF pour lancer l'analyse.");
     setIsExtracting(true);
     setErrorMessage('');
-    setExtractMessage('');
+    setExtractMessage('Analyse du releve en cours...');
     setExtractWarnings([]);
     setAnalysisCacheInfo(null);
+    let progressStep = 0;
+    const progressMessages = [
+      'Analyse du releve en cours...',
+      'Extraction OCR...',
+      'Classification TVA...',
+      'Preparation des resultats...',
+    ];
+    const progressTimer = window.setInterval(() => {
+      progressStep = Math.min(progressStep + 1, progressMessages.length - 1);
+      setExtractMessage(progressMessages[progressStep]);
+    }, 4000);
     try {
       const result = await extractPurchaseInvoicePdf(selectedFile);
-      const rows = result.factures.map((op) => normalizeDraftOperation(op));
-      const achats = rows.filter((op) => op.sens === 'achat');
-      const ventes = rows.filter((op) => op.sens === 'vente');
+      const proposedRows = result.factures.map((op) => normalizeDraftOperation(op));
+      const reviewRows = (result.toutes_operations || [])
+        .filter((op) => op.classification === 'a_verifier')
+        .map((op) => ignoredFromBankOperation(op))
+        .filter((op) => !proposedRows.some((row) => row.id_ligne_source === op.id_ligne_source));
+      const rows = [...proposedRows];
+      const achats = rows.filter((op) => op.classification === 'achat_propose');
+      const ventes = rows.filter((op) => op.classification === 'vente_propose');
       console.log('Achats detectes:', achats.length);
       console.log('Ventes detectees:', ventes.length);
       setDraftOperations(rows);
-      setIgnoredOperations(result.operations_ignorees || []);
-      setSelectedIgnoredIds([]);
+      setAllOperations(result.toutes_operations || []);
+      setIgnoredOperations([
+        ...(result.operations_ignorees || []),
+        ...reviewRows,
+      ]);
+      setPersonalTransferOperations(result.virements_personnels || []);
+      setOutsideVatOperations([
+        ...(result.hors_tva || []),
+        ...reviewRows,
+      ]);
+      setSelectedIgnoredIds([
+        ...(result.virements_personnels || []).map((op) => op.id),
+        ...(result.hors_tva || []).map((op) => op.id),
+        ...(result.operations_ignorees || []).map((op) => op.id),
+        ...reviewRows.map((op) => op.id),
+      ]);
       setAddedIgnoredIds([]);
       setDocumentType(result.type_document);
       setDetectedPeriod(result.periode);
-      setShowIgnoredOperations(Boolean(result.operations_ignorees?.length));
+      setAnalysisSummary(result.resume || null);
+      setShowIgnoredOperations(Boolean((result.operations_ignorees || []).filter((op) => !op.bucket || op.bucket === 'ignore').length));
+      setShowPersonalTransfers(Boolean(result.virements_personnels?.length));
+      setShowOutsideVatOperations(Boolean((result.hors_tva?.length || 0) + reviewRows.length));
+      setShowAllOperations(false);
       setSelectedFileName(selectedFile.name || '');
       setAnalysisCacheInfo(result.cache_info || null);
       setExtractWarnings([
         ...(achats.length === 0 ? ["Aucun achat detecte dans ce releve. Verifiez si c'est normal ou ajoutez manuellement."] : []),
         ...(ventes.length === 0 ? ["Aucune vente detectee dans ce releve. Verifiez si c'est normal ou ajoutez manuellement."] : []),
+        ...(reviewRows.length ? [`${reviewRows.length} operation${reviewRows.length > 1 ? 's' : ''} a ete classee dans Hors TVA pour verification manuelle.`] : []),
       ]);
       setExtractMessage(rows.length ? 'Analyse terminée — Vérifiez et validez vos opérations' : 'Aucune operation comptable valide detectee. Vous pouvez passer en saisie manuelle ou ajouter une operation exclue.');
+      setExtractMessage(
+        rows.length
+          ? 'Analyse terminee - Verifiez les achats, les ventes, les virements personnels et les lignes hors TVA avant import.'
+          : 'Aucune operation comptable valide detectee. Vous pouvez passer en saisie manuelle.',
+      );
     } catch (error) {
       setDraftOperations([]);
+      setAllOperations([]);
       setIgnoredOperations([]);
+      setPersonalTransferOperations([]);
+      setOutsideVatOperations([]);
       setSelectedIgnoredIds([]);
       setAddedIgnoredIds([]);
       setDocumentType(null);
       setDetectedPeriod(null);
       setExtractWarnings([]);
+      setAnalysisSummary(null);
       setAnalysisCacheInfo(null);
       if (error instanceof Error && error.message.includes('ANALYSIS_CREDITS_REQUIRED')) {
         setErrorMessage("Vous n'avez plus d'analyses IA disponibles. Rechargez votre compte pour continuer.");
@@ -331,6 +588,7 @@ export default function PurchaseVatInvoiceModal({
         setErrorMessage(error instanceof Error ? error.message : 'Impossible de lire ce PDF, veuillez saisir manuellement.');
       }
     } finally {
+      window.clearInterval(progressTimer);
       setIsExtracting(false);
     }
   };
@@ -357,7 +615,7 @@ export default function PurchaseVatInvoiceModal({
     });
   };
 
-  const handleDraftChange = (id: string, field: 'sens' | 'date' | 'numero_facture' | 'fournisseur_client' | 'description' | 'montant_ttc' | 'montant_tva' | 'taux_tva' | 'mode_paiement' | 'numero_piece' | 'ice', value: string) => {
+  const handleDraftChange = (id: string, field: 'classification' | 'sens' | 'date' | 'numero_facture' | 'fournisseur_client' | 'description' | 'montant_ttc' | 'montant_tva' | 'taux_tva' | 'mode_paiement' | 'numero_piece' | 'ice', value: string) => {
     if (field === 'montant_tva') {
       setDraftOperations((prev) =>
         prev.map((op) => {
@@ -378,6 +636,29 @@ export default function PurchaseVatInvoiceModal({
       return;
     }
 
+    if (field === 'classification' && value === 'ignore') {
+      setDraftOperations((prev) => {
+        const target = prev.find((op) => op.id === id);
+        if (!target) return prev;
+
+        setIgnoredOperations((current) => [
+          ...current,
+          {
+            id: `ignored-from-draft-${target.id}`,
+            id_ligne_source: target.id_ligne_source,
+            date: target.date,
+            libelle: target.libelle_original || target.description,
+            montant: target.montant_ttc,
+            sens: target.sens === 'vente' ? 'credit' : 'debit',
+            raison_exclusion: 'Operation exclue manuellement par le client.',
+          },
+        ]);
+
+        return prev.filter((op) => op.id !== id);
+      });
+      return;
+    }
+
     updateDraft(id, (op) => {
       if (field === 'montant_ttc') {
         return { ...op, montant_ttc: Number.isFinite(Number(value)) ? Number(value) : 0 };
@@ -389,6 +670,16 @@ export default function PurchaseVatInvoiceModal({
 
       if (field === 'sens') {
         return { ...op, sens: value === 'vente' ? 'vente' : 'achat' };
+      }
+
+      if (field === 'classification') {
+        const nextClassification = value as VatOperationClassification;
+        return {
+          ...op,
+          classification: nextClassification,
+          sens: getSensFromClassification(nextClassification, op.sens),
+          selected: nextClassification === 'a_verifier' ? false : true,
+        };
       }
 
       if (field === 'mode_paiement') {
@@ -456,6 +747,123 @@ export default function PurchaseVatInvoiceModal({
     setErrorMessage('');
   };
 
+  const reclassifyDraftRow = (id: string, target: 'achat' | 'vente' | 'hors_tva' | 'virement_personnel') => {
+    if (target === 'achat' || target === 'vente') {
+      updateDraft(id, (op) => ({
+        ...op,
+        sens: target,
+        classification: target === 'vente' ? 'vente_propose' : 'achat_propose',
+        selected: true,
+      }));
+      return;
+    }
+
+    setDraftOperations((prev) => {
+      const targetRow = prev.find((op) => op.id === id);
+      if (!targetRow) return prev;
+
+      const ignoredRow = ignoredFromDraft(
+        targetRow,
+        target === 'virement_personnel' ? 'virements_personnels' : 'hors_tva',
+      );
+
+      if (target === 'virement_personnel') {
+        setPersonalTransferOperations((current) => [...current, ignoredRow]);
+      } else {
+        setOutsideVatOperations((current) => [...current, ignoredRow]);
+      }
+
+      setIgnoredOperations((current) => [...current, ignoredRow]);
+      setSelectedIgnoredIds((current) => [...current, ignoredRow.id]);
+      return prev.filter((op) => op.id !== id);
+    });
+  };
+
+  const reclassifyIgnoredRow = (row: VatIgnoredOperation, target: 'achat' | 'vente') => {
+    const nextDraft = draftFromIgnoredWithTarget(row, target);
+
+    setPersonalTransferOperations((prev) => prev.filter((op) => op.id !== row.id));
+    setOutsideVatOperations((prev) => prev.filter((op) => op.id !== row.id));
+    setIgnoredOperations((prev) => prev.filter((op) => op.id !== row.id));
+    setSelectedIgnoredIds((prev) => prev.filter((id) => id !== row.id));
+    setDraftOperations((prev) => [...prev, nextDraft]);
+  };
+
+  const renderIgnoredCategorySection = (
+    title: string,
+    operations: VatIgnoredOperation[],
+    expanded: boolean,
+    onToggle: () => void,
+    emptyMessage: string,
+  ) => (
+    <div className="rounded-3xl border border-gray-200 bg-gray-50 px-5 py-4 dark:border-gray-700 dark:bg-gray-900/30">
+      <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-4 text-left">
+        <div>
+          <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title} ({operations.length})</h4>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Ces lignes reviennent directement du workflow n8n et restent modifiables si vous voulez les reclasser.</p>
+        </div>
+        <ChevronDown className={`h-5 w-5 text-gray-500 transition-transform dark:text-gray-400 ${expanded ? 'rotate-180' : ''}`} />
+      </button>
+      {expanded ? (
+        <div className="mt-4 space-y-4">
+          {operations.length ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-[860px] w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-white/80 dark:bg-slate-900/70">
+                  <tr>
+                    <th className={tableHeadClass}>Choix</th>
+                    <th className={tableHeadClass}>Date</th>
+                    <th className={tableHeadClass}>Nom</th>
+                    <th className={tableHeadClass}>Mode de paiement</th>
+                    <th className={tableHeadClass}>Montant TTC</th>
+                    <th className={tableHeadClass}>Reclasser</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                  {operations.map((op) => (
+                    <tr key={op.id} className="bg-white dark:bg-transparent">
+                      <td className={tableCellClass}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIgnoredIds.includes(op.id)}
+                          onChange={() => setSelectedIgnoredIds((prev) => prev.includes(op.id) ? prev.filter((id) => id !== op.id) : [...prev, op.id])}
+                          className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                        />
+                      </td>
+                      <td className={tableCellClass}>{op.date}</td>
+                      <td className={tableCellClass}>{op.libelle}</td>
+                      <td className={tableCellClass}>{op.mode_paiement ? formatModePaiementLabel(op.mode_paiement) : 'Autre'}</td>
+                      <td className={tableCellClass}>{formatMad(op.montant)}</td>
+                      <td className={tableCellClass}>
+                        <select
+                          defaultValue=""
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            if (value === 'achat' || value === 'vente') {
+                              reclassifyIgnoredRow(op, value);
+                            }
+                            event.currentTarget.value = '';
+                          }}
+                          className={compactInputClass}
+                        >
+                          <option value="">Reclasser</option>
+                          <option value="achat">Vers achat</option>
+                          <option value="vente">Vers vente</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400">{emptyMessage}</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+
   const importSelected = async () => {
     if (!selectedOperations.length) return setErrorMessage('Selectionnez au moins une ligne a importer.');
     for (const op of selectedOperations) {
@@ -474,7 +882,7 @@ export default function PurchaseVatInvoiceModal({
             date: op.date,
             numero_facture: op.numero_facture,
             client_name: op.fournisseur_client.trim(),
-            description: op.description.trim(),
+            description: op.description.trim() || op.fournisseur_client.trim() || 'Operation importee via analyse TVA',
             montant_ttc: op.montant_ttc,
             montant_ht: op.montant_ht,
             taux_tva: op.taux_tva,
@@ -500,15 +908,26 @@ export default function PurchaseVatInvoiceModal({
   const renderDetectedSection = (
     sens: 'achat' | 'vente',
     operations: DraftOp[],
+    options?: {
+      title?: string;
+      countLabel?: string;
+      icon?: React.ComponentType<{ className?: string }>;
+      classes?: {
+        wrapper: string;
+        badge: string;
+        title: string;
+        help: string;
+      };
+    },
   ) => {
     if (!operations.length) return null;
 
     const isPurchaseSection = sens === 'achat';
     const selectedCount = operations.filter((op) => op.selected).length;
     const allSelected = operations.every((op) => op.selected);
-    const Icon = isPurchaseSection ? ArrowDownLeft : ArrowUpRight;
-    const sectionTitle = isPurchaseSection ? 'Factures Achat detectees' : 'Factures Vente detectees';
-    const sectionCountLabel = `${operations.length} facture${operations.length > 1 ? 's' : ''} ${isPurchaseSection ? 'achat' : 'vente'}`;
+    const Icon = options?.icon || (isPurchaseSection ? ArrowDownLeft : ArrowUpRight);
+    const sectionTitle = options?.title || (isPurchaseSection ? 'Factures Achat detectees' : 'Factures Vente detectees');
+    const sectionCountLabel = options?.countLabel || `${operations.length} facture${operations.length > 1 ? 's' : ''} ${isPurchaseSection ? 'achat' : 'vente'}`;
     const sectionClasses = isPurchaseSection
       ? {
           wrapper: 'border-orange-200 bg-orange-50/70 dark:border-orange-800 dark:bg-orange-950/20',
@@ -522,17 +941,19 @@ export default function PurchaseVatInvoiceModal({
           title: 'text-emerald-900 dark:text-emerald-200',
           help: 'text-emerald-700 dark:text-emerald-300',
         };
+    const finalSectionClasses = options?.classes || sectionClasses;
+    const sectionRowIds = new Set(operations.map((op) => op.id));
 
     return (
-      <section key={sens} className={`rounded-3xl border ${sectionClasses.wrapper}`}>
+      <section key={`${sens}-${sectionTitle}`} className={`rounded-3xl border ${finalSectionClasses.wrapper}`}>
         <div className="flex flex-col gap-4 border-b border-black/5 px-5 py-4 dark:border-white/10 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3">
-            <div className={`mt-0.5 rounded-2xl p-2 ${sectionClasses.badge}`}>
+            <div className={`mt-0.5 rounded-2xl p-2 ${finalSectionClasses.badge}`}>
               <Icon className="h-4 w-4" />
             </div>
             <div>
-              <h4 className={`text-base font-semibold ${sectionClasses.title}`}>{sectionTitle}</h4>
-              <p className={`mt-1 text-sm ${sectionClasses.help}`}>{sectionCountLabel}</p>
+              <h4 className={`text-base font-semibold ${finalSectionClasses.title}`}>{sectionTitle}</h4>
+              <p className={`mt-1 text-sm ${finalSectionClasses.help}`}>{sectionCountLabel}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -540,12 +961,17 @@ export default function PurchaseVatInvoiceModal({
               <input
                 type="checkbox"
                 checked={allSelected}
-                onChange={() => toggleSectionSelection(sens)}
+                onChange={() =>
+                  setDraftOperations((prev) => {
+                    const shouldSelectAll = operations.some((op) => !op.selected);
+                    return prev.map((op) => (sectionRowIds.has(op.id) ? { ...op, selected: shouldSelectAll } : op));
+                  })
+                }
                 className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
               />
               {allSelected ? 'Tout deselectionner' : 'Tout selectionner'}
             </label>
-            <div className={`rounded-full px-3 py-1 text-sm font-semibold ${sectionClasses.badge}`}>
+            <div className={`rounded-full px-3 py-1 text-sm font-semibold ${finalSectionClasses.badge}`}>
               {selectedCount} selectionnee{selectedCount > 1 ? 's' : ''}
             </div>
           </div>
@@ -665,6 +1091,204 @@ export default function PurchaseVatInvoiceModal({
     );
   };
 
+  const renderEditableDetectedSection = (
+    sens: 'achat' | 'vente',
+    operations: DraftOp[],
+    options?: {
+      title?: string;
+      countLabel?: string;
+      tierLabel?: string;
+      icon?: React.ComponentType<{ className?: string }>;
+      classes?: {
+        wrapper: string;
+        badge: string;
+        title: string;
+        help: string;
+      };
+    },
+  ) => {
+    if (!operations.length) return null;
+
+    const isPurchaseSection = sens === 'achat';
+    const selectedCount = operations.filter((op) => op.selected).length;
+    const allSelected = operations.every((op) => op.selected);
+    const Icon = options?.icon || (isPurchaseSection ? ArrowDownLeft : ArrowUpRight);
+    const sectionTitle = options?.title || (isPurchaseSection ? 'Factures Achat detectees' : 'Factures Vente detectees');
+    const sectionCountLabel = options?.countLabel || `${operations.length} facture${operations.length > 1 ? 's' : ''} ${isPurchaseSection ? 'achat' : 'vente'}`;
+    const tierLabel = options?.tierLabel || (isPurchaseSection ? 'Fournisseur' : 'Client');
+    const sectionClasses = options?.classes || (isPurchaseSection
+      ? {
+          wrapper: 'border-orange-200 bg-orange-50/70 dark:border-orange-800 dark:bg-orange-950/20',
+          badge: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+          title: 'text-orange-900 dark:text-orange-200',
+          help: 'text-orange-700 dark:text-orange-300',
+        }
+      : {
+          wrapper: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-800 dark:bg-emerald-950/20',
+          badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+          title: 'text-emerald-900 dark:text-emerald-200',
+          help: 'text-emerald-700 dark:text-emerald-300',
+        });
+    const sectionRowIds = new Set(operations.map((op) => op.id));
+
+    return (
+      <section key={`editable-${sens}-${sectionTitle}`} className={`rounded-3xl border ${sectionClasses.wrapper}`}>
+        <div className="flex flex-col gap-4 border-b border-black/5 px-5 py-4 dark:border-white/10 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <div className={`mt-0.5 rounded-2xl p-2 ${sectionClasses.badge}`}>
+              <Icon className="h-4 w-4" />
+            </div>
+            <div>
+              <h4 className={`text-base font-semibold ${sectionClasses.title}`}>{sectionTitle}</h4>
+              <p className={`mt-1 text-sm ${sectionClasses.help}`}>{sectionCountLabel}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={() =>
+                  setDraftOperations((prev) => {
+                    const shouldSelectAll = operations.some((op) => !op.selected);
+                    return prev.map((op) => (sectionRowIds.has(op.id) ? { ...op, selected: shouldSelectAll } : op));
+                  })
+                }
+                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+              />
+              {allSelected ? 'Tout deselectionner' : 'Tout selectionner'}
+            </label>
+            <div className={`rounded-full px-3 py-1 text-sm font-semibold ${sectionClasses.badge}`}>
+              {selectedCount} selectionnee{selectedCount > 1 ? 's' : ''}
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto px-4 pb-5 pt-4">
+          <table className="min-w-[1240px] w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
+            <colgroup>
+              <col style={{ width: '40px' }} />
+              <col style={{ width: '110px' }} />
+              <col style={{ width: '190px' }} />
+              <col style={{ width: '150px' }} />
+              <col style={{ width: '140px' }} />
+              <col style={{ width: '100px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '140px' }} />
+              <col style={{ width: '140px' }} />
+            </colgroup>
+            <thead className="bg-white/80 dark:bg-slate-900/70">
+              <tr>
+                <th className={tableHeadClass}>Choix</th>
+                <th className={tableHeadClass}>Date</th>
+                <th className={tableHeadClass}>{tierLabel}</th>
+                <th className={tableHeadClass}>Mode de paiement</th>
+                <th className={tableHeadClass}>Montant TTC</th>
+                <th className={tableHeadClass}>TVA</th>
+                <th className={tableHeadClass}>Montant HT</th>
+                <th className={tableHeadClass}>Montant TVA</th>
+                <th className={tableHeadClass}>N° facture</th>
+                <th className={tableHeadClass}>Reclasser</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+              {operations.map((op) => (
+                <tr key={op.id} className="bg-white/90 dark:bg-slate-950/10">
+                  <td className={tableCellClass}>
+                    <input
+                      type="checkbox"
+                      checked={op.selected}
+                      onChange={() =>
+                        setDraftOperations((prev) =>
+                          prev.map((row) => (row.id === op.id ? { ...row, selected: !row.selected } : row)),
+                        )
+                      }
+                      className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                    />
+                  </td>
+                  <td className={tableCellClass}>
+                    <input
+                      type="date"
+                      value={op.date}
+                      onChange={(event) => handleDraftChange(op.id, 'date', event.target.value)}
+                      className={compactInputClass}
+                    />
+                  </td>
+                  <td className={tableCellClass}>
+                    <input
+                      type="text"
+                      value={op.fournisseur_client}
+                      onChange={(event) => handleDraftChange(op.id, 'fournisseur_client', event.target.value)}
+                      className={compactInputClass}
+                      placeholder={tierLabel}
+                    />
+                  </td>
+                  <td className={tableCellClass}>
+                    <div className={compactReadOnlyClass}>{formatModePaiementLabel(op.mode_paiement, op.numero_piece)}</div>
+                  </td>
+                  <td className={tableCellClass}>
+                    <div className={compactReadOnlyClass}>{formatMad(op.montant_ttc)}</div>
+                  </td>
+                  <td className={tableCellClass}>
+                    <select
+                      value={op.taux_tva}
+                      onChange={(event) => handleDraftChange(op.id, 'taux_tva', event.target.value)}
+                      className={compactInputClass}
+                    >
+                      {[20, 14, 13, 10, 7, 0].map((rate) => (
+                        <option key={rate} value={rate}>
+                          {rate}%
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className={tableCellClass}>
+                    <div className={compactReadOnlyClass}>{formatMad(op.montant_ht)}</div>
+                  </td>
+                  <td className={tableCellClass}>
+                    <div className={compactReadOnlyClass}>{formatMad(op.montant_tva)}</div>
+                  </td>
+                  <td className={tableCellClass}>
+                    <input
+                      type="text"
+                      value={op.numero_facture || ''}
+                      onChange={(event) => handleDraftChange(op.id, 'numero_facture', event.target.value)}
+                      className={compactInputClass}
+                      placeholder="N° facture"
+                    />
+                  </td>
+                  <td className={tableCellClass}>
+                    <select
+                      defaultValue=""
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (value === 'achat' || value === 'vente' || value === 'hors_tva' || value === 'virement_personnel') {
+                          reclassifyDraftRow(op.id, value);
+                        }
+                        event.currentTarget.value = '';
+                      }}
+                      className={compactInputClass}
+                    >
+                      <option value="">Reclasser</option>
+                      {!isPurchaseSection ? <option value="achat">Vers achat</option> : null}
+                      {isPurchaseSection ? <option value="vente">Vers vente</option> : null}
+                      <option value="hors_tva">Vers hors TVA</option>
+                      <option value="virement_personnel">Vers virement personnel</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  };
+  void renderDetectedSection;
+  void reviewDraftOperations;
+  void analysisSummary;
+  void showIgnoredOperations;
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (isPdfImportMode) await importSelected();
@@ -689,7 +1313,7 @@ export default function PurchaseVatInvoiceModal({
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800">
                     <FileUp className="h-4 w-4" /> Choisir un PDF
-                    <input type="file" accept="application/pdf" className="hidden" onChange={(event) => { setSelectedFile(event.target.files?.[0] || null); setSelectedFileName(event.target.files?.[0]?.name || ''); setAnalysisCacheInfo(null); setErrorMessage(''); setExtractMessage(''); setExtractWarnings([]); setDraftOperations([]); setIgnoredOperations([]); setSelectedIgnoredIds([]); setAddedIgnoredIds([]); }} />
+                    <input type="file" accept="application/pdf" className="hidden" onChange={(event) => { setSelectedFile(event.target.files?.[0] || null); setSelectedFileName(event.target.files?.[0]?.name || ''); setAnalysisCacheInfo(null); setErrorMessage(''); setExtractMessage(''); setExtractWarnings([]); setDraftOperations([]); setAllOperations([]); setIgnoredOperations([]); setPersonalTransferOperations([]); setOutsideVatOperations([]); setSelectedIgnoredIds([]); setAddedIgnoredIds([]); }} />
                   </label>
                   <button type="button" onClick={handleExtract} disabled={isExtracting || !selectedFile} className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-sm font-semibold text-white transition hover:from-emerald-700 hover:to-teal-700 disabled:cursor-not-allowed disabled:opacity-50">
                     {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -716,12 +1340,53 @@ export default function PurchaseVatInvoiceModal({
               <>
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-4 dark:border-teal-800 dark:bg-teal-950/30"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700 dark:text-teal-300">Type document</p><p className="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">{documentType === 'releve_bancaire' ? 'Releve bancaire' : documentType === 'factures_multiples' ? 'Factures multiples' : 'Facture unique'}</p></div>
-                  <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 dark:border-blue-800 dark:bg-blue-950/30"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Lignes extraites</p><p className="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">{draftOperations.length} ligne{draftOperations.length > 1 ? 's' : ''}</p></div>
+                  <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 dark:border-blue-800 dark:bg-blue-950/30"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Lignes extraites</p><p className="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">{allOperations.length} ligne{allOperations.length > 1 ? 's' : ''}</p></div>
                   <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-4 dark:border-violet-800 dark:bg-violet-950/30"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-700 dark:text-violet-300">Periode detectee</p><p className="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">{detectedPeriod || 'Non detectee'}</p></div>
                 </div>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-4 dark:border-orange-800 dark:bg-orange-950/30">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-700 dark:text-orange-300">Achats</p>
+                    <p className="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">{summaryTotals.nombreAchats} ligne{summaryTotals.nombreAchats > 1 ? 's' : ''}</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Total TTC: {formatMad(summaryTotals.totalAchatsTtc)}</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">TVA deductible: {formatMad(summaryTotals.tvaDeductibleAchats)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 dark:border-emerald-800 dark:bg-emerald-950/30">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Ventes</p>
+                    <p className="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">{summaryTotals.nombreVentes} ligne{summaryTotals.nombreVentes > 1 ? 's' : ''}</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Total TTC: {formatMad(summaryTotals.totalVentesTtc)}</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">TVA collectee: {formatMad(summaryTotals.tvaCollecteeVentes)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-fuchsia-200 bg-fuchsia-50 px-4 py-4 dark:border-fuchsia-800 dark:bg-fuchsia-950/30">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-700 dark:text-fuchsia-300">Virements personnels</p>
+                    <p className="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">{summaryTotals.nombreVirementsPersonnels} ligne{summaryTotals.nombreVirementsPersonnels > 1 ? 's' : ''}</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Total TTC: {formatMad(summaryTotals.totalVirementsPersonnels)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-900/60">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-700 dark:text-slate-300">Hors TVA</p>
+                    <p className="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">{summaryTotals.nombreHorsTva} ligne{summaryTotals.nombreHorsTva > 1 ? 's' : ''}</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Total TTC: {formatMad(summaryTotals.totalHorsTva)}</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">TVA a payer estimee: {formatMad(summaryTotals.tvaEstimee)}</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-4 dark:border-sky-800 dark:bg-sky-950/30">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">Resume TVA</p>
+                  <div className="mt-3 grid gap-2 text-sm text-gray-700 dark:text-gray-200 md:grid-cols-2 xl:grid-cols-5">
+                    <p>Nombre achats: <span className="font-semibold">{summaryTotals.nombreAchats}</span></p>
+                    <p>Total achats TTC: <span className="font-semibold">{formatMad(summaryTotals.totalAchatsTtc)}</span></p>
+                    <p>TVA deductible achats: <span className="font-semibold">{formatMad(summaryTotals.tvaDeductibleAchats)}</span></p>
+                    <p>Nombre ventes: <span className="font-semibold">{summaryTotals.nombreVentes}</span></p>
+                    <p>Total ventes TTC: <span className="font-semibold">{formatMad(summaryTotals.totalVentesTtc)}</span></p>
+                    <p>TVA collectee ventes: <span className="font-semibold">{formatMad(summaryTotals.tvaCollecteeVentes)}</span></p>
+                    <p>TVA a payer estimee: <span className="font-semibold">{formatMad(summaryTotals.tvaEstimee)}</span></p>
+                    <p>Nombre virements personnels: <span className="font-semibold">{summaryTotals.nombreVirementsPersonnels}</span></p>
+                    <p>Total virements personnels: <span className="font-semibold">{formatMad(summaryTotals.totalVirementsPersonnels)}</span></p>
+                    <p>Nombre hors TVA: <span className="font-semibold">{summaryTotals.nombreHorsTva}</span></p>
+                    <p>Total hors TVA: <span className="font-semibold">{formatMad(summaryTotals.totalHorsTva)}</span></p>
+                  </div>
+                </div>
                 <div className="space-y-5">
-                  {renderDetectedSection('achat', purchaseDraftOperations)}
-                  {renderDetectedSection('vente', salesDraftOperations)}
+                  {renderEditableDetectedSection('achat', purchaseDraftOperations)}
+                  {renderEditableDetectedSection('vente', salesDraftOperations)}
                 </div>
                 <div className="hidden">
                   <div className="px-5 pt-4">
@@ -753,10 +1418,25 @@ export default function PurchaseVatInvoiceModal({
                     </table>
                   </div>
                 </div>
-                <div className="rounded-3xl border border-gray-200 bg-gray-50 px-5 py-4 dark:border-gray-700 dark:bg-gray-900/30">
-                  <button type="button" onClick={() => setShowIgnoredOperations((prev) => !prev)} className="flex w-full items-center justify-between gap-4 text-left"><div><h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">Operations exclues ({ignoredOperations.length})</h4><p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Les operations filtrees par l&apos;IA sont listees ici avec la raison d&apos;exclusion.</p></div><ChevronDown className={`h-5 w-5 text-gray-500 transition-transform dark:text-gray-400 ${showIgnoredOperations ? 'rotate-180' : ''}`} /></button>
-                  {showIgnoredOperations ? <div className="mt-4 space-y-4">{ignoredOperations.length ? <><div className="space-y-3">{ignoredOperations.map((op) => { const isAdded = addedIgnoredIds.includes(op.id); return <label key={op.id} className={`flex items-start gap-3 rounded-2xl border px-4 py-3 ${isAdded ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20' : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900/40'}`}><input type="checkbox" checked={selectedIgnoredIds.includes(op.id)} onChange={() => setSelectedIgnoredIds((prev) => prev.includes(op.id) ? prev.filter((id) => id !== op.id) : [...prev, op.id])} disabled={isAdded} className="mt-1 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50" /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{op.libelle}</span><span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">{formatMad(op.montant)}</span>{isAdded ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">Ajoutee au tableau</span> : null}</div><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{op.date} - Raison : {op.raison_exclusion}</p></div></label>; })}</div><button type="button" onClick={addIgnoredToTable} disabled={!selectedIgnoredIds.length} className="inline-flex items-center gap-2 rounded-2xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"><PlusCircle className="h-4 w-4" /> Ajouter les operations cochees au tableau</button></> : <p className="text-sm text-gray-500 dark:text-gray-400">Aucune operation exclue pour ce document.</p>}</div> : null}
+                <div className="hidden">
+                  <button type="button" onClick={() => setShowAllOperations((prev) => !prev)} className="flex w-full items-center justify-between gap-4 text-left"><div><h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">Toutes les operations ({allOperations.length})</h4><p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Chaque ligne extraite du releve reste visible, meme si elle est ignoree ou a verifier.</p></div><ChevronDown className={`h-5 w-5 text-gray-500 transition-transform dark:text-gray-400 ${showAllOperations ? 'rotate-180' : ''}`} /></button>
+                  {showAllOperations ? <div className="mt-4 overflow-x-auto"><table className="min-w-[980px] w-full divide-y divide-gray-200 dark:divide-gray-700"><thead className="bg-white/80 dark:bg-slate-900/70"><tr><th className={tableHeadClass}>Date</th><th className={tableHeadClass}>Libelle</th><th className={tableHeadClass}>Debit</th><th className={tableHeadClass}>Credit</th><th className={tableHeadClass}>Sens</th><th className={tableHeadClass}>Classement</th><th className={tableHeadClass}>Mode</th><th className={tableHeadClass}>Raison</th></tr></thead><tbody className="divide-y divide-gray-200 dark:divide-gray-800">{allOperations.map((op) => <tr key={op.id_ligne} className="bg-white/90 dark:bg-slate-950/10"><td className={tableCellClass}>{op.date || '—'}</td><td className={tableCellClass}>{op.libelle_original}</td><td className={tableCellClass}>{op.montant_debit ? formatMad(op.montant_debit) : '—'}</td><td className={tableCellClass}>{op.montant_credit ? formatMad(op.montant_credit) : '—'}</td><td className={tableCellClass}>{op.sens_bancaire}</td><td className={tableCellClass}>{op.classification}</td><td className={tableCellClass}>{op.mode_paiement_detecte}</td><td className={tableCellClass}>{op.raison}</td></tr>)}</tbody></table></div> : null}
                 </div>
+                {renderIgnoredCategorySection(
+                  'Virements personnels',
+                  personalTransferOperations,
+                  showPersonalTransfers,
+                  () => setShowPersonalTransfers((prev) => !prev),
+                  'Aucun virement personnel pour ce document.',
+                )}
+                {renderIgnoredCategorySection(
+                  'Hors TVA',
+                  outsideVatRows,
+                  showOutsideVatOperations,
+                  () => setShowOutsideVatOperations((prev) => !prev),
+                  'Aucune operation hors TVA pour ce document.',
+                )}
+                {null}
               </>
             ) : null}
           </div>
