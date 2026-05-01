@@ -1,8 +1,9 @@
 import React from 'react';
-import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, CreditCard, Download, FileUp, Pencil, Plus, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
+import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Download, FileUp, Pencil, Plus, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useVat } from '../../contexts/VatContext';
+import Modal from '../common/Modal';
 import type {
   ManualSalesVatInvoice,
   MoroccanVatRate,
@@ -28,6 +29,25 @@ const TABLE_CONTAINER_CLASS =
   'mt-6 overflow-x-auto overscroll-x-contain rounded-3xl border border-gray-200 bg-white pb-2 shadow-sm dark:border-gray-700 dark:bg-gray-800';
 const TABLE_HINT_CLASS =
   'mt-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300';
+const TVA_GUIDE_STORAGE_KEY = 'factourati_tva_guide_seen';
+const TVA_GUIDE_STEPS = [
+  {
+    title: 'Analysez votre releve avec l IA',
+    text: 'Importez votre releve bancaire PDF. Factourati detecte automatiquement les factures achats, ventes, virements personnels et operations hors TVA. Chaque analyse IA consomme 1 credit dans votre compteur "Credits analyses IA".',
+  },
+  {
+    title: 'Verifiez les resultats',
+    text: 'Apres l analyse, vous pouvez modifier les taux TVA, corriger les montants, reclasser une operation et ajouter les numeros de facture.',
+  },
+  {
+    title: 'Ajoutez des factures manuellement',
+    text: 'Si une facture manque, ajoutez-la manuellement comme achat ou vente.',
+  },
+  {
+    title: 'Validez votre TVA',
+    text: 'Factourati calcule automatiquement la TVA deductible, la TVA collectee et la TVA a payer estimee. Le statut en vert signifie que vous devez payer la TVA. Le statut en rouge signifie qu il n y a pas de paiement a faire et que vous avez un credit TVA a reporter.',
+  },
+] as const;
 
 const periodLabel = (period: string) => {
   const [year, month] = period.split('-').map(Number);
@@ -103,6 +123,8 @@ export default function TVAIntelligentePage() {
   const [prefilledAnalysisResult, setPrefilledAnalysisResult] = React.useState<PurchaseVatExtractionResult | null>(null);
   const [prefilledAnalysisFileName, setPrefilledAnalysisFileName] = React.useState<string | null>(null);
   const [isCreditsPurchaseModalOpen, setIsCreditsPurchaseModalOpen] = React.useState(false);
+  const [isGuideOpen, setIsGuideOpen] = React.useState(false);
+  const [guideStepIndex, setGuideStepIndex] = React.useState(0);
 
   const isProActive =
     user?.company.subscription === 'pro' &&
@@ -279,6 +301,27 @@ export default function TVAIntelligentePage() {
 
     return () => window.clearTimeout(timeout);
   }, [importCelebration]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hasSeenGuide = window.localStorage.getItem(TVA_GUIDE_STORAGE_KEY) === 'true';
+    if (!hasSeenGuide) {
+      setGuideStepIndex(0);
+      setIsGuideOpen(true);
+    }
+  }, []);
+
+  const openGuide = React.useCallback(() => {
+    setGuideStepIndex(0);
+    setIsGuideOpen(true);
+  }, []);
+
+  const closeGuide = React.useCallback((markAsSeen = false) => {
+    if (markAsSeen && typeof window !== 'undefined') {
+      window.localStorage.setItem(TVA_GUIDE_STORAGE_KEY, 'true');
+    }
+    setIsGuideOpen(false);
+  }, []);
 
   const openCachedAnalysis = React.useCallback((entry: VatAnalysisCacheEntry) => {
     setEditingPurchaseInvoice(null);
@@ -610,9 +653,94 @@ export default function TVAIntelligentePage() {
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-6 shadow-sm dark:border-slate-700 dark:from-slate-900 dark:to-slate-800">
+        <section className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="relative overflow-hidden rounded-[2rem] border border-cyan-200 bg-gradient-to-br from-cyan-500 via-teal-500 to-blue-700 p-6 text-white shadow-[0_24px_60px_-20px_rgba(14,165,233,0.65)] dark:border-slate-700 dark:from-slate-900 dark:via-teal-950 dark:to-blue-950">
+            <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-white/15 blur-3xl" />
+            <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="max-w-2xl">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white/95">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Analyse IA
+                </div>
+                <h2 className="mt-4 text-2xl font-bold text-white sm:text-3xl">Importez votre relevé bancaire</h2>
+                <p className="mt-3 text-sm leading-7 text-cyan-50/95">
+                  Importez votre relevé bancaire PDF. Factourati analyse automatiquement les opérations, détecte les achats, ventes, virements personnels et hors TVA, puis prépare votre TVA.
+                </p>
+              </div>
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl border border-white/20 bg-white/15 text-white shadow-lg backdrop-blur">
+                <Sparkles className="h-7 w-7" />
+              </div>
+            </div>
+            <div className="relative mt-6 flex flex-col gap-3 md:flex-row md:items-center">
+              <button
+                type="button"
+                onClick={() => openCreatePurchaseModal('pdf')}
+                className="group inline-flex items-center justify-center gap-3 rounded-2xl bg-white px-6 py-4 text-base font-bold text-sky-700 shadow-lg transition duration-300 hover:-translate-y-0.5 hover:shadow-2xl dark:bg-slate-100"
+              >
+                <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
+                  IA
+                </span>
+                <FileUp className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+                Analyser mon relevé avec l’IA
+              </button>
+              <button
+                type="button"
+                onClick={openGuide}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
+              >
+                <Sparkles className="h-4 w-4" />
+                Guide
+              </button>
+            </div>
+            <p className="mt-4 text-sm font-medium text-cyan-50/95">
+              Importez votre PDF, Factourati détecte automatiquement achats, ventes, virements personnels et hors TVA.
+            </p>
+            <p className="mt-2 text-xs font-medium text-cyan-100/90">
+              Formats acceptés : PDF — Taille max : 10 MB
+            </p>
+          </div>
+
+          <div className="rounded-[2rem] border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-6 shadow-sm dark:border-slate-700 dark:from-slate-900 dark:to-slate-800">
             <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="inline-flex items-center rounded-full border border-blue-200 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-blue-700 dark:border-blue-700 dark:bg-slate-800/80 dark:text-blue-300">
+                  Entrée manuelle
+                </p>
+                <h2 className="mt-3 text-xl font-bold text-gray-900 dark:text-gray-100">Saisie manuelle</h2>
+                <p className="mt-3 text-sm leading-7 text-gray-600 dark:text-gray-300">
+                  Ajoutez une facture achat ou vente manuellement avec calcul automatique du HT et de la TVA.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/80 p-3 text-blue-700 shadow-sm dark:bg-slate-700 dark:text-blue-300">
+                <Plus className="h-6 w-6" />
+              </div>
+            </div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => openCreatePurchaseModal('manual')}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-blue-700"
+              >
+                <Plus className="h-4 w-4" />
+                Ajouter une facture achat
+              </button>
+              <button
+                type="button"
+                onClick={openCreateSalesModal}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-700"
+              >
+                <Plus className="h-4 w-4" />
+                Ajouter une facture de vente
+              </button>
+            </div>
+          </div>
+
+        </section>
+
+        <section className="hidden">
+          <div className="relative overflow-hidden rounded-[2rem] border border-cyan-200 bg-gradient-to-br from-cyan-500 via-teal-500 to-blue-700 p-6 text-white shadow-[0_24px_60px_-20px_rgba(14,165,233,0.65)] dark:border-slate-700 dark:from-slate-900 dark:via-teal-950 dark:to-blue-950">
+            <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-white/15 blur-3xl" />
+            <div className="relative flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">Analysez votre relevé bancaire en quelques secondes</p>
                 <h2 className="mt-2 text-xl font-bold text-gray-900 dark:text-gray-100">Importez votre relevé bancaire</h2>
@@ -1242,6 +1370,87 @@ export default function TVAIntelligentePage() {
           </div>
         </section>
       </div>
+
+      <Modal
+        isOpen={isGuideOpen}
+        onClose={() => closeGuide(false)}
+        title={`Guide Analyse TVA - Étape ${guideStepIndex + 1}/${TVA_GUIDE_STEPS.length}`}
+        size="lg"
+      >
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-sky-200 bg-gradient-to-br from-sky-50 to-cyan-50 p-6 dark:border-sky-800 dark:from-sky-950/30 dark:to-cyan-950/20">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:bg-slate-900/80 dark:text-sky-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              Étape {guideStepIndex + 1}
+            </div>
+            <h3 className="mt-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {TVA_GUIDE_STEPS[guideStepIndex].title}
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-gray-600 dark:text-gray-300">
+              {TVA_GUIDE_STEPS[guideStepIndex].text}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {TVA_GUIDE_STEPS.map((step, index) => (
+              <div
+                key={step.title}
+                className={`h-2 flex-1 rounded-full ${index === guideStepIndex ? 'bg-sky-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+              />
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => closeGuide(false)}
+                className="rounded-2xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+              >
+                Ignorer
+              </button>
+              <button
+                type="button"
+                onClick={() => closeGuide(true)}
+                className="rounded-2xl border border-sky-200 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-50 dark:border-sky-800 dark:text-sky-300 dark:hover:bg-sky-950/30"
+              >
+                Ne plus afficher
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setGuideStepIndex((current) => Math.max(0, current - 1))}
+                disabled={guideStepIndex === 0}
+                className="inline-flex items-center gap-2 rounded-2xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Précédent
+              </button>
+              {guideStepIndex < TVA_GUIDE_STEPS.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setGuideStepIndex((current) => Math.min(TVA_GUIDE_STEPS.length - 1, current + 1))}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
+                >
+                  Suivant
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => closeGuide(true)}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                >
+                  Terminer
+                  <CheckCircle2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </Modal>
 
       <PurchaseVatInvoiceModal
         isOpen={isPurchaseModalOpen}
