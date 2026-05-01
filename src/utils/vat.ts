@@ -18,7 +18,10 @@ export const PAYMENT_MODE_OPTIONS: Array<{ value: PurchaseVatPaymentMode; label:
   { value: 'virement', label: 'Virement bancaire' },
   { value: 'cheque', label: 'Cheque' },
   { value: 'effet', label: 'Effet de commerce' },
+  { value: 'paiement_en_ligne', label: 'Paiement en ligne' },
+  { value: 'carte', label: 'Carte bancaire' },
   { value: 'especes', label: 'Especes' },
+  { value: 'autre', label: 'Autre' },
 ];
 
 export const TVA_COLLECTION = 'factures_achat_tva';
@@ -158,12 +161,23 @@ export const normalizeVatRate = (value: number): MoroccanVatRate => {
 export const normalizePaymentMode = (value?: string | null): PurchaseVatPaymentMode => {
   const normalized = (value || '').trim().toLowerCase();
 
-  if (normalized.includes('virement')) return 'virement';
+  if (
+    normalized.includes('cmi') ||
+    normalized.includes('stripe') ||
+    normalized.includes('paypal') ||
+    normalized.includes('online') ||
+    normalized.includes('en ligne')
+  ) {
+    return 'paiement_en_ligne';
+  }
+
+  if (normalized.includes('cb') || normalized.includes('carte')) return 'carte';
+  if (normalized.includes('virement') || normalized.startsWith('vir') || normalized.includes('vrt')) return 'virement';
   if (normalized.includes('cheque') || normalized.includes('chèque')) return 'cheque';
   if (normalized.includes('effet') || normalized.includes('traite') || normalized.includes('lcn')) return 'effet';
   if (normalized.includes('espece') || normalized.includes('espèce')) return 'especes';
 
-  return 'virement';
+  return normalized ? 'autre' : 'virement';
 };
 
 export const buildVatSummary = (
