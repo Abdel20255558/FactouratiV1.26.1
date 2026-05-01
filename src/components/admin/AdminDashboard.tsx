@@ -24,6 +24,7 @@ import EditCompanyModal from './EditCompanyModal';
 import AdminVatCreditsRechargeModal from './AdminVatCreditsRechargeModal';
 import ReferralSourceChart from './ReferralSourceChart';
 import BlogManager from './BlogManager';
+import HomepageScreenshotsManager from './HomepageScreenshotsManager';
 import {
   fetchFreeInvoiceGeneratorLeads,
   fetchFreeInvoiceGeneratorStats,
@@ -66,9 +67,12 @@ interface SupportAccessLog {
 }
 
 interface VatAiSettingsForm {
+  provider?: 'openai' | 'n8n';
   apiKey: string;
   model: string;
   prompt: string;
+  n8nWebhookUrl?: string;
+  n8nWebhookSecret?: string;
   updatedAt?: string;
 }
 
@@ -80,7 +84,18 @@ interface CompanyVatCreditsSummary {
 
 const ADMIN_TVA_CREDITS_API_BASES = ['/api/admin/users', '/.netlify/functions/tva/admin/users'];
 
-const DEFAULT_TVA_AI_MODEL = 'gpt-4o';
+const DEFAULT_TVA_AI_MODEL = 'gpt-5.4';
+const DEFAULT_TVA_N8N_WEBHOOK_URL = 'https://factourati2.app.n8n.cloud/webhook-test/factourati-tva-analyse';
+const TVA_AI_MODEL_OPTIONS = [
+  { value: 'gpt-5.4', label: 'gpt-5.4' },
+  { value: 'gpt-5.4-mini', label: 'gpt-5.4-mini' },
+  { value: 'gpt-4o', label: 'gpt-4o' },
+  { value: 'gpt-4.1', label: 'gpt-4.1' },
+];
+const normalizeVatAiModel = (value: string) => {
+  const normalized = value.trim();
+  return normalized || DEFAULT_TVA_AI_MODEL;
+};
 const DEFAULT_TVA_AI_PROMPT = `Tu es un assistant comptable marocain expert en TVA.
 Analyse ce document (releve bancaire ou facture) et extrais uniquement les operations comptables valides selon ces regles strictes.
 
@@ -312,9 +327,12 @@ export default function AdminDashboard() {
     updatedAt: '',
   });
   const [vatAiSettings, setVatAiSettings] = useState<VatAiSettingsForm>({
+    provider: 'n8n',
     apiKey: '',
     model: DEFAULT_TVA_AI_MODEL,
     prompt: STRICT_BANK_STATEMENT_TVA_AI_PROMPT,
+    n8nWebhookUrl: DEFAULT_TVA_N8N_WEBHOOK_URL,
+    n8nWebhookSecret: '',
   });
   const [isSavingVatAiSettings, setIsSavingVatAiSettings] = useState(false);
   const [vatAiSettingsMessage, setVatAiSettingsMessage] = useState('');
@@ -403,16 +421,26 @@ export default function AdminDashboard() {
       if (vatAiSettingsSnapshot?.exists()) {
         const settingsData = vatAiSettingsSnapshot.data() as Partial<VatAiSettingsForm>;
         setVatAiSettings({
+          provider:
+            settingsData.provider === 'n8n' ||
+            (!settingsData.provider && (settingsData.n8nWebhookUrl || DEFAULT_TVA_N8N_WEBHOOK_URL))
+              ? 'n8n'
+              : 'openai',
           apiKey: settingsData.apiKey || '',
-          model: settingsData.model || DEFAULT_TVA_AI_MODEL,
+          model: normalizeVatAiModel(settingsData.model || ''),
           prompt: settingsData.prompt || STRICT_BANK_STATEMENT_TVA_AI_PROMPT,
+          n8nWebhookUrl: settingsData.n8nWebhookUrl || DEFAULT_TVA_N8N_WEBHOOK_URL,
+          n8nWebhookSecret: settingsData.n8nWebhookSecret || '',
           updatedAt: settingsData.updatedAt,
         });
       } else {
         setVatAiSettings({
+          provider: 'n8n',
           apiKey: '',
           model: DEFAULT_TVA_AI_MODEL,
           prompt: STRICT_BANK_STATEMENT_TVA_AI_PROMPT,
+          n8nWebhookUrl: DEFAULT_TVA_N8N_WEBHOOK_URL,
+          n8nWebhookSecret: '',
         });
       }
     } catch (error) {
@@ -643,12 +671,20 @@ export default function AdminDashboard() {
   };
 
   const handleSaveVatAiSettings = async () => {
+    const provider = vatAiSettings.provider === 'n8n' ? 'n8n' : 'openai';
     const trimmedApiKey = sanitizeSecretValue(vatAiSettings.apiKey);
-    const trimmedModel = vatAiSettings.model.trim() || DEFAULT_TVA_AI_MODEL;
+    const trimmedModel = normalizeVatAiModel(vatAiSettings.model);
     const trimmedPrompt = vatAiSettings.prompt.trim() || STRICT_BANK_STATEMENT_TVA_AI_PROMPT;
+    const trimmedWebhookUrl = String(vatAiSettings.n8nWebhookUrl || '').trim();
+    const trimmedWebhookSecret = sanitizeSecretValue(vatAiSettings.n8nWebhookSecret || '');
 
-    if (!trimmedApiKey) {
+    if (provider === 'openai' && !trimmedApiKey) {
       setVatAiSettingsMessage('La cle OpenAI est obligatoire pour analyser les PDF.');
+      return;
+    }
+
+    if (provider === 'n8n' && !trimmedWebhookUrl) {
+      setVatAiSettingsMessage('L URL du webhook n8n est obligatoire.');
       return;
     }
 
@@ -657,18 +693,21 @@ export default function AdminDashboard() {
       setVatAiSettingsMessage('');
 
       const payload = {
+        provider,
         apiKey: trimmedApiKey,
         model: trimmedModel,
         prompt: trimmedPrompt,
+        n8nWebhookUrl: trimmedWebhookUrl,
+        n8nWebhookSecret: trimmedWebhookSecret,
         updatedAt: new Date().toISOString(),
       };
 
       await setDoc(doc(db, TVA_AI_SETTINGS_COLLECTION, TVA_AI_SETTINGS_DOC), payload);
       setVatAiSettings(payload);
-      setVatAiSettingsMessage('Configuration OpenAI TVA enregistree avec succes.');
+      setVatAiSettingsMessage('Configuration TVA IA enregistree avec succes.');
     } catch (error) {
       console.error('Erreur sauvegarde configuration TVA IA:', error);
-      setVatAiSettingsMessage("Impossible d'enregistrer la configuration OpenAI.");
+      setVatAiSettingsMessage("Impossible d'enregistrer la configuration TVA IA.");
     } finally {
       setIsSavingVatAiSettings(false);
     }
@@ -901,20 +940,59 @@ export default function AdminDashboard() {
 
         <div className="mb-8 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
           <div className="border-b border-emerald-100 bg-gradient-to-r from-emerald-600 to-teal-700 px-6 py-5 text-white">
-            <h3 className="text-lg font-semibold">Configuration OpenAI pour analyse PDF TVA</h3>
+            <h3 className="text-lg font-semibold">Configuration IA pour analyse PDF TVA</h3>
             <p className="mt-1 text-sm text-emerald-50">
-              Cette configuration est stockee dans Firestore et utilisee par le module TVA Intelligente pour l'analyse des PDF.
+              Cette configuration est stockee dans Firestore et utilisee par le module TVA Intelligente pour l'analyse des PDF via OpenAI ou n8n.
             </p>
           </div>
 
           <div className="grid gap-5 px-6 py-6 lg:grid-cols-[1fr_1fr]">
             <div className="space-y-5">
               <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Moteur d analyse</label>
+                <select
+                  value={vatAiSettings.provider || 'openai'}
+                  onChange={(event) => handleVatAiSettingsChange('provider', event.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-emerald-500"
+                >
+                  <option value="openai">OpenAI direct</option>
+                  <option value="n8n">n8n webhook</option>
+                </select>
+              </div>
+
+              {vatAiSettings.provider === 'n8n' ? (
+                <>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">URL webhook n8n</label>
+                    <input
+                      type="url"
+                      value={vatAiSettings.n8nWebhookUrl || ''}
+                      onChange={(event) => handleVatAiSettingsChange('n8nWebhookUrl', event.target.value)}
+                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-emerald-500"
+                      placeholder="https://n8n.votre-domaine.com/webhook/factourati-tva"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">Secret webhook n8n</label>
+                    <input
+                      type="password"
+                      value={vatAiSettings.n8nWebhookSecret || ''}
+                      onChange={(event) => handleVatAiSettingsChange('n8nWebhookSecret', event.target.value)}
+                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-emerald-500"
+                      placeholder="secret optionnel"
+                    />
+                  </div>
+                </>
+              ) : null}
+
+              <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">Cle OpenAI</label>
                 <input
                   type="password"
                   value={vatAiSettings.apiKey}
                   onChange={(event) => handleVatAiSettingsChange('apiKey', event.target.value)}
+                  disabled={vatAiSettings.provider === 'n8n'}
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-emerald-500"
                   placeholder="sk-..."
                 />
@@ -922,17 +1000,27 @@ export default function AdminDashboard() {
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">Modele</label>
-                <input
-                  type="text"
+                <select
                   value={vatAiSettings.model}
                   onChange={(event) => handleVatAiSettingsChange('model', event.target.value)}
+                  disabled={vatAiSettings.provider === 'n8n'}
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-emerald-500"
-                  placeholder={DEFAULT_TVA_AI_MODEL}
-                />
+                >
+                  {TVA_AI_MODEL_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-gray-500">
+                  Modele par defaut recommande : {DEFAULT_TVA_AI_MODEL}
+                </p>
               </div>
 
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-800">
-                Utilisez ici un modele compatible analyse de documents PDF. La cle et le prompt seront relus par le backend TVA au moment de l'extraction.
+                {vatAiSettings.provider === 'n8n'
+                  ? "Le webhook n8n recevra le PDF, le prompt et les metadonnees, puis devra renvoyer un JSON compatible avec l analyse TVA."
+                  : 'Utilisez ici un modele compatible analyse de documents PDF. La cle et le prompt seront relus par le backend TVA au moment de l extraction.'}
               </div>
             </div>
 
@@ -1088,6 +1176,8 @@ export default function AdminDashboard() {
             </div>
           </div>
         </section>
+
+        <HomepageScreenshotsManager />
 
         <BlogManager />
 
