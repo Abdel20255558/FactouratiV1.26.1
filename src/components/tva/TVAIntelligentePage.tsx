@@ -78,9 +78,51 @@ const getAnalysisPeriodLabel = (entry: VatAnalysisCacheEntry) => {
   return analysisPeriod ? periodLabel(analysisPeriod) : 'Mois non determine';
 };
 
+const ensureArray = <T,>(value: T[] | undefined | null): T[] => (Array.isArray(value) ? value : []);
+
+const normalizeCachedExtractionResult = (
+  result: Partial<PurchaseVatExtractionResult> | null | undefined,
+): PurchaseVatExtractionResult => {
+  const safeResult = result && typeof result === 'object' ? result : {};
+
+  return {
+    success: safeResult.success,
+    schema_name: safeResult.schema_name ?? null,
+    type_document: safeResult.type_document || 'releve_bancaire',
+    banque: safeResult.banque ?? null,
+    societe_titulaire: safeResult.societe_titulaire ?? null,
+    periode: safeResult.periode ?? null,
+    periode_detail: safeResult.periode_detail ?? null,
+    resume: safeResult.resume ?? null,
+    factures: ensureArray(safeResult.factures),
+    achats: ensureArray(safeResult.achats),
+    ventes: ensureArray(safeResult.ventes),
+    virements_personnels: ensureArray(safeResult.virements_personnels),
+    hors_tva: ensureArray(safeResult.hors_tva),
+    a_verifier: ensureArray(safeResult.a_verifier),
+    total_operations:
+      typeof safeResult.total_operations === 'number' ? safeResult.total_operations : undefined,
+    toutes_operations: ensureArray(safeResult.toutes_operations),
+    operations_ignorees: ensureArray(safeResult.operations_ignorees),
+    alertes: ensureArray(safeResult.alertes),
+    cache_info: safeResult.cache_info ?? null,
+  };
+};
+
 const getSalesCounterpart = (invoice: SalesVatInvoiceLike) => invoice.clientName || invoice.client?.name || 'Client';
 const getSalesDescription = (invoice: SalesVatInvoiceLike) =>
   invoice.description || invoice.items?.[0]?.description || invoice.number || 'Facture de vente';
+const normalizePartyName = (value: string) =>
+  value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const inferRateFromAmounts = (ht: number, vat: number): MoroccanVatRate => {
+  if (!Number.isFinite(ht) || ht <= 0 || !Number.isFinite(vat) || vat <= 0) {
+    return 0;
+  }
+  const rawRate = (vat / ht) * 100;
+  return VAT_RATE_OPTIONS.reduce((closest, rate) =>
+    Math.abs(rate - rawRate) < Math.abs(closest - rawRate) ? rate : closest,
+  VAT_RATE_OPTIONS[0]) as MoroccanVatRate;
+};
 
 export default function TVAIntelligentePage() {
   const { user } = useAuth();
@@ -125,6 +167,8 @@ export default function TVAIntelligentePage() {
   const [isCreditsPurchaseModalOpen, setIsCreditsPurchaseModalOpen] = React.useState(false);
   const [isGuideOpen, setIsGuideOpen] = React.useState(false);
   const [guideStepIndex, setGuideStepIndex] = React.useState(0);
+  const [selectedPurchaseIds, setSelectedPurchaseIds] = React.useState<string[]>([]);
+  const [selectedSalesIds, setSelectedSalesIds] = React.useState<string[]>([]);
 
   const isProActive =
     user?.company.subscription === 'pro' &&
@@ -175,6 +219,60 @@ export default function TVAIntelligentePage() {
       return right.date.localeCompare(left.date);
     });
   }, [paymentFilter, periodPurchaseInvoices, sortField, vatRateFilter]);
+
+  const groupedPurchaseInvoices = React.useMemo(
+    () =>
+      [...filteredPurchaseInvoices].sort((left, right) => {
+        const nameCompare = normalizePartyName(left.fournisseur).localeCompare(normalizePartyName(right.fournisseur), 'fr');
+        if (nameCompare !== 0) return nameCompare;
+        return right.date.localeCompare(left.date);
+      }),
+    [filteredPurchaseInvoices],
+  );
+
+  const groupedSalesInvoices = React.useMemo(
+    () =>
+      [...periodSalesInvoices].sort((left, right) => {
+        const nameCompare = normalizePartyName(getSalesCounterpart(left)).localeCompare(normalizePartyName(getSalesCounterpart(right)), 'fr');
+        if (nameCompare !== 0) return nameCompare;
+        return right.date.localeCompare(left.date);
+      }),
+    [periodSalesInvoices],
+  );
+
+  const groupedPurchaseRows = React.useMemo(() => {
+    let currentKey = '';
+    let currentGroupIndex = -1;
+    return groupedPurchaseInvoices.map((invoice) => {
+      const nextKey = normalizePartyName(invoice.fournisseur);
+      if (nextKey !== currentKey) {
+        currentKey = nextKey;
+        currentGroupIndex += 1;
+      }
+      return { invoice, groupIndex: currentGroupIndex };
+    });
+  }, [groupedPurchaseInvoices]);
+
+  const groupedSalesRows = React.useMemo(() => {
+    let currentKey = '';
+    let currentGroupIndex = -1;
+    return groupedSalesInvoices.map((invoice) => {
+      const nextKey = normalizePartyName(getSalesCounterpart(invoice));
+      if (nextKey !== currentKey) {
+        currentKey = nextKey;
+        currentGroupIndex += 1;
+      }
+      return { invoice, groupIndex: currentGroupIndex };
+    });
+  }, [groupedSalesInvoices]);
+
+  React.useEffect(() => {
+    setSelectedPurchaseIds((current) => current.filter((id) => groupedPurchaseInvoices.some((invoice) => invoice.id === id)));
+  }, [groupedPurchaseInvoices]);
+
+  React.useEffect(() => {
+    setSelectedSalesIds((current) => current.filter((id) => groupedSalesInvoices.some((invoice) => invoice.id === id)));
+  }, [groupedSalesInvoices]);
 
   const recapRows = React.useMemo(() => {
     const purchaseRows = periodPurchaseInvoices.map((invoice) => ({
@@ -324,11 +422,13 @@ export default function TVAIntelligentePage() {
   }, []);
 
   const openCachedAnalysis = React.useCallback((entry: VatAnalysisCacheEntry) => {
+    const normalizedResult = normalizeCachedExtractionResult(entry.resultat_json);
+
     setEditingPurchaseInvoice(null);
     setPurchaseInitialMode('pdf');
     setPrefilledAnalysisFileName(entry.nom_fichier_original);
     setPrefilledAnalysisResult({
-      ...entry.resultat_json,
+      ...normalizedResult,
       cache_info: {
         cacheHit: true,
         cacheEntryId: entry.id,
@@ -389,8 +489,27 @@ export default function TVAIntelligentePage() {
     try {
       setActionError('');
       await deletePurchaseInvoice(invoice.id);
+      setSelectedPurchaseIds((current) => current.filter((id) => id !== invoice.id));
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Impossible de supprimer cette facture d'achat.");
+    }
+  };
+
+  const handleDeleteSelectedPurchases = async () => {
+    if (!selectedPurchaseIds.length) return;
+
+    const confirmed = window.confirm(`Supprimer ${selectedPurchaseIds.length} facture(s) achat selectionnee(s) ?`);
+    if (!confirmed) return;
+
+    try {
+      setActionError('');
+      for (const invoiceId of selectedPurchaseIds) {
+        await deletePurchaseInvoice(invoiceId);
+      }
+      setSelectedPurchaseIds([]);
+      setActionSuccess(`${selectedPurchaseIds.length} facture(s) achat supprimee(s).`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Impossible de supprimer les factures achat selectionnees.");
     }
   };
 
@@ -410,10 +529,36 @@ export default function TVAIntelligentePage() {
       } else if (invoice.sourceType === 'manuelle' && invoice.sourceInvoiceId) {
         await deleteManualSalesInvoice(invoice.sourceInvoiceId);
       }
+      setSelectedSalesIds((current) => current.filter((id) => id !== invoice.id));
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Impossible de supprimer cette facture de vente.");
     } finally {
       setSalesActionLoadingId(null);
+    }
+  };
+
+  const handleDeleteSelectedSales = async () => {
+    if (!selectedSalesIds.length) return;
+
+    const confirmed = window.confirm(`Supprimer ou retirer TVA sur ${selectedSalesIds.length} facture(s) vente selectionnee(s) ?`);
+    if (!confirmed) return;
+
+    try {
+      setActionError('');
+      for (const invoiceId of selectedSalesIds) {
+        const invoice = groupedSalesInvoices.find((item) => item.id === invoiceId);
+        if (!invoice) continue;
+
+        if (invoice.sourceType === 'application' && invoice.sourceInvoiceId) {
+          await excludeApplicationSalesInvoice(invoice.sourceInvoiceId);
+        } else if (invoice.sourceType === 'manuelle' && invoice.sourceInvoiceId) {
+          await deleteManualSalesInvoice(invoice.sourceInvoiceId);
+        }
+      }
+      setSelectedSalesIds([]);
+      setActionSuccess(`${selectedSalesIds.length} facture(s) vente traitee(s).`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Impossible de traiter les factures vente selectionnees.");
     }
   };
 
@@ -999,11 +1144,37 @@ export default function TVAIntelligentePage() {
             Faites defiler horizontalement pour voir toutes les colonnes du tableau.
           </div>
 
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+              <input
+                type="checkbox"
+                checked={groupedPurchaseInvoices.length > 0 && selectedPurchaseIds.length === groupedPurchaseInvoices.length}
+                onChange={() =>
+                  setSelectedPurchaseIds((current) =>
+                    current.length === groupedPurchaseInvoices.length ? [] : groupedPurchaseInvoices.map((invoice) => invoice.id),
+                  )
+                }
+                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+              />
+              {selectedPurchaseIds.length === groupedPurchaseInvoices.length && groupedPurchaseInvoices.length ? 'Tout deselectionner' : 'Tout selectionner'}
+            </label>
+
+            <button
+              type="button"
+              onClick={handleDeleteSelectedPurchases}
+              disabled={!selectedPurchaseIds.length}
+              className="inline-flex items-center gap-2 rounded-2xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/30"
+            >
+              <Trash2 className="h-4 w-4" />
+              Supprimer la selection ({selectedPurchaseIds.length})
+            </button>
+          </div>
+
           <div className={TABLE_CONTAINER_CLASS}>
-            <table className="min-w-[1480px] divide-y divide-gray-200 dark:divide-gray-700">
+            <table className="min-w-[1260px] divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
-                  {['Date', 'N° facture', 'Fournisseur', 'Description', 'TTC', 'Taux TVA', 'TVA', 'HT', 'Paiement', 'N° piece', 'ICE', 'Actions'].map((label) => (
+                  {['Choix', 'Date', 'Facture', 'Fournisseur', 'TTC', 'Taux TVA', 'TVA', 'HT', 'Paiement', 'ICE', 'Actions'].map((label) => (
                     <th
                       key={label}
                       className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400"
@@ -1014,35 +1185,32 @@ export default function TVAIntelligentePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {filteredPurchaseInvoices.map((invoice) => (
-                  <tr key={invoice.id} className="align-top">
+                {groupedPurchaseRows.map(({ invoice, groupIndex }) => (
+                  <tr key={invoice.id} className={`align-top ${groupIndex % 2 === 0 ? 'bg-white dark:bg-transparent' : 'bg-orange-50/40 dark:bg-orange-950/10'}`}>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
+                      <input
+                        type="checkbox"
+                        checked={selectedPurchaseIds.includes(invoice.id)}
+                        onChange={() =>
+                          setSelectedPurchaseIds((current) =>
+                            current.includes(invoice.id) ? current.filter((id) => id !== invoice.id) : [...current, invoice.id],
+                          )
+                        }
+                        className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                      />
+                    </td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
                       {new Date(invoice.date).toLocaleDateString('fr-FR')}
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                       {invoice.numero_facture || '—'}
                     </td>
-                    <td className="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
-                      <div>{invoice.fournisseur}</div>
-                      <div className="mt-2">
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                            invoice.source === 'pdf_ia'
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-                              : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
-                          }`}
-                        >
-                          {invoice.source === 'pdf_ia' ? 'Extrait par IA' : 'Saisie manuelle'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="min-w-[260px] px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{invoice.description}</td>
+                    <td className="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{invoice.fournisseur}</td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">{formatMad(invoice.montant_ttc)}</td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{invoice.taux_tva}%</td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(invoice.montant_tva)}</td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(invoice.montant_ht)}</td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{PAYMENT_LABELS[invoice.mode_paiement]}</td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{invoice.numero_piece || '—'}</td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{invoice.ice_fournisseur || '—'}</td>
                     <td className="whitespace-nowrap px-4 py-4">
                       <div className="flex items-center gap-2">
@@ -1067,9 +1235,9 @@ export default function TVAIntelligentePage() {
                   </tr>
                 ))}
 
-                {!isLoading && filteredPurchaseInvoices.length === 0 ? (
+                {!isLoading && groupedPurchaseInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <td colSpan={11} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
                       Aucune facture achat pour cette periode avec les filtres actuels.
                     </td>
                   </tr>
@@ -1169,11 +1337,37 @@ export default function TVAIntelligentePage() {
             Faites defiler horizontalement pour voir toutes les colonnes du tableau.
           </div>
 
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+              <input
+                type="checkbox"
+                checked={groupedSalesInvoices.length > 0 && selectedSalesIds.length === groupedSalesInvoices.length}
+                onChange={() =>
+                  setSelectedSalesIds((current) =>
+                    current.length === groupedSalesInvoices.length ? [] : groupedSalesInvoices.map((invoice) => invoice.id),
+                  )
+                }
+                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+              />
+              {selectedSalesIds.length === groupedSalesInvoices.length && groupedSalesInvoices.length ? 'Tout deselectionner' : 'Tout selectionner'}
+            </label>
+
+            <button
+              type="button"
+              onClick={handleDeleteSelectedSales}
+              disabled={!selectedSalesIds.length}
+              className="inline-flex items-center gap-2 rounded-2xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/30"
+            >
+              <Trash2 className="h-4 w-4" />
+              Supprimer la selection ({selectedSalesIds.length})
+            </button>
+          </div>
+
           <div className={TABLE_CONTAINER_CLASS}>
-            <table className="min-w-[1520px] divide-y divide-gray-200 dark:divide-gray-700">
+            <table className="min-w-[1260px] divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
-                  {['Date TVA', 'N° facture', 'Source', 'Client', 'Description', 'Paiement', 'N° piece', 'HT', 'TVA', 'TTC', 'Statut', 'Actions'].map((label) => (
+                  {['Choix', 'Date TVA', 'Facture', 'Client', 'Paiement', 'Taux TVA', 'HT', 'TVA', 'TTC', 'Actions'].map((label) => (
                     <th
                       key={label}
                       className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400"
@@ -1184,12 +1378,28 @@ export default function TVAIntelligentePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {periodSalesInvoices.map((invoice) => {
+                {groupedSalesRows.map(({ invoice, groupIndex }) => {
                   const isApplicationInvoice = invoice.sourceType === 'application';
                   const isLoadingRow = salesActionLoadingId === invoice.id;
+                  const inferredVatRate = inferRateFromAmounts(invoice.subtotal, invoice.totalVat);
 
                   return (
-                    <tr key={invoice.id} className="align-top">
+                    <tr
+                      key={invoice.id}
+                      className={`align-top ${groupIndex % 2 === 0 ? 'bg-white dark:bg-transparent' : 'bg-emerald-50/40 dark:bg-emerald-950/10'}`}
+                    >
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={selectedSalesIds.includes(invoice.id)}
+                          onChange={() =>
+                            setSelectedSalesIds((current) =>
+                              current.includes(invoice.id) ? current.filter((id) => id !== invoice.id) : [...current, invoice.id],
+                            )
+                          }
+                          className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                        />
+                      </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
                         <div>{new Date(invoice.date).toLocaleDateString('fr-FR')}</div>
                         {invoice.originalDate && invoice.originalDate !== invoice.date ? (
@@ -1201,43 +1411,16 @@ export default function TVAIntelligentePage() {
                       <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                         {invoice.number || '—'}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-4">
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                            isApplicationInvoice
-                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                              : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
-                          }`}
-                        >
-                          {isApplicationInvoice ? 'Application' : 'Manuelle'}
-                        </span>
-                      </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                         {getSalesCounterpart(invoice)}
-                      </td>
-                      <td className="min-w-[260px] px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
-                        {getSalesDescription(invoice)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
                         {invoice.mode_paiement ? PAYMENT_LABELS[invoice.mode_paiement] : '—'}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
-                        {invoice.numero_piece || '—'}
-                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{inferredVatRate}%</td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(invoice.subtotal)}</td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(invoice.totalVat)}</td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">{formatMad(invoice.totalTTC)}</td>
-                      <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
-                        {invoice.isAdjusted ? (
-                          <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                            Mois TVA modifie
-                          </span>
-                        ) : (
-                          <span className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">
-                            Standard
-                          </span>
-                        )}
-                      </td>
                       <td className="whitespace-nowrap px-4 py-4">
                         <div className="flex flex-wrap items-center gap-2">
                           {isApplicationInvoice ? (
@@ -1289,9 +1472,9 @@ export default function TVAIntelligentePage() {
                   );
                 })}
 
-                {!isLoading && periodSalesInvoices.length === 0 ? (
+                {!isLoading && groupedSalesInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <td colSpan={10} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
                       Aucune facture vente sur cette periode.
                     </td>
                   </tr>
