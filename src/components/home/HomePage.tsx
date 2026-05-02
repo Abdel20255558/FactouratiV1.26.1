@@ -252,45 +252,45 @@ export default function HomePage() {
       <div className="bg-[linear-gradient(180deg,#f7fffd_0%,#ffffff_30%,#eefcf7_100%)] text-slate-900">
         <section className="relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.24),transparent_30%),radial-gradient(circle_at_15%_15%,rgba(14,165,233,0.20),transparent_35%),radial-gradient(circle_at_70%_80%,rgba(16,185,129,0.16),transparent_28%),linear-gradient(180deg,#f5fffd_0%,#ecfeff_40%,#ffffff_100%)]" />
-          <div className="relative mx-auto grid max-w-7xl gap-16 px-4 pb-24 pt-16 sm:px-6 lg:grid-cols-[1fr_1.04fr] lg:px-8 lg:pb-32 lg:pt-24">
+          <div className="relative mx-auto grid max-w-7xl gap-10 px-4 pb-16 pt-10 sm:px-6 sm:pb-20 sm:pt-14 lg:grid-cols-[1fr_1.04fr] lg:gap-16 lg:px-8 lg:pb-32 lg:pt-24">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55 }}
               className="max-w-3xl"
             >
-              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/90 px-5 py-2.5 text-sm font-semibold text-sky-700 shadow-sm sm:text-base">
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/90 px-4 py-2 text-xs font-semibold text-sky-700 shadow-sm sm:px-5 sm:py-2.5 sm:text-base">
                 <Sparkles className="h-4 w-4" />
                 Nouveau : Analyse TVA intelligente avec IA
               </div>
 
-              <h1 className="mt-6 text-5xl font-black leading-[0.95] tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
+              <h1 className="mt-5 text-4xl font-black leading-[0.98] tracking-tight text-slate-950 sm:mt-6 sm:text-5xl lg:text-7xl">
                 Factourati - Solution ERP Marocaine pour gerer votre entreprise simplement
               </h1>
 
-              <p className="mt-7 max-w-2xl text-xl leading-9 text-slate-700">
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-700 sm:mt-7 sm:text-xl sm:leading-9">
                 Creez vos factures, devis, commandes, gerez votre stock, vos clients, vos fournisseurs et analysez votre TVA avec l intelligence artificielle.
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
                   to="/login?mode=register"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-400 px-7 py-4.5 text-lg font-bold text-white shadow-xl shadow-cyan-200 transition hover:scale-[1.01]"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-400 px-6 py-3.5 text-base font-bold text-white shadow-xl shadow-cyan-200 transition hover:scale-[1.01] sm:px-7 sm:py-4.5 sm:text-lg"
                 >
                   Essayer gratuitement
                   <ArrowRight className="h-5 w-5" />
                 </Link>
                 <a
                   href="#fonctionnalites"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/90 px-7 py-4.5 text-lg font-semibold text-slate-800 transition hover:border-sky-300 hover:text-sky-700"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/90 px-6 py-3.5 text-base font-semibold text-slate-800 transition hover:border-sky-300 hover:text-sky-700 sm:px-7 sm:py-4.5 sm:text-lg"
                 >
                   Voir les fonctionnalites
                 </a>
               </div>
 
-              <div className="mt-10 grid gap-3 sm:grid-cols-2">
+              <div className="mt-8 grid gap-3 sm:mt-10 sm:grid-cols-2">
                 {quickPoints.map((point) => (
-                  <div key={point} className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/85 px-5 py-4 text-base text-slate-700 shadow-sm">
+                  <div key={point} className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/85 px-4 py-3 text-sm text-slate-700 shadow-sm sm:px-5 sm:py-4 sm:text-base">
                     <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                     <span>{point}</span>
                   </div>
@@ -304,8 +304,26 @@ export default function HomePage() {
               transition={{ duration: 0.6, delay: 0.08 }}
               className="relative"
             >
-              <div className="absolute -inset-5 rounded-[2.4rem] bg-gradient-to-br from-sky-300/30 via-cyan-200/20 to-emerald-300/30 blur-2xl" />
-              <div className="relative overflow-hidden rounded-[2.2rem] border border-white/80 bg-white/88 shadow-2xl shadow-cyan-100/80">
+              <div className="absolute -inset-5 hidden rounded-[2.4rem] bg-gradient-to-br from-sky-300/30 via-cyan-200/20 to-emerald-300/30 blur-2xl md:block" />
+
+              <div className="rounded-2xl border border-sky-100 bg-sky-50 p-5 shadow-lg shadow-cyan-100/60 md:hidden">
+                <div className="flex items-center gap-3">
+                  <Brain className="h-5 w-5 text-sky-600" />
+                  <p className="text-lg font-semibold text-slate-950">Analyse TVA intelligente</p>
+                </div>
+                <p className="mt-3 text-base leading-8 text-slate-600">
+                  Importez un PDF, detectez achats, ventes, virements personnels et operations hors TVA en quelques minutes.
+                </p>
+                <a
+                  href="#tva-ia"
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-sky-700 shadow-sm ring-1 ring-sky-100 transition hover:-translate-y-0.5 hover:bg-sky-100 hover:text-sky-800"
+                >
+                  Voir le module TVA IA
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </div>
+
+              <div className="relative hidden overflow-hidden rounded-[2.2rem] border border-white/80 bg-white/88 shadow-2xl shadow-cyan-100/80 md:block">
                 <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
                   <div>
                     <p className="text-base font-semibold text-slate-950">Plateforme Factourati</p>
