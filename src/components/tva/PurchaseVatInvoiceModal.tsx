@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, ArrowDownLeft, ArrowUpRight, ChevronDown, FileUp, Loader2, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, CheckCircle2, ChevronDown, FileUp, Loader2, Sparkles } from 'lucide-react';
 import Modal from '../common/Modal';
 import { useSupplier } from '../../contexts/SupplierContext';
 import { useVat } from '../../contexts/VatContext';
@@ -44,6 +44,17 @@ interface DraftOp extends VatExtractedOperation {
   source: 'ai' | 'ignored';
 }
 
+interface ImportProgressItem {
+  id: string;
+  label: string;
+  status: 'pending' | 'importing' | 'done';
+}
+
+interface ImportSourceMetadata {
+  cacheEntryId?: string | null;
+  hashFichier?: string | null;
+}
+
 const PURCHASE_AI_FIELDS = ['date', 'numero_facture', 'fournisseur', 'description', 'montant_ttc', 'taux_tva', 'montant_tva', 'montant_ht', 'mode_paiement', 'numero_piece', 'ice_fournisseur'] as const;
 const inputClass = 'w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-teal-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
 const compactInputClass = 'w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-4 text-gray-900 outline-none transition focus:border-teal-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100';
@@ -54,6 +65,51 @@ const tableHintClass =
   'inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300';
 
 const roundToTwo = (value: number) => Math.round(value * 100) / 100;
+const normalizeSortLabel = (value: string) =>
+  value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const pause = (durationMs: number) => new Promise((resolve) => window.setTimeout(resolve, durationMs));
+const buildTrackedImportKey = (
+  cacheEntryId: string | null | undefined,
+  hashFichier: string | null | undefined,
+  operationLineId: string | null | undefined,
+  sens: 'achat' | 'vente',
+) => {
+  const cacheToken = `${cacheEntryId || hashFichier || ''}`.trim();
+  const lineToken = `${operationLineId || ''}`.trim();
+
+  if (!cacheToken || !lineToken) return null;
+
+  return `${cacheToken}::${sens}::${lineToken}`;
+};
+const buildDraftFallbackSignature = (
+  operation: Pick<DraftOp, 'date' | 'fournisseur_client' | 'numero_facture' | 'montant_ttc' | 'mode_paiement' | 'sens'>,
+) =>
+  [
+    operation.sens,
+    operation.date || '',
+    normalizeSortLabel(`${operation.fournisseur_client || ''}`),
+    roundToTwo(Number(operation.montant_ttc || 0)).toFixed(2),
+    normalizeSortLabel(`${operation.numero_facture || ''}`),
+    normalizeSortLabel(`${operation.mode_paiement || ''}`),
+  ].join('::');
+const buildPurchaseFallbackSignature = (invoice: PurchaseVatInvoice) =>
+  [
+    'achat',
+    invoice.date || '',
+    normalizeSortLabel(`${invoice.fournisseur || ''}`),
+    roundToTwo(Number(invoice.montant_ttc || 0)).toFixed(2),
+    normalizeSortLabel(`${invoice.numero_facture || ''}`),
+    normalizeSortLabel(`${invoice.mode_paiement || ''}`),
+  ].join('::');
+const buildSalesFallbackSignature = (invoice: { date: string; client_name: string; montant_ttc: number; numero_facture?: string | null; mode_paiement?: PurchaseVatPaymentMode | null; }) =>
+  [
+    'vente',
+    invoice.date || '',
+    normalizeSortLabel(`${invoice.client_name || ''}`),
+    roundToTwo(Number(invoice.montant_ttc || 0)).toFixed(2),
+    normalizeSortLabel(`${invoice.numero_facture || ''}`),
+    normalizeSortLabel(`${invoice.mode_paiement || ''}`),
+  ].join('::');
 const formatModePaiementLabel = (mode: PurchaseVatPaymentMode, numeroPiece?: string | null) => {
   const labels: Record<PurchaseVatPaymentMode, string> = {
     virement: 'Virement',
@@ -188,6 +244,15 @@ const syncDraftAmounts = (op: DraftOp): DraftOp => {
   return { ...op, montant_ttc: Number.isFinite(Number(op.montant_ttc)) ? Number(op.montant_ttc) : 0, montant_ht: amounts.ht, montant_tva: amounts.vat };
 };
 
+const getExtractionFactures = (result?: PurchaseVatExtractionResult | null) => {
+  if (!result) return [];
+  if (Array.isArray(result.factures) && result.factures.length) return result.factures;
+  return [
+    ...(Array.isArray(result.achats) ? result.achats : []),
+    ...(Array.isArray(result.ventes) ? result.ventes : []),
+  ];
+};
+
 const draftFromIgnored = (op: VatIgnoredOperation): DraftOp =>
   syncDraftAmounts({
     id: `draft-${op.id}`,
@@ -257,7 +322,10 @@ const buildAiMetadata = (op: DraftOp) => {
   return { aiExtractedFields, aiMissingFields: PURCHASE_AI_FIELDS.filter((field) => !aiExtractedFields.includes(field)) };
 };
 
-const buildPurchasePayload = (op: DraftOp): PurchaseVatInvoiceInput => {
+const buildPurchasePayload = (
+  op: DraftOp,
+  importSource?: ImportSourceMetadata,
+): PurchaseVatInvoiceInput => {
   const metadata = buildAiMetadata(op);
   const source: PurchaseVatInvoiceSource = op.source === 'ai' ? 'pdf_ia' : 'manuelle';
   const description = op.description.trim() || op.fournisseur_client.trim() || 'Operation importee via analyse TVA';
@@ -276,6 +344,9 @@ const buildPurchasePayload = (op: DraftOp): PurchaseVatInvoiceInput => {
     source,
     aiExtractedFields: metadata.aiExtractedFields,
     aiMissingFields: metadata.aiMissingFields,
+    source_cache_entry_id: importSource?.cacheEntryId || null,
+    source_hash_fichier: importSource?.hashFichier || null,
+    source_operation_line_id: op.id_ligne_source || op.id || null,
   };
 };
 
@@ -318,7 +389,14 @@ export default function PurchaseVatInvoiceModal({
   onImported,
 }: PurchaseVatInvoiceModalProps) {
   const { suppliers } = useSupplier();
-  const { createPurchaseInvoice, updatePurchaseInvoice, createManualSalesInvoice, extractPurchaseInvoicePdf } = useVat();
+  const {
+    purchaseInvoices,
+    manualSalesInvoices,
+    createPurchaseInvoice,
+    updatePurchaseInvoice,
+    createManualSalesInvoice,
+    extractPurchaseInvoicePdf,
+  } = useVat();
   const [entryMode, setEntryMode] = React.useState<'manual' | 'pdf'>(initialMode);
   const [form, setForm] = React.useState<FormState>(defaultFormState);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
@@ -341,10 +419,131 @@ export default function PurchaseVatInvoiceModal({
   const [showPersonalTransfers, setShowPersonalTransfers] = React.useState(false);
   const [showOutsideVatOperations, setShowOutsideVatOperations] = React.useState(false);
   const [showAllOperations, setShowAllOperations] = React.useState(false);
+  const [importProgressItems, setImportProgressItems] = React.useState<ImportProgressItem[]>([]);
   const [documentType, setDocumentType] = React.useState<string | null>(null);
   const [detectedPeriod, setDetectedPeriod] = React.useState<string | null>(null);
   const [analysisSummary, setAnalysisSummary] = React.useState<PurchaseVatExtractionResult['resume']>(null);
   const [analysisCacheInfo, setAnalysisCacheInfo] = React.useState<PurchaseVatExtractionResult['cache_info']>(null);
+  const [hiddenImportedCount, setHiddenImportedCount] = React.useState(0);
+
+  const importedPurchaseTrackedKeys = React.useMemo(
+    () =>
+      new Set(
+        purchaseInvoices
+          .map((invoice) =>
+            buildTrackedImportKey(
+              invoice.source_cache_entry_id,
+              invoice.source_hash_fichier,
+              invoice.source_operation_line_id,
+              'achat',
+            ),
+          )
+          .filter((value): value is string => Boolean(value)),
+      ),
+    [purchaseInvoices],
+  );
+
+  const importedSalesTrackedKeys = React.useMemo(
+    () =>
+      new Set(
+        manualSalesInvoices
+          .map((invoice) =>
+            buildTrackedImportKey(
+              invoice.source_cache_entry_id,
+              invoice.source_hash_fichier,
+              invoice.source_operation_line_id,
+              'vente',
+            ),
+          )
+          .filter((value): value is string => Boolean(value)),
+      ),
+    [manualSalesInvoices],
+  );
+
+  const importedTrackedLineIds = React.useMemo(
+    () =>
+      new Set(
+        [...purchaseInvoices, ...manualSalesInvoices]
+          .map((invoice) => `${invoice.source_operation_line_id || ''}`.trim())
+          .filter(Boolean),
+      ),
+    [manualSalesInvoices, purchaseInvoices],
+  );
+
+  const importedPurchaseFallbacks = React.useMemo(
+    () => new Set(purchaseInvoices.filter((invoice) => invoice.source === 'pdf_ia').map(buildPurchaseFallbackSignature)),
+    [purchaseInvoices],
+  );
+
+  const importedSalesFallbacks = React.useMemo(
+    () => new Set(manualSalesInvoices.map(buildSalesFallbackSignature)),
+    [manualSalesInvoices],
+  );
+
+  const filterImportedAnalysisData = React.useCallback(
+    ({
+      cacheInfo,
+      draftRows,
+      genericIgnoredRows,
+      personalTransferRows,
+      outsideVatRows,
+    }: {
+      cacheInfo?: PurchaseVatExtractionResult['cache_info'] | null;
+      draftRows: DraftOp[];
+      genericIgnoredRows: VatIgnoredOperation[];
+      personalTransferRows: VatIgnoredOperation[];
+      outsideVatRows: VatIgnoredOperation[];
+    }) => {
+      let hiddenCount = 0;
+
+      const nextDraftRows = draftRows.filter((operation) => {
+        const trackedKey = buildTrackedImportKey(
+          cacheInfo?.cacheEntryId || null,
+          cacheInfo?.hash_fichier || null,
+          operation.id_ligne_source || operation.id,
+          operation.sens,
+        );
+        const operationLineId = `${operation.id_ligne_source || operation.id || ''}`.trim();
+        const fallbackSignature = buildDraftFallbackSignature(operation);
+        const alreadyImported =
+          Boolean(trackedKey) &&
+          (operation.sens === 'achat'
+            ? importedPurchaseTrackedKeys.has(trackedKey)
+            : importedSalesTrackedKeys.has(trackedKey)) ||
+          (operationLineId ? importedTrackedLineIds.has(operationLineId) : false) ||
+          (operation.sens === 'achat'
+            ? importedPurchaseFallbacks.has(fallbackSignature)
+            : importedSalesFallbacks.has(fallbackSignature));
+
+        if (alreadyImported) hiddenCount += 1;
+        return !alreadyImported;
+      });
+
+      const filterIgnoredRows = (rows: VatIgnoredOperation[]) =>
+        rows.filter((operation) => {
+          const operationLineId = `${operation.id_ligne_source || operation.id || ''}`.trim();
+          const alreadyImported = operationLineId ? importedTrackedLineIds.has(operationLineId) : false;
+
+          if (alreadyImported) hiddenCount += 1;
+          return !alreadyImported;
+        });
+
+      return {
+        hiddenCount,
+        draftRows: nextDraftRows,
+        genericIgnoredRows: filterIgnoredRows(genericIgnoredRows),
+        personalTransferRows: filterIgnoredRows(personalTransferRows),
+        outsideVatRows: filterIgnoredRows(outsideVatRows),
+      };
+    },
+    [
+      importedPurchaseFallbacks,
+      importedPurchaseTrackedKeys,
+      importedSalesFallbacks,
+      importedSalesTrackedKeys,
+      importedTrackedLineIds,
+    ],
+  );
 
   React.useEffect(() => {
     if (!isOpen) return;
@@ -367,10 +566,12 @@ export default function PurchaseVatInvoiceModal({
     setShowPersonalTransfers(false);
     setShowOutsideVatOperations(false);
     setShowAllOperations(false);
+    setImportProgressItems([]);
     setDocumentType(null);
     setDetectedPeriod(null);
     setAnalysisSummary(null);
     setAnalysisCacheInfo(null);
+    setHiddenImportedCount(0);
     if (invoice) {
       setForm({ date: invoice.date, numero_facture: invoice.numero_facture || '', description: invoice.description, fournisseur: invoice.fournisseur, montant_ttc: String(invoice.montant_ttc), taux_tva: invoice.taux_tva, mode_paiement: invoice.mode_paiement, numero_piece: invoice.numero_piece || '', ice_fournisseur: invoice.ice_fournisseur || '' });
       setAiFilledFields(invoice.aiExtractedFields || []);
@@ -378,37 +579,45 @@ export default function PurchaseVatInvoiceModal({
       return;
     }
     if (initialMode === 'pdf' && prefilledExtractionResult) {
-      const proposedRows = prefilledExtractionResult.factures.map((op) => normalizeDraftOperation(op));
+      const extractionFactures = getExtractionFactures(prefilledExtractionResult);
+      const proposedRows = extractionFactures.map((op) => normalizeDraftOperation(op));
       const reviewRows = (prefilledExtractionResult.toutes_operations || [])
         .filter((op) => op.classification === 'a_verifier')
         .map((op) => ignoredFromBankOperation(op))
         .filter((op) => !proposedRows.some((row) => row.id_ligne_source === op.id_ligne_source));
-      const rows = [...proposedRows];
+      const filteredData = filterImportedAnalysisData({
+        cacheInfo: prefilledExtractionResult.cache_info || null,
+        draftRows: [...proposedRows],
+        genericIgnoredRows: [
+          ...(prefilledExtractionResult.operations_ignorees || []),
+          ...reviewRows,
+        ],
+        personalTransferRows: prefilledExtractionResult.virements_personnels || [],
+        outsideVatRows: [
+          ...(prefilledExtractionResult.hors_tva || []),
+          ...reviewRows,
+        ],
+      });
+      const rows = filteredData.draftRows;
       setDraftOperations(rows);
       setAllOperations(prefilledExtractionResult.toutes_operations || []);
-      setIgnoredOperations([
-        ...(prefilledExtractionResult.operations_ignorees || []),
-        ...reviewRows,
-      ]);
-      setPersonalTransferOperations(prefilledExtractionResult.virements_personnels || []);
-      setOutsideVatOperations([
-        ...(prefilledExtractionResult.hors_tva || []),
-        ...reviewRows,
-      ]);
+      setIgnoredOperations(filteredData.genericIgnoredRows);
+      setPersonalTransferOperations(filteredData.personalTransferRows);
+      setOutsideVatOperations(filteredData.outsideVatRows);
       setSelectedIgnoredIds([
-        ...(prefilledExtractionResult.virements_personnels || []).map((op) => op.id),
-        ...(prefilledExtractionResult.hors_tva || []).map((op) => op.id),
-        ...(prefilledExtractionResult.operations_ignorees || []).map((op) => op.id),
-        ...reviewRows.map((op) => op.id),
+        ...filteredData.personalTransferRows.map((op) => op.id),
+        ...filteredData.outsideVatRows.map((op) => op.id),
+        ...filteredData.genericIgnoredRows.map((op) => op.id),
       ]);
       setDocumentType(prefilledExtractionResult.type_document);
       setDetectedPeriod(prefilledExtractionResult.periode);
       setAnalysisSummary(prefilledExtractionResult.resume || null);
+      setHiddenImportedCount(filteredData.hiddenCount);
       setShowIgnoredOperations(Boolean(
-        (prefilledExtractionResult.operations_ignorees || []).filter((op) => !op.bucket || op.bucket === 'ignore').length,
+        filteredData.genericIgnoredRows.filter((op) => !op.bucket || op.bucket === 'ignore').length,
       ));
-      setShowPersonalTransfers(Boolean(prefilledExtractionResult.virements_personnels?.length));
-      setShowOutsideVatOperations(Boolean((prefilledExtractionResult.hors_tva?.length || 0) + reviewRows.length));
+      setShowPersonalTransfers(Boolean(filteredData.personalTransferRows.length));
+      setShowOutsideVatOperations(Boolean(filteredData.outsideVatRows.length));
       setShowAllOperations(false);
       setAnalysisCacheInfo(prefilledExtractionResult.cache_info || null);
       const achats = rows.filter((op) => op.classification === 'achat_propose');
@@ -418,10 +627,15 @@ export default function PurchaseVatInvoiceModal({
       setExtractWarnings([
         ...(achats.length === 0 ? ["Aucun achat detecte dans ce releve. Verifiez si c'est normal ou ajoutez manuellement."] : []),
         ...(ventes.length === 0 ? ["Aucune vente detectee dans ce releve. Verifiez si c'est normal ou ajoutez manuellement."] : []),
-        ...(reviewRows.length ? [`${reviewRows.length} operation${reviewRows.length > 1 ? 's' : ''} a ete classee dans Hors TVA pour verification manuelle.`] : []),
+        ...(filteredData.hiddenCount
+          ? [`${filteredData.hiddenCount} operation${filteredData.hiddenCount > 1 ? 's sont deja importees et masquees' : ' est deja importee et masquee'}.`]
+          : []),
+        ...(filteredData.outsideVatRows.length ? [`${filteredData.outsideVatRows.length} operation${filteredData.outsideVatRows.length > 1 ? 's' : ''} reste${filteredData.outsideVatRows.length > 1 ? 'nt' : ''} dans Hors TVA pour verification manuelle.`] : []),
       ]);
       setExtractMessage(
-        rows.length
+        !rows.length && filteredData.hiddenCount
+          ? 'Toutes les operations detectees dans ce releve ont deja ete importees.'
+          : rows.length
           ? 'Analyse terminee - Verifiez les achats, les ventes, les virements personnels et les lignes hors TVA avant import.'
           : 'Aucune operation comptable valide detectee. Vous pouvez passer en saisie manuelle.',
       );
@@ -866,17 +1080,28 @@ export default function PurchaseVatInvoiceModal({
 
   const importSelected = async () => {
     if (!selectedOperations.length) return setErrorMessage('Selectionnez au moins une ligne a importer.');
-    for (const op of selectedOperations) {
+    const operationsToImport = [...selectedOperations];
+    for (const op of operationsToImport) {
       const validationError = validateDraft(op);
       if (validationError) return setErrorMessage(validationError);
     }
     setIsSaving(true);
     setErrorMessage('');
+    setImportProgressItems(
+      operationsToImport.map((op) => ({
+        id: op.id,
+        label: `${op.fournisseur_client || (op.sens === 'achat' ? 'Achat' : 'Vente')} - ${formatMad(op.montant_ttc)}`,
+        status: 'pending',
+      })),
+    );
     try {
       let achats = 0;
       let ventes = 0;
-      const periods = collectImportedPeriods(selectedOperations);
-      for (const op of selectedOperations) {
+      const periods = collectImportedPeriods(operationsToImport);
+      for (const op of operationsToImport) {
+        setImportProgressItems((prev) =>
+          prev.map((item) => (item.id === op.id ? { ...item, status: 'importing' } : item)),
+        );
         if (op.sens === 'vente') {
           await createManualSalesInvoice({
             date: op.date,
@@ -895,6 +1120,9 @@ export default function PurchaseVatInvoiceModal({
           await createPurchaseInvoice(buildPurchasePayload(op));
           achats += 1;
         }
+        setImportProgressItems((prev) =>
+          prev.map((item) => (item.id === op.id ? { ...item, status: 'done' } : item)),
+        );
       }
       onImported?.({ achats, ventes, periods });
       onClose();
@@ -923,8 +1151,13 @@ export default function PurchaseVatInvoiceModal({
     if (!operations.length) return null;
 
     const isPurchaseSection = sens === 'achat';
-    const selectedCount = operations.filter((op) => op.selected).length;
-    const allSelected = operations.every((op) => op.selected);
+    const sortedOperations = [...operations].sort((left, right) => {
+      const nameCompare = normalizeSortLabel(left.fournisseur_client).localeCompare(normalizeSortLabel(right.fournisseur_client), 'fr');
+      if (nameCompare !== 0) return nameCompare;
+      return left.date.localeCompare(right.date);
+    });
+    const selectedCount = sortedOperations.filter((op) => op.selected).length;
+    const allSelected = sortedOperations.every((op) => op.selected);
     const Icon = options?.icon || (isPurchaseSection ? ArrowDownLeft : ArrowUpRight);
     const sectionTitle = options?.title || (isPurchaseSection ? 'Factures Achat detectees' : 'Factures Vente detectees');
     const sectionCountLabel = options?.countLabel || `${operations.length} facture${operations.length > 1 ? 's' : ''} ${isPurchaseSection ? 'achat' : 'vente'}`;
@@ -942,7 +1175,17 @@ export default function PurchaseVatInvoiceModal({
           help: 'text-emerald-700 dark:text-emerald-300',
         };
     const finalSectionClasses = options?.classes || sectionClasses;
-    const sectionRowIds = new Set(operations.map((op) => op.id));
+    const sectionRowIds = new Set(sortedOperations.map((op) => op.id));
+    let currentGroupName = '';
+    let currentGroupIndex = -1;
+    const groupedOperations = sortedOperations.map((op) => {
+      const nextName = normalizeSortLabel(op.fournisseur_client);
+      if (nextName !== currentGroupName) {
+        currentGroupName = nextName;
+        currentGroupIndex += 1;
+      }
+      return { op, groupIndex: currentGroupIndex };
+    });
 
     return (
       <section key={`${sens}-${sectionTitle}`} className={`rounded-3xl border ${finalSectionClasses.wrapper}`}>
@@ -1110,6 +1353,14 @@ export default function PurchaseVatInvoiceModal({
     if (!operations.length) return null;
 
     const isPurchaseSection = sens === 'achat';
+    const sortedOperations = [...operations].sort((left, right) => {
+      const nameCompare = normalizeSortLabel(left.fournisseur_client).localeCompare(
+        normalizeSortLabel(right.fournisseur_client),
+        'fr',
+      );
+      if (nameCompare !== 0) return nameCompare;
+      return left.date.localeCompare(right.date);
+    });
     const selectedCount = operations.filter((op) => op.selected).length;
     const allSelected = operations.every((op) => op.selected);
     const Icon = options?.icon || (isPurchaseSection ? ArrowDownLeft : ArrowUpRight);
@@ -1130,6 +1381,16 @@ export default function PurchaseVatInvoiceModal({
           help: 'text-emerald-700 dark:text-emerald-300',
         });
     const sectionRowIds = new Set(operations.map((op) => op.id));
+    let currentGroupName = '';
+    let currentGroupIndex = -1;
+    const groupedOperations = sortedOperations.map((op) => {
+      const nextName = normalizeSortLabel(op.fournisseur_client);
+      if (nextName !== currentGroupName) {
+        currentGroupName = nextName;
+        currentGroupIndex += 1;
+      }
+      return { op, groupIndex: currentGroupIndex };
+    });
 
     return (
       <section key={`editable-${sens}-${sectionTitle}`} className={`rounded-3xl border ${sectionClasses.wrapper}`}>
@@ -1161,6 +1422,16 @@ export default function PurchaseVatInvoiceModal({
             <div className={`rounded-full px-3 py-1 text-sm font-semibold ${sectionClasses.badge}`}>
               {selectedCount} selectionnee{selectedCount > 1 ? 's' : ''}
             </div>
+            <button
+              type="button"
+              onClick={() =>
+                setDraftOperations((prev) => prev.filter((row) => !(sectionRowIds.has(row.id) && row.selected)))
+              }
+              disabled={!selectedCount}
+              className="rounded-full border border-red-200 px-3 py-1 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/30"
+            >
+              Supprimer la selection
+            </button>
           </div>
         </div>
         <div className="overflow-x-auto px-4 pb-5 pt-4">
@@ -1192,8 +1463,19 @@ export default function PurchaseVatInvoiceModal({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-              {operations.map((op) => (
-                <tr key={op.id} className="bg-white/90 dark:bg-slate-950/10">
+              {groupedOperations.map(({ op, groupIndex }) => (
+                <tr
+                  key={op.id}
+                  className={
+                    isPurchaseSection
+                      ? groupIndex % 2 === 0
+                        ? 'bg-white/90 dark:bg-slate-950/10'
+                        : 'bg-orange-50/50 dark:bg-orange-950/10'
+                      : groupIndex % 2 === 0
+                        ? 'bg-white/90 dark:bg-slate-950/10'
+                        : 'bg-emerald-50/40 dark:bg-emerald-950/10'
+                  }
+                >
                   <td className={tableCellClass}>
                     <input
                       type="checkbox"
@@ -1313,7 +1595,7 @@ export default function PurchaseVatInvoiceModal({
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800">
                     <FileUp className="h-4 w-4" /> Choisir un PDF
-                    <input type="file" accept="application/pdf" className="hidden" onChange={(event) => { setSelectedFile(event.target.files?.[0] || null); setSelectedFileName(event.target.files?.[0]?.name || ''); setAnalysisCacheInfo(null); setErrorMessage(''); setExtractMessage(''); setExtractWarnings([]); setDraftOperations([]); setAllOperations([]); setIgnoredOperations([]); setPersonalTransferOperations([]); setOutsideVatOperations([]); setSelectedIgnoredIds([]); setAddedIgnoredIds([]); }} />
+                    <input type="file" accept="application/pdf" className="hidden" onChange={(event) => { setSelectedFile(event.target.files?.[0] || null); setSelectedFileName(event.target.files?.[0]?.name || ''); setAnalysisCacheInfo(null); setErrorMessage(''); setExtractMessage(''); setExtractWarnings([]); setDraftOperations([]); setAllOperations([]); setIgnoredOperations([]); setPersonalTransferOperations([]); setOutsideVatOperations([]); setSelectedIgnoredIds([]); setAddedIgnoredIds([]); setImportProgressItems([]); }} />
                   </label>
                   <button type="button" onClick={handleExtract} disabled={isExtracting || !selectedFile} className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-sm font-semibold text-white transition hover:from-emerald-700 hover:to-teal-700 disabled:cursor-not-allowed disabled:opacity-50">
                     {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -1336,6 +1618,43 @@ export default function PurchaseVatInvoiceModal({
               </div>
             ) : null}
             {!draftOperations.length ? <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">Analysez d&apos;abord le PDF pour afficher les lignes extraites, les verifier et choisir celles a importer.</div> : null}
+            {draftOperations.length ? (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+                L import enregistre uniquement les lignes <span className="font-semibold">Achats</span> et <span className="font-semibold">Ventes</span>. Les lignes <span className="font-semibold">Virements personnels</span> et <span className="font-semibold">Hors TVA</span> restent dans l analyse pour verification.
+              </div>
+            ) : null}
+            {isSaving && isPdfImportMode && importProgressItems.length ? (
+              <div className="rounded-3xl border border-teal-200 bg-white px-5 py-4 shadow-sm dark:border-teal-800 dark:bg-slate-900/70">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-teal-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Importation des lignes en cours</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Chaque ligne s importe l une apres l autre.</p>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  {importProgressItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-medium ${
+                        item.status === 'done'
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
+                          : item.status === 'importing'
+                            ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/30 dark:text-teal-300'
+                            : 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      <span className="truncate pr-3">{item.label}</span>
+                      <span className="flex items-center gap-2">
+                        {item.status === 'importing' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                        {item.status === 'done' ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
+                        {item.status === 'pending' ? 'En attente' : item.status === 'importing' ? 'Import...' : 'Importee'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {draftOperations.length ? (
               <>
                 <div className="grid gap-4 md:grid-cols-3">
