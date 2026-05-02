@@ -1,5 +1,5 @@
-import { ReactNode } from 'react';
-import { Facebook, Instagram, Linkedin, Mail, MapPin, Phone, Twitter, Youtube } from 'lucide-react';
+import { ReactNode, useEffect, useState } from 'react';
+import { Facebook, Instagram, Linkedin, Mail, MapPin, Menu, Phone, Twitter, X, Youtube } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 type PublicSiteChromeProps = {
@@ -17,14 +17,19 @@ const homeLinks = [
 
 export default function PublicSiteChrome({ children }: PublicSiteChromeProps) {
   const { pathname } = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const linkClass = (href: string) =>
     `font-medium transition-colors ${pathname === href ? 'text-sky-700' : 'text-slate-700 hover:text-sky-700'}`;
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-sky-100 bg-white/88 shadow-sm backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
+          <div className="flex h-14 items-center justify-between sm:h-16">
             <Link to="/" className="flex items-center space-x-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-50 via-white to-emerald-50 shadow-md ring-1 ring-sky-100">
                 <img
@@ -36,8 +41,8 @@ export default function PublicSiteChrome({ children }: PublicSiteChromeProps) {
                 />
               </div>
               <div>
-                <p className="text-xl font-bold text-slate-950">Factourati</p>
-                <p className="text-xs uppercase tracking-[0.18em] text-sky-700">ERP Marocain</p>
+                <p className="text-lg font-bold text-slate-950 sm:text-xl">Factourati</p>
+                <p className="text-[10px] uppercase tracking-[0.16em] text-sky-700 sm:text-xs sm:tracking-[0.18em]">ERP Marocain</p>
               </div>
             </Link>
 
@@ -58,13 +63,58 @@ export default function PublicSiteChrome({ children }: PublicSiteChromeProps) {
               </Link>
             </nav>
 
-            <Link
-              to="/login?mode=register"
-              className="rounded-xl bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-400 px-4 py-2 font-medium text-white shadow-lg transition-all duration-200 hover:from-sky-600 hover:via-cyan-600 hover:to-emerald-500 hover:shadow-xl sm:px-6"
-            >
-              Essai 1 mois gratuit
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/login?mode=register"
+                className="hidden rounded-xl bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-400 px-4 py-2 font-medium text-white shadow-lg transition-all duration-200 hover:from-sky-600 hover:via-cyan-600 hover:to-emerald-500 hover:shadow-xl sm:inline-flex sm:px-6"
+              >
+                Essai 1 mois gratuit
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen((current) => !current)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-sky-100 bg-white text-slate-700 shadow-sm transition hover:border-sky-200 hover:text-sky-700 md:hidden"
+                aria-label={isMobileMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              >
+                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+            </div>
           </div>
+
+          {isMobileMenuOpen ? (
+            <div className="border-t border-sky-100 py-4 md:hidden">
+              <nav className="flex flex-col gap-2">
+                {homeLinks.map((item) => (
+                  <Link
+                    key={item.label}
+                    to={item.href}
+                    className={`rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${pathname === item.href ? 'bg-sky-50 text-sky-700' : 'text-slate-700 hover:bg-sky-50 hover:text-sky-700'}`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                <Link
+                  to="/blog"
+                  className={`rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${pathname.startsWith('/blog') ? 'bg-sky-50 text-sky-700' : 'text-slate-700 hover:bg-sky-50 hover:text-sky-700'}`}
+                >
+                  Blog
+                </Link>
+                <Link
+                  to="/login"
+                  className="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-sky-50 hover:text-sky-700"
+                >
+                  Connexion
+                </Link>
+                <Link
+                  to="/login?mode=register"
+                  className="mt-2 inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-400 px-4 py-3 text-sm font-bold text-white shadow-lg"
+                >
+                  Essai 1 mois gratuit
+                </Link>
+              </nav>
+            </div>
+          ) : null}
         </div>
       </header>
 
