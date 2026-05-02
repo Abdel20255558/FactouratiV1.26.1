@@ -56,6 +56,9 @@ export interface PurchaseVatInvoice {
   source: PurchaseVatInvoiceSource;
   aiExtractedFields?: string[];
   aiMissingFields?: string[];
+  source_cache_entry_id?: string | null;
+  source_hash_fichier?: string | null;
+  source_operation_line_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -75,6 +78,9 @@ export interface PurchaseVatInvoiceInput {
   source: PurchaseVatInvoiceSource;
   aiExtractedFields?: string[];
   aiMissingFields?: string[];
+  source_cache_entry_id?: string | null;
+  source_hash_fichier?: string | null;
+  source_operation_line_id?: string | null;
 }
 
 export interface VatExtractedOperation {
@@ -195,6 +201,9 @@ export interface ManualSalesVatInvoice {
   montant_tva: number;
   mode_paiement?: PurchaseVatPaymentMode | null;
   numero_piece?: string | null;
+  source_cache_entry_id?: string | null;
+  source_hash_fichier?: string | null;
+  source_operation_line_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -210,6 +219,9 @@ export interface ManualSalesVatInvoiceInput {
   montant_tva: number;
   mode_paiement?: PurchaseVatPaymentMode | null;
   numero_piece?: string | null;
+  source_cache_entry_id?: string | null;
+  source_hash_fichier?: string | null;
+  source_operation_line_id?: string | null;
 }
 
 export interface SalesVatAdjustment {
