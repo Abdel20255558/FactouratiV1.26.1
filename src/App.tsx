@@ -68,7 +68,7 @@ function RouteLoader() {
 }
 
 function AppContent() {
-  const { user, isAuthenticated, showExpiryAlert, setShowExpiryAlert, expiredDate, subscriptionStatus } = useAuth();
+  const { user, isAuthenticated, isLoading, showExpiryAlert, setShowExpiryAlert, expiredDate, subscriptionStatus } = useAuth();
   const { showSuccessModal, setShowSuccessModal, upgradeExpiryDate } = useLicense();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showUpgradePage, setShowUpgradePage] = useState(false);
@@ -142,6 +142,14 @@ function AppContent() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50">
+        <RouteLoader />
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50">
@@ -157,6 +165,7 @@ function AppContent() {
             <Route path="/blog/categorie/:categorySlug" element={<BlogCategoryPage />} />
             <Route path="/blog/:slug" element={<BlogArticlePage />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/tva-intelligente" element={<Navigate to="/login" replace />} />
             <Route path="/verify-email" element={<EmailVerificationPage />} />
             <Route path="/verify-email-success" element={<EmailActionPage />} />
             <Route path="*" element={<NotFoundPage />} />
@@ -171,12 +180,13 @@ function AppContent() {
       <div className="min-h-screen bg-gray-50">
         <Suspense fallback={<RouteLoader />}>
           <Routes>
-            <Route path="/" element={<AdminDashboard />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/" element={<Navigate to="/admin/dashboard/overview" replace />} />
+            <Route path="/admin/dashboard" element={<Navigate to="/admin/dashboard/overview" replace />} />
+            <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/blog/categorie/:categorySlug" element={<BlogCategoryPage />} />
             <Route path="/blog/:slug" element={<BlogArticlePage />} />
-            <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/admin/dashboard/overview" replace />} />
           </Routes>
         </Suspense>
       </div>
