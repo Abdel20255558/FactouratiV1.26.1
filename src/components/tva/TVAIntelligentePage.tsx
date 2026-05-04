@@ -114,6 +114,14 @@ const getSalesDescription = (invoice: SalesVatInvoiceLike) =>
   invoice.description || invoice.items?.[0]?.description || invoice.number || 'Facture de vente';
 const normalizePartyName = (value: string) =>
   value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const getDisplayInitials = (value: string) =>
+  value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || 'FT';
 const inferRateFromAmounts = (ht: number, vat: number): MoroccanVatRate => {
   if (!Number.isFinite(ht) || ht <= 0 || !Number.isFinite(vat) || vat <= 0) {
     return 0;
@@ -124,6 +132,37 @@ const inferRateFromAmounts = (ht: number, vat: number): MoroccanVatRate => {
   VAT_RATE_OPTIONS[0]) as MoroccanVatRate;
 };
 
+function PartyIdentity({
+  name,
+  subtitle,
+  tone,
+}: {
+  name: string;
+  subtitle?: string | null;
+  tone: 'purchase' | 'sale' | 'company';
+}) {
+  const toneClasses =
+    tone === 'purchase'
+      ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300'
+      : tone === 'sale'
+        ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+        : 'bg-white/15 text-white';
+
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl text-xs font-bold uppercase tracking-[0.2em] ${toneClasses}`}
+      >
+        {getDisplayInitials(name)}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold">{name}</p>
+        {subtitle ? <p className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">{subtitle}</p> : null}
+      </div>
+    </div>
+  );
+}
+
 export default function TVAIntelligentePage() {
   const { user } = useAuth();
   const { invoices: applicationInvoices } = useData();
@@ -132,6 +171,7 @@ export default function TVAIntelligentePage() {
     salesInvoices,
     manualSalesInvoices,
     salesAdjustments,
+    carryoverOverrides,
     analysisCacheEntries,
     analysisCredits,
     isLoading,
@@ -141,6 +181,8 @@ export default function TVAIntelligentePage() {
     excludeApplicationSalesInvoice,
     moveApplicationSalesInvoiceToDate,
     restoreApplicationSalesInvoice,
+    upsertCarryoverOverride,
+    deleteCarryoverOverride,
     exportVatPdf,
   } = useVat();
 
@@ -169,6 +211,11 @@ export default function TVAIntelligentePage() {
   const [guideStepIndex, setGuideStepIndex] = React.useState(0);
   const [selectedPurchaseIds, setSelectedPurchaseIds] = React.useState<string[]>([]);
   const [selectedSalesIds, setSelectedSalesIds] = React.useState<string[]>([]);
+  const [isCarryoverEditorOpen, setIsCarryoverEditorOpen] = React.useState(false);
+  const [carryoverInput, setCarryoverInput] = React.useState('');
+  const [isCarryoverSaving, setIsCarryoverSaving] = React.useState(false);
+  const companyName = user?.company?.name || 'Votre societe';
+  const companyLogoUrl = user?.company?.logo || '';
 
   const isProActive =
     user?.company.subscription === 'pro' &&
@@ -200,11 +247,33 @@ export default function TVAIntelligentePage() {
   }, [applicationInvoices, salesAdjustments, selectedPeriod]);
 
   const summary = React.useMemo(
-    () => buildVatSummary(periodPurchaseInvoices, periodSalesInvoices, selectedPeriod),
-    [periodPurchaseInvoices, periodSalesInvoices, selectedPeriod],
+    () => buildVatSummary(purchaseInvoices, salesInvoices, selectedPeriod, carryoverOverrides),
+    [carryoverOverrides, purchaseInvoices, salesInvoices, selectedPeriod],
   );
 
-  const history = React.useMemo(() => buildVatHistory(purchaseInvoices, salesInvoices, 6), [purchaseInvoices, salesInvoices]);
+  const isVatDue = summary.balance > 0;
+  const hasVatCredit = summary.balance < 0;
+  const currentCarryoverOverride = React.useMemo(
+    () => carryoverOverrides.find((override) => override.period === selectedPeriod) || null,
+    [carryoverOverrides, selectedPeriod],
+  );
+  const hasManualCarryoverOverride = currentCarryoverOverride !== null;
+
+  const history = React.useMemo(
+    () => buildVatHistory(purchaseInvoices, salesInvoices, 6, carryoverOverrides),
+    [carryoverOverrides, purchaseInvoices, salesInvoices],
+  );
+
+  React.useEffect(() => {
+    setCarryoverInput(
+      String(
+        currentCarryoverOverride
+          ? currentCarryoverOverride.amount
+          : summary.carryoverCredit,
+      ),
+    );
+    setIsCarryoverEditorOpen(false);
+  }, [currentCarryoverOverride, selectedPeriod, summary.carryoverCredit]);
 
   const filteredPurchaseInvoices = React.useMemo(() => {
     const filtered = periodPurchaseInvoices.filter((invoice) => {
@@ -279,22 +348,32 @@ export default function TVAIntelligentePage() {
       id: `purchase-${invoice.id}`,
       date: invoice.date,
       type: 'Achat',
+      invoiceNumber: invoice.numero_facture || '—',
       counterpart: invoice.fournisseur,
       description: invoice.description,
+      payment: PAYMENT_LABELS[invoice.mode_paiement],
+      piece: invoice.numero_piece || '—',
+      rate: `${invoice.taux_tva}%`,
       ht: invoice.montant_ht,
       vat: invoice.montant_tva,
       ttc: invoice.montant_ttc,
+      ice: invoice.ice_fournisseur || '—',
     }));
 
     const salesRows = periodSalesInvoices.map((invoice) => ({
       id: `sale-${invoice.id}`,
       date: invoice.date,
       type: 'Vente',
+      invoiceNumber: invoice.number || '—',
       counterpart: getSalesCounterpart(invoice),
       description: getSalesDescription(invoice),
+      payment: invoice.mode_paiement ? PAYMENT_LABELS[invoice.mode_paiement] : '—',
+      piece: invoice.numero_piece || '—',
+      rate: `${inferRateFromAmounts(invoice.subtotal, invoice.totalVat)}%`,
       ht: invoice.subtotal,
       vat: invoice.totalVat,
       ttc: invoice.totalTTC,
+      ice: '—',
     }));
 
     return [...purchaseRows, ...salesRows].sort((left, right) => right.date.localeCompare(left.date));
@@ -603,6 +682,41 @@ export default function TVAIntelligentePage() {
     }
   };
 
+  const handleSaveCarryoverOverride = async () => {
+    const parsedAmount = Number(carryoverInput);
+
+    if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+      setActionError('Le montant du credit reporte doit etre un nombre positif ou nul.');
+      return;
+    }
+
+    try {
+      setIsCarryoverSaving(true);
+      setActionError('');
+      await upsertCarryoverOverride(selectedPeriod, parsedAmount);
+      setActionSuccess(`Credit reporte modifie pour ${periodLabel(selectedPeriod)}.`);
+      setIsCarryoverEditorOpen(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Impossible de modifier le credit reporte.');
+    } finally {
+      setIsCarryoverSaving(false);
+    }
+  };
+
+  const handleResetCarryoverOverride = async () => {
+    try {
+      setIsCarryoverSaving(true);
+      setActionError('');
+      await deleteCarryoverOverride(selectedPeriod);
+      setActionSuccess(`Credit reporte remis en mode automatique pour ${periodLabel(selectedPeriod)}.`);
+      setIsCarryoverEditorOpen(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Impossible de remettre le credit reporte en automatique.');
+    } finally {
+      setIsCarryoverSaving(false);
+    }
+  };
+
   const handleExportPdf = async () => {
     try {
       setIsExporting(true);
@@ -662,6 +776,23 @@ export default function TVAIntelligentePage() {
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur xl:min-w-[240px]">
+              <div className="mb-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+                {companyLogoUrl ? (
+                  <img
+                    src={companyLogoUrl}
+                    alt={companyName}
+                    className="h-11 w-11 rounded-2xl object-cover ring-1 ring-white/20"
+                  />
+                ) : (
+                  <PartyIdentity name={companyName} tone="company" />
+                )}
+                {companyLogoUrl ? (
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">{companyName}</p>
+                    <p className="mt-0.5 text-xs text-teal-50/80">Entreprise active sur ce dossier TVA</p>
+                  </div>
+                ) : null}
+              </div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-100/80">Periode</p>
               <label className="mt-3 block">
                 <span className="sr-only">Periode TVA</span>
@@ -691,12 +822,27 @@ export default function TVAIntelligentePage() {
           </div>
 
           <div className={KPI_CARD_CLASS}>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Solde TVA</p>
-            <p className={`mt-3 text-3xl font-bold ${summary.balance > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Solde TVA final</p>
+            <p
+              className={`mt-3 text-3xl font-bold ${
+                isVatDue
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : hasVatCredit
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-slate-700 dark:text-slate-200'
+              }`}
+            >
               {formatMad(Math.abs(summary.balance))}
             </p>
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {summary.balance > 0 ? 'Montant estime a payer' : 'Credit TVA a reporter'}
+              {isVatDue
+                ? 'Montant estime a payer apres report'
+                : hasVatCredit
+                  ? 'Credit TVA a reporter'
+                  : 'Aucun montant a payer ni a reporter'}
+            </p>
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+              Credit reporte applique: {formatMad(summary.carryoverCredit)} • {hasManualCarryoverOverride ? 'mode modifie' : 'mode automatique'}
             </p>
           </div>
 
@@ -711,23 +857,31 @@ export default function TVAIntelligentePage() {
 
         <section
           className={`rounded-[2rem] border p-5 shadow-sm ${
-            summary.balance > 0
+            isVatDue
               ? 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200'
-              : 'border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200'
+              : hasVatCredit
+                ? 'border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200'
+                : 'border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-100'
           }`}
         >
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] opacity-80">Statut TVA</p>
               <h2 className="mt-2 text-2xl font-bold">
-                {summary.balance > 0
+                {isVatDue
                   ? `TVA a payer : ${formatMad(summary.balance)}`
-                  : `Credit TVA : ${formatMad(Math.abs(summary.balance))}`}
+                  : hasVatCredit
+                    ? `Credit TVA : ${formatMad(Math.abs(summary.balance))}`
+                    : 'Solde TVA nul'}
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-7">
-                {summary.balance > 0
-                  ? `Declarez avant le ${summary.deadlineLabel} sur le portail SIMPL-TVA de la DGI.`
-                  : 'Aucun paiement requis pour cette periode. Le credit TVA peut etre reporte sur le mois suivant.'}
+                {isVatDue
+                  ? summary.carryoverCredit > 0
+                    ? `Le credit reporte de ${formatMad(summary.carryoverCredit)} a ete deduit. Declarez avant le ${summary.deadlineLabel} sur le portail SIMPL-TVA de la DGI.`
+                    : `Declarez avant le ${summary.deadlineLabel} sur le portail SIMPL-TVA de la DGI.`
+                  : hasVatCredit
+                    ? 'Aucun paiement requis pour cette periode. Le credit TVA sera reporte automatiquement sur le mois suivant.'
+                    : 'Aucun montant a payer et aucun credit a reporter sur le mois suivant.'}
               </p>
             </div>
 
@@ -736,14 +890,84 @@ export default function TVAIntelligentePage() {
               onClick={handleExportPdf}
               disabled={isExporting}
               className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition ${
-                summary.balance > 0
+                isVatDue
                   ? 'bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-60'
-                  : 'bg-red-700 text-white hover:bg-red-800 disabled:opacity-60'
+                  : hasVatCredit
+                    ? 'bg-red-700 text-white hover:bg-red-800 disabled:opacity-60'
+                    : 'bg-slate-700 text-white hover:bg-slate-800 disabled:opacity-60'
               }`}
             >
               <Download className="h-4 w-4" />
               {isExporting ? 'Export en cours...' : 'Exporter PDF'}
             </button>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-current/10 bg-white/50 px-4 py-3 dark:bg-black/10">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">Solde du mois</p>
+              <p className="mt-2 text-lg font-bold">{formatMad(summary.balanceBeforeCarryover)}</p>
+            </div>
+            <div className="rounded-2xl border border-current/10 bg-white/50 px-4 py-3 dark:bg-black/10">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">Credit reporte</p>
+              <p className="mt-2 text-lg font-bold">{formatMad(summary.carryoverCredit)}</p>
+              <p className="mt-1 text-xs opacity-75">
+                {hasManualCarryoverOverride ? 'Valeur personnalisee pour ce mois' : 'Valeur calculee automatiquement'}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCarryoverEditorOpen((current) => !current)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-current/15 bg-white/70 px-3 py-2 text-xs font-semibold transition hover:bg-white dark:bg-slate-900/40 dark:hover:bg-slate-900"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  {isCarryoverEditorOpen ? 'Fermer' : 'Modifier'}
+                </button>
+                {hasManualCarryoverOverride ? (
+                  <button
+                    type="button"
+                    onClick={handleResetCarryoverOverride}
+                    disabled={isCarryoverSaving}
+                    className="inline-flex items-center gap-2 rounded-xl border border-current/15 bg-white/70 px-3 py-2 text-xs font-semibold transition hover:bg-white disabled:opacity-60 dark:bg-slate-900/40 dark:hover:bg-slate-900"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Automatique
+                  </button>
+                ) : null}
+              </div>
+              {isCarryoverEditorOpen ? (
+                <div className="mt-3 rounded-2xl border border-current/15 bg-white/70 p-3 dark:bg-slate-900/40">
+                  <label className="block text-xs font-semibold uppercase tracking-[0.16em] opacity-70">
+                    Nouveau credit reporte
+                  </label>
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={carryoverInput}
+                      onChange={(event) => setCarryoverInput(event.target.value)}
+                      className="w-full rounded-xl border border-current/15 bg-white px-3 py-2 text-sm text-slate-900 outline-none dark:bg-slate-950 dark:text-white"
+                      placeholder="0.00"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveCarryoverOverride}
+                      disabled={isCarryoverSaving}
+                      className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                    >
+                      {isCarryoverSaving ? 'Enregistrement...' : 'Enregistrer'}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs opacity-75">
+                    Cette valeur s applique au mois {periodLabel(selectedPeriod)} et peut remplacer le calcul automatique.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+            <div className="rounded-2xl border border-current/10 bg-white/50 px-4 py-3 dark:bg-black/10">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">Solde final</p>
+              <p className="mt-2 text-lg font-bold">{formatMad(summary.balance)}</p>
+            </div>
           </div>
         </section>
 
@@ -1171,10 +1395,10 @@ export default function TVAIntelligentePage() {
           </div>
 
           <div className={TABLE_CONTAINER_CLASS}>
-            <table className="min-w-[1260px] divide-y divide-gray-200 dark:divide-gray-700">
+            <table className="min-w-[1680px] divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
-                  {['Choix', 'Date', 'Facture', 'Fournisseur', 'TTC', 'Taux TVA', 'TVA', 'HT', 'Paiement', 'ICE', 'Actions'].map((label) => (
+                  {['Choix', 'Date', 'Facture', 'Tiers', 'Description', 'Paiement', 'Piece', 'Taux TVA', 'HT', 'TVA', 'TTC', 'ICE', 'Actions'].map((label) => (
                     <th
                       key={label}
                       className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400"
@@ -1205,12 +1429,22 @@ export default function TVAIntelligentePage() {
                     <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                       {invoice.numero_facture || '—'}
                     </td>
-                    <td className="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{invoice.fournisseur}</td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">{formatMad(invoice.montant_ttc)}</td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{invoice.taux_tva}%</td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(invoice.montant_tva)}</td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(invoice.montant_ht)}</td>
+                    <td className="min-w-[250px] px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <PartyIdentity
+                        name={invoice.fournisseur}
+                        subtitle={invoice.ice_fournisseur ? `ICE ${invoice.ice_fournisseur}` : invoice.source === 'pdf_ia' ? 'Import IA TVA' : 'Saisie manuelle'}
+                        tone="purchase"
+                      />
+                    </td>
+                    <td className="min-w-[280px] px-4 py-4 text-sm leading-6 text-gray-700 dark:text-gray-200">
+                      {invoice.description || 'Aucune description'}
+                    </td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{PAYMENT_LABELS[invoice.mode_paiement]}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{invoice.numero_piece || '—'}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{invoice.taux_tva}%</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(invoice.montant_ht)}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(invoice.montant_tva)}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">{formatMad(invoice.montant_ttc)}</td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{invoice.ice_fournisseur || '—'}</td>
                     <td className="whitespace-nowrap px-4 py-4">
                       <div className="flex items-center gap-2">
@@ -1237,7 +1471,7 @@ export default function TVAIntelligentePage() {
 
                 {!isLoading && groupedPurchaseInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <td colSpan={13} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
                       Aucune facture achat pour cette periode avec les filtres actuels.
                     </td>
                   </tr>
@@ -1364,10 +1598,10 @@ export default function TVAIntelligentePage() {
           </div>
 
           <div className={TABLE_CONTAINER_CLASS}>
-            <table className="min-w-[1260px] divide-y divide-gray-200 dark:divide-gray-700">
+            <table className="min-w-[1680px] divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
-                  {['Choix', 'Date TVA', 'Facture', 'Client', 'Paiement', 'Taux TVA', 'HT', 'TVA', 'TTC', 'Actions'].map((label) => (
+                  {['Choix', 'Date', 'Facture', 'Tiers', 'Description', 'Paiement', 'Piece', 'Taux TVA', 'HT', 'TVA', 'TTC', 'ICE', 'Actions'].map((label) => (
                     <th
                       key={label}
                       className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400"
@@ -1411,16 +1645,25 @@ export default function TVAIntelligentePage() {
                       <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                         {invoice.number || '—'}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {getSalesCounterpart(invoice)}
+                      <td className="min-w-[250px] px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <PartyIdentity
+                          name={getSalesCounterpart(invoice)}
+                          subtitle={isApplicationInvoice ? 'Facture application' : 'Vente manuelle TVA'}
+                          tone="sale"
+                        />
+                      </td>
+                      <td className="min-w-[280px] px-4 py-4 text-sm leading-6 text-gray-700 dark:text-gray-200">
+                        {getSalesDescription(invoice)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
                         {invoice.mode_paiement ? PAYMENT_LABELS[invoice.mode_paiement] : '—'}
                       </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{invoice.numero_piece || '—'}</td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{inferredVatRate}%</td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(invoice.subtotal)}</td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(invoice.totalVat)}</td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">{formatMad(invoice.totalTTC)}</td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">—</td>
                       <td className="whitespace-nowrap px-4 py-4">
                         <div className="flex flex-wrap items-center gap-2">
                           {isApplicationInvoice ? (
@@ -1474,7 +1717,7 @@ export default function TVAIntelligentePage() {
 
                 {!isLoading && groupedSalesInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <td colSpan={13} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
                       Aucune facture vente sur cette periode.
                     </td>
                   </tr>
@@ -1505,10 +1748,10 @@ export default function TVAIntelligentePage() {
           </div>
 
           <div className={TABLE_CONTAINER_CLASS}>
-            <table className="min-w-[980px] divide-y divide-gray-200 dark:divide-gray-700">
+            <table className="min-w-[1680px] divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
-                  {['Date', 'Type', 'Tiers', 'Description', 'HT', 'TVA', 'TTC'].map((label) => (
+                  {['Date', 'Type', 'Facture', 'Tiers', 'Description', 'Paiement', 'Piece', 'Taux TVA', 'HT', 'TVA', 'TTC', 'ICE'].map((label) => (
                     <th
                       key={label}
                       className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400"
@@ -1533,17 +1776,22 @@ export default function TVAIntelligentePage() {
                         {row.type}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{row.counterpart}</td>
-                    <td className="min-w-[260px] px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{row.description}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{row.invoiceNumber}</td>
+                    <td className="min-w-[240px] px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{row.counterpart}</td>
+                    <td className="min-w-[280px] px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{row.description}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{row.payment}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{row.piece}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{row.rate}</td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(row.ht)}</td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{formatMad(row.vat)}</td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">{formatMad(row.ttc)}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700 dark:text-gray-200">{row.ice}</td>
                   </tr>
                 ))}
 
                 {!isLoading && recapRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <td colSpan={12} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
                       Aucun mouvement TVA sur cette periode.
                     </td>
                   </tr>
