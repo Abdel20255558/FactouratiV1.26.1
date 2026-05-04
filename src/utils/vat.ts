@@ -8,6 +8,7 @@ import type {
   VatAnalysisCredits,
   VatAnalysisCreditsSummary,
   VatAnalysisPackDefinition,
+  VatCarryoverOverride,
   VatHistoryPoint,
   VatSummary,
 } from '../types/vat';
@@ -32,6 +33,7 @@ export const TVA_AI_SETTINGS_DOC = 'openaiPdfAnalysis';
 export const TVA_ANALYSIS_CACHE_COLLECTION = 'tva_analyses_cache';
 export const TVA_ANALYSIS_CREDITS_COLLECTION = 'tva_analyses_credits';
 export const TVA_ANALYSIS_TRANSACTIONS_COLLECTION = 'tva_analyses_transactions';
+export const TVA_CARRYOVER_OVERRIDES_COLLECTION = 'factures_tva_credits_reportes';
 export const TVA_FREE_ANALYSIS_LIMIT = 3;
 export const TVA_ANALYSIS_PACKS: VatAnalysisPackDefinition[] = [
   { type: 'pack_5', label: '5 analyses IA', price: 50, credits: 5 },
@@ -40,6 +42,7 @@ export const TVA_ANALYSIS_PACKS: VatAnalysisPackDefinition[] = [
 ];
 
 const roundToTwo = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+const VAT_PERIOD_PATTERN = /^\d{4}-\d{2}$/;
 
 export const buildDefaultVatAnalysisCredits = (
   userId: string,
@@ -80,10 +83,67 @@ export const formatMad = (value: number) =>
   `${new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(Number.isFinite(value) ? value : 0)} MAD`;
+  })
+    .format(Number.isFinite(value) ? value : 0)
+    .replace(/[\u202F\u00A0]/g, ' ')} MAD`;
 
 export const getCurrentVatPeriod = (date = new Date()) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+const isValidVatPeriod = (period: string) => VAT_PERIOD_PATTERN.test(period);
+
+const getNextVatPeriod = (period: string) => {
+  if (!isValidVatPeriod(period)) {
+    return null;
+  }
+
+  const [yearPart, monthPart] = period.split('-').map(Number);
+  const baseDate = new Date(yearPart, monthPart - 1, 1);
+  baseDate.setMonth(baseDate.getMonth() + 1);
+  return getCurrentVatPeriod(baseDate);
+};
+
+const getEarliestVatPeriod = (
+  purchaseInvoices: PurchaseVatInvoice[],
+  salesInvoices: SalesVatInvoiceLike[],
+  fallbackPeriod: string,
+) => {
+  const periods = [fallbackPeriod];
+
+  purchaseInvoices.forEach((invoice) => {
+    const candidate = String(invoice.date || '').slice(0, 7);
+    if (isValidVatPeriod(candidate)) {
+      periods.push(candidate);
+    }
+  });
+
+  salesInvoices.forEach((invoice) => {
+    const candidate = String(invoice.date || '').slice(0, 7);
+    if (isValidVatPeriod(candidate)) {
+      periods.push(candidate);
+    }
+  });
+
+  return periods.sort()[0] || fallbackPeriod;
+};
+
+const buildEmptyVatSummary = (period: string): VatSummary => ({
+  periode: period,
+  deductibleVat: 0,
+  collectedVat: 0,
+  balanceBeforeCarryover: 0,
+  carryoverCredit: 0,
+  balance: 0,
+  totalInvoices: 0,
+  purchaseInvoicesCount: 0,
+  salesInvoicesCount: 0,
+  purchaseTotalHT: 0,
+  purchaseTotalTTC: 0,
+  salesTotalHT: 0,
+  salesTotalTTC: 0,
+  deadlineLabel: getVatDeadlineLabel(period),
+  status: 'settled',
+});
 
 export const getPeriodRange = (period: string) => {
   const [yearPart, monthPart] = period.split('-');
@@ -184,39 +244,67 @@ export const buildVatSummary = (
   purchaseInvoices: PurchaseVatInvoice[],
   salesInvoices: SalesVatInvoiceLike[],
   period: string,
+  carryoverOverrides: Array<Pick<VatCarryoverOverride, 'period' | 'amount'>> = [],
 ): VatSummary => {
-  const filteredPurchases = purchaseInvoices.filter((invoice) => isDateInPeriod(invoice.date, period));
-  const filteredSales = salesInvoices.filter((invoice) => isDateInPeriod(invoice.date, period));
+  const normalizedPeriod = isValidVatPeriod(period) ? period : getCurrentVatPeriod();
+  const earliestPeriod = getEarliestVatPeriod(purchaseInvoices, salesInvoices, normalizedPeriod);
+  const carryoverOverrideMap = new Map(
+    carryoverOverrides
+      .filter((override) => isValidVatPeriod(String(override.period || '')))
+      .map((override) => [
+        override.period,
+        roundToTwo(Math.max(0, Number(override.amount || 0))),
+      ]),
+  );
+  let cursorPeriod: string | null = earliestPeriod;
+  let carryoverCredit = 0;
+  let summary = buildEmptyVatSummary(normalizedPeriod);
 
-  const deductibleVat = roundToTwo(filteredPurchases.reduce((sum, invoice) => sum + Number(invoice.montant_tva || 0), 0));
-  const collectedVat = roundToTwo(filteredSales.reduce((sum, invoice) => sum + Number(invoice.totalVat || 0), 0));
-  const purchaseTotalHT = roundToTwo(filteredPurchases.reduce((sum, invoice) => sum + Number(invoice.montant_ht || 0), 0));
-  const purchaseTotalTTC = roundToTwo(filteredPurchases.reduce((sum, invoice) => sum + Number(invoice.montant_ttc || 0), 0));
-  const salesTotalHT = roundToTwo(filteredSales.reduce((sum, invoice) => sum + Number(invoice.subtotal || 0), 0));
-  const salesTotalTTC = roundToTwo(filteredSales.reduce((sum, invoice) => sum + Number(invoice.totalTTC || 0), 0));
-  const balance = roundToTwo(collectedVat - deductibleVat);
+  while (cursorPeriod && cursorPeriod <= normalizedPeriod) {
+    const filteredPurchases = purchaseInvoices.filter((invoice) => isDateInPeriod(invoice.date, cursorPeriod));
+    const filteredSales = salesInvoices.filter((invoice) => isDateInPeriod(invoice.date, cursorPeriod));
+    const deductibleVat = roundToTwo(filteredPurchases.reduce((sum, invoice) => sum + Number(invoice.montant_tva || 0), 0));
+    const collectedVat = roundToTwo(filteredSales.reduce((sum, invoice) => sum + Number(invoice.totalVat || 0), 0));
+    const purchaseTotalHT = roundToTwo(filteredPurchases.reduce((sum, invoice) => sum + Number(invoice.montant_ht || 0), 0));
+    const purchaseTotalTTC = roundToTwo(filteredPurchases.reduce((sum, invoice) => sum + Number(invoice.montant_ttc || 0), 0));
+    const salesTotalHT = roundToTwo(filteredSales.reduce((sum, invoice) => sum + Number(invoice.subtotal || 0), 0));
+    const salesTotalTTC = roundToTwo(filteredSales.reduce((sum, invoice) => sum + Number(invoice.totalTTC || 0), 0));
+    const balanceBeforeCarryover = roundToTwo(collectedVat - deductibleVat);
+    const appliedCarryoverCredit = carryoverOverrideMap.has(cursorPeriod)
+      ? carryoverOverrideMap.get(cursorPeriod) || 0
+      : carryoverCredit;
+    const balance = roundToTwo(balanceBeforeCarryover - appliedCarryoverCredit);
 
-  return {
-    periode: period,
-    deductibleVat,
-    collectedVat,
-    balance,
-    totalInvoices: filteredPurchases.length + filteredSales.length,
-    purchaseInvoicesCount: filteredPurchases.length,
-    salesInvoicesCount: filteredSales.length,
-    purchaseTotalHT,
-    purchaseTotalTTC,
-    salesTotalHT,
-    salesTotalTTC,
-    deadlineLabel: getVatDeadlineLabel(period),
-    status: balance > 0 ? 'due' : 'credit',
-  };
+    summary = {
+      periode: cursorPeriod,
+      deductibleVat,
+      collectedVat,
+      balanceBeforeCarryover,
+      carryoverCredit: appliedCarryoverCredit,
+      balance,
+      totalInvoices: filteredPurchases.length + filteredSales.length,
+      purchaseInvoicesCount: filteredPurchases.length,
+      salesInvoicesCount: filteredSales.length,
+      purchaseTotalHT,
+      purchaseTotalTTC,
+      salesTotalHT,
+      salesTotalTTC,
+      deadlineLabel: getVatDeadlineLabel(cursorPeriod),
+      status: balance > 0 ? 'due' : balance < 0 ? 'credit' : 'settled',
+    };
+
+    carryoverCredit = balance < 0 ? roundToTwo(Math.abs(balance)) : 0;
+    cursorPeriod = cursorPeriod === normalizedPeriod ? null : getNextVatPeriod(cursorPeriod);
+  }
+
+  return summary;
 };
 
 export const buildVatHistory = (
   purchaseInvoices: PurchaseVatInvoice[],
   salesInvoices: SalesVatInvoiceLike[],
   months = 6,
+  carryoverOverrides: Array<Pick<VatCarryoverOverride, 'period' | 'amount'>> = [],
 ): VatHistoryPoint[] => {
   const history: VatHistoryPoint[] = [];
 
@@ -226,7 +314,7 @@ export const buildVatHistory = (
     baseDate.setMonth(baseDate.getMonth() - index);
 
     const period = getCurrentVatPeriod(baseDate);
-    const summary = buildVatSummary(purchaseInvoices, salesInvoices, period);
+    const summary = buildVatSummary(purchaseInvoices, salesInvoices, period, carryoverOverrides);
 
     history.push({
       period,
