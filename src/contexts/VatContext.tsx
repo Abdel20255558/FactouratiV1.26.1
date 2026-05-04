@@ -30,6 +30,7 @@ import type {
   SalesVatAdjustment,
   SalesVatInvoiceLike,
   VatAnalysisCacheEntry,
+  VatCarryoverOverride,
   VatExtractedOperation,
   VatIgnoredOperation,
   VatExtractionDocumentType,
@@ -45,6 +46,7 @@ import {
   getVatDeadlineLabel,
   getCurrentVatPeriod,
   isDateInPeriod,
+  PAYMENT_MODE_OPTIONS,
   resolveSalesVatInvoices,
   TVA_ANALYSIS_CACHE_COLLECTION,
   TVA_ANALYSIS_CREDITS_COLLECTION,
@@ -52,6 +54,7 @@ import {
   TVA_ANALYSIS_TRANSACTIONS_COLLECTION,
   TVA_AI_SETTINGS_COLLECTION,
   TVA_AI_SETTINGS_DOC,
+  TVA_CARRYOVER_OVERRIDES_COLLECTION,
   TVA_COLLECTION,
   TVA_FREE_ANALYSIS_LIMIT,
   TVA_SALES_ADJUSTMENTS_COLLECTION,
@@ -63,6 +66,7 @@ interface VatContextType {
   salesInvoices: SalesVatInvoiceLike[];
   manualSalesInvoices: ManualSalesVatInvoice[];
   salesAdjustments: SalesVatAdjustment[];
+  carryoverOverrides: VatCarryoverOverride[];
   analysisCacheEntries: VatAnalysisCacheEntry[];
   analysisCredits: VatAnalysisCreditsSummary;
   isLoading: boolean;
@@ -80,6 +84,8 @@ interface VatContextType {
   excludeApplicationSalesInvoice: (invoiceId: string) => Promise<void>;
   moveApplicationSalesInvoiceToDate: (invoiceId: string, targetDate: string) => Promise<void>;
   restoreApplicationSalesInvoice: (invoiceId: string) => Promise<void>;
+  upsertCarryoverOverride: (period: string, amount: number, note?: string | null) => Promise<void>;
+  deleteCarryoverOverride: (period: string) => Promise<void>;
   extractPurchaseInvoicePdf: (
     file: File,
     options?: { forceReanalyze?: boolean },
@@ -2105,12 +2111,74 @@ const triggerPdfDownload = (blob: Blob, period: string) => {
   window.setTimeout(() => URL.revokeObjectURL(url), 2000);
 };
 
+const getVatPdfInitials = (value: string) =>
+  String(value || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || 'FT';
+
+const loadImageAsDataUrl = (url: string): Promise<string | null> =>
+  new Promise((resolve) => {
+    if (!url) {
+      resolve(null);
+      return;
+    }
+
+    try {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.referrerPolicy = 'no-referrer';
+      image.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = image.width;
+          canvas.height = image.height;
+          const context = canvas.getContext('2d');
+          if (!context) {
+            resolve(null);
+            return;
+          }
+          context.drawImage(image, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } catch {
+          resolve(null);
+        }
+      };
+      image.onerror = () => resolve(null);
+      image.src = url;
+    } catch {
+      resolve(null);
+    }
+  });
+
+const decorateVatPdfPages = (document: any, companyName: string) => {
+  const pageCount = document.getNumberOfPages();
+  const pageWidth = document.internal.pageSize.getWidth();
+  const pageHeight = document.internal.pageSize.getHeight();
+
+  for (let page = 1; page <= pageCount; page += 1) {
+    document.setPage(page);
+    document.setDrawColor(226, 232, 240);
+    document.setLineWidth(0.35);
+    document.line(12, pageHeight - 12, pageWidth - 12, pageHeight - 12);
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(8.5);
+    document.setTextColor(100, 116, 139);
+    document.text(companyName || 'Factourati', 12, pageHeight - 7.2);
+    document.text(`Page ${page} / ${pageCount}`, pageWidth - 12, pageHeight - 7.2, { align: 'right' });
+  }
+};
+
 export function VatProvider({ children }: { children: React.ReactNode }) {
   const { user, firebaseUser } = useAuth();
   const { invoices } = useData();
   const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseVatInvoice[]>([]);
   const [manualSalesInvoices, setManualSalesInvoices] = useState<ManualSalesVatInvoice[]>([]);
   const [salesAdjustments, setSalesAdjustments] = useState<SalesVatAdjustment[]>([]);
+  const [carryoverOverrides, setCarryoverOverrides] = useState<VatCarryoverOverride[]>([]);
   const [analysisCacheEntries, setAnalysisCacheEntries] = useState<VatAnalysisCacheEntry[]>([]);
   const [analysisCredits, setAnalysisCredits] = useState<VatAnalysisCreditsSummary>(() =>
     buildVatAnalysisCreditsSummary(),
@@ -2139,6 +2207,7 @@ export function VatProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user || !entrepriseId) {
       setPurchaseInvoices([]);
+      setCarryoverOverrides([]);
       setAnalysisCacheEntries([]);
       setAnalysisCredits(buildVatAnalysisCreditsSummary());
       return;
@@ -2160,6 +2229,10 @@ export function VatProvider({ children }: { children: React.ReactNode }) {
     );
     const adjustmentsQuery = query(
       collection(db, TVA_SALES_ADJUSTMENTS_COLLECTION),
+      where('entrepriseId', '==', entrepriseId),
+    );
+    const carryoverOverridesQuery = query(
+      collection(db, TVA_CARRYOVER_OVERRIDES_COLLECTION),
       where('entrepriseId', '==', entrepriseId),
     );
     const analysisCacheQuery = query(
@@ -2248,6 +2321,22 @@ export function VatProvider({ children }: { children: React.ReactNode }) {
       },
     );
 
+    const unsubscribeCarryoverOverrides = onSnapshot(
+      carryoverOverridesQuery,
+      (snapshot) => {
+        const overridesData = snapshot.docs
+          .map((document) => ({ id: document.id, ...document.data() } as VatCarryoverOverride))
+          .sort((left, right) => left.period.localeCompare(right.period));
+
+        setCarryoverOverrides(overridesData);
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error('Erreur chargement credits reportes TVA:', error);
+        setIsLoading(false);
+      },
+    );
+
     const unsubscribeCredits = onSnapshot(
       creditsDocRef,
       (snapshot) => {
@@ -2268,6 +2357,7 @@ export function VatProvider({ children }: { children: React.ReactNode }) {
       unsubscribePurchases();
       unsubscribeManualSales();
       unsubscribeAdjustments();
+      unsubscribeCarryoverOverrides();
       unsubscribeAnalysisCache();
       unsubscribeCredits();
     };
@@ -2280,6 +2370,7 @@ export function VatProvider({ children }: { children: React.ReactNode }) {
       'x-factourati-user-email': user?.email || '',
       'x-factourati-is-admin': String(Boolean(user?.isAdmin)),
       'x-factourati-company-name': String(user?.company?.name || ''),
+      'x-factourati-company-logo': String(user?.company?.logo || ''),
     };
 
     if (includeJson) {
@@ -2747,6 +2838,54 @@ export function VatProvider({ children }: { children: React.ReactNode }) {
     await deleteDoc(doc(db, TVA_SALES_ADJUSTMENTS_COLLECTION, invoiceId));
   };
 
+  const upsertCarryoverOverride = async (period: string, amount: number, note?: string | null) => {
+    if (!user || !entrepriseId) {
+      throw new Error('Entreprise introuvable.');
+    }
+
+    if (!/^\d{4}-\d{2}$/.test(String(period || ''))) {
+      throw new Error('La periode du credit reporte est invalide.');
+    }
+
+    const normalizedAmount = Math.max(0, Number(amount || 0));
+    if (!Number.isFinite(normalizedAmount)) {
+      throw new Error('Le montant du credit reporte est invalide.');
+    }
+
+    const overrideId = `${entrepriseId}__${period}`;
+    const overrideRef = doc(db, TVA_CARRYOVER_OVERRIDES_COLLECTION, overrideId);
+    const existingSnapshot = await getDoc(overrideRef);
+    const now = new Date().toISOString();
+
+    await setDoc(
+      overrideRef,
+      {
+        user_id: user.id,
+        entrepriseId,
+        period,
+        amount: normalizedAmount,
+        note: String(note || '').trim() || null,
+        created_at: existingSnapshot.exists()
+          ? String(existingSnapshot.data()?.created_at || now)
+          : now,
+        updated_at: now,
+      },
+      { merge: true },
+    );
+  };
+
+  const deleteCarryoverOverride = async (period: string) => {
+    if (!entrepriseId) {
+      throw new Error('Entreprise introuvable.');
+    }
+
+    if (!/^\d{4}-\d{2}$/.test(String(period || ''))) {
+      throw new Error('La periode du credit reporte est invalide.');
+    }
+
+    await deleteDoc(doc(db, TVA_CARRYOVER_OVERRIDES_COLLECTION, `${entrepriseId}__${period}`));
+  };
+
   const extractPurchaseInvoicePdf = async (
     file: File,
     options?: { forceReanalyze?: boolean },
@@ -2843,71 +2982,191 @@ export function VatProvider({ children }: { children: React.ReactNode }) {
 
     const filteredPurchases = purchaseInvoices.filter((invoice) => isDateInPeriod(invoice.date, period));
     const filteredSales = salesInvoices.filter((invoice) => isDateInPeriod(invoice.date, period));
-    const summary = buildVatSummary(filteredPurchases, filteredSales, period);
-    const document = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const summary = buildVatSummary(purchaseInvoices, salesInvoices, period, carryoverOverrides);
+    const document = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const companyName = String(user?.company?.name || '').trim() || 'Factourati';
+    const companyLogoUrl = String(user?.company?.logo || '').trim();
+    const companyLogoDataUrl = companyLogoUrl ? await loadImageAsDataUrl(companyLogoUrl) : null;
+    const pageWidth = document.internal.pageSize.getWidth();
+    let cursorY = 18;
 
-    const recapRows = [
-      ...filteredPurchases.map((invoice) => [
-        new Date(invoice.date).toLocaleDateString('fr-FR'),
-        'Achat',
-        invoice.fournisseur,
-        invoice.description,
-        formatMad(invoice.montant_ht),
-        formatMad(invoice.montant_tva),
-        formatMad(invoice.montant_ttc),
-      ]),
-      ...filteredSales.map((invoice) => [
-        new Date(invoice.date).toLocaleDateString('fr-FR'),
-        'Vente',
-        invoice.clientName || invoice.client?.name || 'Client',
-        invoice.description || invoice.items?.[0]?.description || invoice.number || 'Facture de vente',
-        formatMad(invoice.subtotal),
-        formatMad(invoice.totalVat),
-        formatMad(invoice.totalTTC),
-      ]),
-    ].sort((left, right) => String(right[0]).localeCompare(String(left[0])));
+    document.setDrawColor(226, 232, 240);
+    document.setFillColor(248, 250, 252);
+    document.roundedRect(12, 10, pageWidth - 24, 26, 5, 5, 'FD');
+
+    if (companyLogoDataUrl) {
+      document.addImage(companyLogoDataUrl, 'PNG', 16, 13, 18, 18, undefined, 'FAST');
+    } else {
+      document.setFillColor(15, 118, 110);
+      document.roundedRect(16, 13, 18, 18, 4, 4, 'F');
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(10);
+      document.setTextColor(255, 255, 255);
+      document.text(getVatPdfInitials(companyName), 25, 24.2, { align: 'center' });
+    }
 
     document.setFont('helvetica', 'bold');
     document.setFontSize(18);
-    document.text('Recapitulatif TVA - Factourati', 14, 18);
+    document.setTextColor(15, 23, 42);
+    document.text('Recapitulatif TVA', 39, cursorY);
     document.setFont('helvetica', 'normal');
-    document.setFontSize(11);
-    document.text(`Periode: ${getVatPdfPeriodLabel(period)}`, 14, 26);
-    document.text(`Declaration DGI avant le ${summary.deadlineLabel}`, 14, 32);
-    document.setFont('helvetica', 'bold');
-    document.setFontSize(13);
-    document.text(
-      summary.balance > 0
-        ? `TVA a payer: ${formatMad(summary.balance)}`
-        : `Credit TVA: ${formatMad(Math.abs(summary.balance))}`,
-      14,
-      42,
-    );
+    document.setFontSize(10.5);
+    document.setTextColor(71, 85, 105);
+    document.text(companyName, 39, cursorY + 6.2);
+    document.text(`Periode: ${getVatPdfPeriodLabel(period)}`, pageWidth - 14, cursorY, { align: 'right' });
+    document.text(`Genere le ${new Date().toLocaleDateString('fr-FR')}`, pageWidth - 14, cursorY + 6.2, { align: 'right' });
+
+    cursorY = 48;
+
+    const summaryCards = [
+      { title: 'TVA achats', value: formatMad(summary.deductibleVat), tone: [13, 148, 136] as [number, number, number] },
+      { title: 'TVA ventes', value: formatMad(summary.collectedVat), tone: [37, 99, 235] as [number, number, number] },
+      {
+        title: summary.balance > 0 ? 'TVA a payer' : summary.balance < 0 ? 'Credit TVA' : 'Solde TVA',
+        value: formatMad(Math.abs(summary.balance)),
+        tone:
+          summary.balance > 0
+            ? ([5, 150, 105] as [number, number, number])
+            : summary.balance < 0
+              ? ([220, 38, 38] as [number, number, number])
+              : ([71, 85, 105] as [number, number, number]),
+      },
+      { title: 'Factures', value: String(summary.totalInvoices), tone: [15, 23, 42] as [number, number, number] },
+    ];
+    const cardGap = 4;
+    const cardWidth = (pageWidth - 24 - cardGap * 3) / 4;
+
+    summaryCards.forEach((card, index) => {
+      const cardX = 12 + index * (cardWidth + cardGap);
+      document.setFillColor(255, 255, 255);
+      document.setDrawColor(226, 232, 240);
+      document.roundedRect(cardX, cursorY, cardWidth, 20, 4, 4, 'FD');
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(9);
+      document.setTextColor(100, 116, 139);
+      document.text(card.title.toUpperCase(), cardX + 3.5, cursorY + 6);
+      document.setFontSize(14);
+      document.setTextColor(...card.tone);
+      document.text(card.value, cardX + 3.5, cursorY + 14);
+    });
+
+    cursorY += 26;
 
     autoTable(document, {
-      startY: 50,
-      head: [['Indicateur', 'Montant']],
+      startY: cursorY,
+      head: [['Indicateur', 'Montant', 'Details']],
       body: [
-        ['TVA sur achats (deductible)', formatMad(summary.deductibleVat)],
-        ['TVA sur ventes (collectee)', formatMad(summary.collectedVat)],
-        ['Solde TVA', formatMad(summary.balance)],
-        ['Achats HT', formatMad(summary.purchaseTotalHT)],
-        ['Ventes HT', formatMad(summary.salesTotalHT)],
-        ['Nombre total de factures', String(summary.totalInvoices)],
+        ['TVA deductible', formatMad(summary.deductibleVat), `${summary.purchaseInvoicesCount} achat(s)`],
+        ['TVA collectee', formatMad(summary.collectedVat), `${summary.salesInvoicesCount} vente(s)`],
+        ['Solde du mois', formatMad(summary.balanceBeforeCarryover), 'Avant application du credit reporte'],
+        ['Credit reporte', formatMad(summary.carryoverCredit), summary.carryoverCredit > 0 ? 'Credit du mois precedent applique' : 'Aucun credit reporte'],
+        ['Solde TVA final', formatMad(summary.balance), `Declaration DGI avant le ${summary.deadlineLabel}`],
+        ['Achats HT', formatMad(summary.purchaseTotalHT), `Achats TTC: ${formatMad(summary.purchaseTotalTTC)}`],
+        ['Ventes HT', formatMad(summary.salesTotalHT), `Ventes TTC: ${formatMad(summary.salesTotalTTC)}`],
       ],
       theme: 'grid',
-      headStyles: { fillColor: [13, 148, 136] },
-      styles: { fontSize: 10 },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
+      styles: { fontSize: 9.2, cellPadding: 2.8, textColor: [51, 65, 85] },
+      columnStyles: {
+        0: { cellWidth: 52, fontStyle: 'bold' },
+        1: { cellWidth: 42 },
+        2: { cellWidth: 'auto' },
+      },
     });
 
+    const purchasesStartY = ((document as any).lastAutoTable?.finalY || cursorY) + 8;
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(13);
+    document.setTextColor(234, 88, 12);
+    document.text('Tableau des achats', 12, purchasesStartY - 3);
+
     autoTable(document, {
-      startY: ((document as any).lastAutoTable?.finalY || 72) + 8,
-      head: [['Date', 'Type', 'Tiers', 'Description', 'HT', 'TVA', 'TTC']],
-      body: recapRows.length ? recapRows : [['-', '-', '-', 'Aucune ecriture sur cette periode', '-', '-', '-']],
+      startY: purchasesStartY,
+      head: [['Date', 'Facture', 'Tiers', 'Description', 'Paiement', 'Piece', 'Taux TVA', 'HT', 'TVA', 'TTC', 'ICE']],
+      body: filteredPurchases.length
+        ? filteredPurchases
+            .slice()
+            .sort((left, right) => right.date.localeCompare(left.date))
+            .map((invoice) => [
+              new Date(invoice.date).toLocaleDateString('fr-FR'),
+              invoice.numero_facture || '-',
+              invoice.fournisseur,
+              invoice.description || '-',
+              PAYMENT_MODE_OPTIONS.find((option) => option.value === invoice.mode_paiement)?.label || invoice.mode_paiement,
+              invoice.numero_piece || '-',
+              `${invoice.taux_tva}%`,
+              formatMad(invoice.montant_ht),
+              formatMad(invoice.montant_tva),
+              formatMad(invoice.montant_ttc),
+              invoice.ice_fournisseur || '-',
+            ])
+        : [['-', '-', '-', 'Aucun achat sur cette periode', '-', '-', '-', '-', '-', '-', '-']],
       theme: 'striped',
-      headStyles: { fillColor: [15, 23, 42] },
-      styles: { fontSize: 9, cellPadding: 2.4 },
+      headStyles: { fillColor: [234, 88, 12], textColor: [255, 255, 255] },
+      styles: { fontSize: 8.7, cellPadding: 2.2, textColor: [51, 65, 85], overflow: 'linebreak' },
+      alternateRowStyles: { fillColor: [255, 247, 237] },
+      columnStyles: {
+        0: { cellWidth: 22 },
+        1: { cellWidth: 24 },
+        2: { cellWidth: 40 },
+        3: { cellWidth: 54 },
+        4: { cellWidth: 26 },
+        5: { cellWidth: 22 },
+        6: { cellWidth: 16 },
+        7: { cellWidth: 20 },
+        8: { cellWidth: 20 },
+        9: { cellWidth: 20 },
+        10: { cellWidth: 26 },
+      },
     });
+
+    const salesStartY = ((document as any).lastAutoTable?.finalY || cursorY) + 10;
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(13);
+    document.setTextColor(37, 99, 235);
+    document.text('Tableau des ventes', 12, salesStartY - 3);
+
+    autoTable(document, {
+      startY: salesStartY,
+      head: [['Date', 'Facture', 'Tiers', 'Description', 'Paiement', 'Piece', 'Taux TVA', 'HT', 'TVA', 'TTC', 'ICE']],
+      body: filteredSales.length
+        ? filteredSales
+            .slice()
+            .sort((left, right) => right.date.localeCompare(left.date))
+            .map((invoice) => [
+              new Date(invoice.date).toLocaleDateString('fr-FR'),
+              invoice.number || '-',
+              invoice.clientName || invoice.client?.name || 'Client',
+              invoice.description || invoice.items?.[0]?.description || 'Facture de vente',
+              invoice.mode_paiement ? PAYMENT_MODE_OPTIONS.find((option) => option.value === invoice.mode_paiement)?.label || invoice.mode_paiement : '-',
+              invoice.numero_piece || '-',
+              `${invoice.subtotal > 0 && invoice.totalVat > 0 ? (Math.round(((invoice.totalVat / invoice.subtotal) * 100) * 100) / 100).toString().replace('.', ',') : '0'}%`,
+              formatMad(invoice.subtotal),
+              formatMad(invoice.totalVat),
+              formatMad(invoice.totalTTC),
+              '-',
+            ])
+        : [['-', '-', '-', 'Aucune vente sur cette periode', '-', '-', '-', '-', '-', '-', '-']],
+      theme: 'striped',
+      headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255] },
+      styles: { fontSize: 8.7, cellPadding: 2.2, textColor: [51, 65, 85], overflow: 'linebreak' },
+      alternateRowStyles: { fillColor: [239, 246, 255] },
+      columnStyles: {
+        0: { cellWidth: 22 },
+        1: { cellWidth: 24 },
+        2: { cellWidth: 40 },
+        3: { cellWidth: 54 },
+        4: { cellWidth: 26 },
+        5: { cellWidth: 22 },
+        6: { cellWidth: 16 },
+        7: { cellWidth: 20 },
+        8: { cellWidth: 20 },
+        9: { cellWidth: 20 },
+        10: { cellWidth: 26 },
+      },
+    });
+
+    decorateVatPdfPages(document, companyName);
 
     return document.output('blob');
   };
@@ -2967,8 +3226,8 @@ export function VatProvider({ children }: { children: React.ReactNode }) {
   );
 
   const currentMonthSummary = useMemo(
-    () => buildVatSummary(purchaseInvoices, salesInvoices, currentPeriod),
-    [currentPeriod, purchaseInvoices, salesInvoices],
+    () => buildVatSummary(purchaseInvoices, salesInvoices, currentPeriod, carryoverOverrides),
+    [carryoverOverrides, currentPeriod, purchaseInvoices, salesInvoices],
   );
 
   const value: VatContextType = {
@@ -2976,6 +3235,7 @@ export function VatProvider({ children }: { children: React.ReactNode }) {
     salesInvoices,
     manualSalesInvoices,
     salesAdjustments,
+    carryoverOverrides,
     analysisCacheEntries,
     analysisCredits,
     isLoading,
@@ -2993,6 +3253,8 @@ export function VatProvider({ children }: { children: React.ReactNode }) {
     excludeApplicationSalesInvoice,
     moveApplicationSalesInvoiceToDate,
     restoreApplicationSalesInvoice,
+    upsertCarryoverOverride,
+    deleteCarryoverOverride,
     extractPurchaseInvoicePdf,
     exportVatPdf,
     verifyAnalysisCredits,
