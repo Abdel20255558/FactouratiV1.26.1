@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { addDoc, collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -304,8 +304,89 @@ Aucun texte avant ou apres le JSON.`;
 
 const sanitizeSecretValue = (value: string) => value.trim().replace(/^['"]+|['"]+$/g, '');
 
+type AdminSectionId =
+  | 'overview'
+  | 'companies'
+  | 'credits'
+  | 'ai-settings'
+  | 'leads'
+  | 'blog'
+  | 'captures'
+  | 'support';
+
+const ADMIN_SECTION_PREFIX = '/admin/dashboard/';
+
+const ADMIN_SECTIONS: Array<{
+  id: AdminSectionId;
+  label: string;
+  description: string;
+  icon: typeof Building2;
+}> = [
+  {
+    id: 'overview',
+    label: "Vue d'ensemble",
+    description: 'KPI, acquisition et raccourcis admin',
+    icon: Building2,
+  },
+  {
+    id: 'companies',
+    label: 'Entreprises',
+    description: 'Abonnements, statuts et accès support',
+    icon: Users,
+  },
+  {
+    id: 'credits',
+    label: 'Credits TVA',
+    description: 'Recharges IA et suivi des analyses',
+    icon: Sparkles,
+  },
+  {
+    id: 'ai-settings',
+    label: 'IA TVA',
+    description: 'Configuration OpenAI et n8n',
+    icon: Shield,
+  },
+  {
+    id: 'leads',
+    label: 'Prospects',
+    description: 'Leads issus du generateur gratuit',
+    icon: FileText,
+  },
+  {
+    id: 'blog',
+    label: 'Blog',
+    description: 'Articles SEO, contenu et optimisation',
+    icon: FileText,
+  },
+  {
+    id: 'captures',
+    label: 'Captures',
+    description: 'Visuels homepage et galerie produit',
+    icon: Search,
+  },
+  {
+    id: 'support',
+    label: 'Support',
+    description: 'Historique des accès administrateur',
+    icon: LogIn,
+  },
+];
+
+const getAdminSectionFromPath = (pathname: string): AdminSectionId => {
+  const normalizedPath = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+  const slug = normalizedPath.startsWith(ADMIN_SECTION_PREFIX)
+    ? normalizedPath.slice(ADMIN_SECTION_PREFIX.length)
+    : '';
+  if (slug === 'content') {
+    return 'blog';
+  }
+  const matchedSection = ADMIN_SECTIONS.find((section) => section.id === slug);
+  return matchedSection?.id || 'overview';
+};
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, startSupportAccess, logout } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [companyVatCredits, setCompanyVatCredits] = useState<Record<string, CompanyVatCreditsSummary>>({});
@@ -336,6 +417,17 @@ export default function AdminDashboard() {
   });
   const [isSavingVatAiSettings, setIsSavingVatAiSettings] = useState(false);
   const [vatAiSettingsMessage, setVatAiSettingsMessage] = useState('');
+  const [companySearch, setCompanySearch] = useState('');
+  const [leadSearch, setLeadSearch] = useState('');
+
+  const activeSectionId = getAdminSectionFromPath(location.pathname);
+  const activeSection = ADMIN_SECTIONS.find((section) => section.id === activeSectionId) || ADMIN_SECTIONS[0];
+
+  useEffect(() => {
+    if (location.pathname === '/' || location.pathname === '/admin/dashboard') {
+      navigate(`${ADMIN_SECTION_PREFIX}overview`, { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
     loadDashboardData();
@@ -788,6 +880,43 @@ export default function AdminDashboard() {
     ).length
   };
 
+  const openAdminSection = (sectionId: AdminSectionId) => {
+    navigate(`${ADMIN_SECTION_PREFIX}${sectionId}`);
+  };
+
+  const normalizedCompanySearch = companySearch.trim().toLowerCase();
+  const filteredCompanies = normalizedCompanySearch
+    ? companies.filter((company) =>
+        [
+          company.name,
+          company.ownerEmail,
+          company.ice,
+          company.referralSource,
+          company.accountantName,
+          company.otherSource,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(normalizedCompanySearch)),
+      )
+    : companies;
+
+  const normalizedLeadSearch = leadSearch.trim().toLowerCase();
+  const filteredGeneratorLeads = normalizedLeadSearch
+    ? generatorLeads.filter((lead) =>
+        [
+          lead.companyName,
+          lead.phone,
+          lead.email,
+          lead.message,
+          lead.invoiceNumber,
+          lead.templateName,
+          lead.templateId,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(normalizedLeadSearch)),
+      )
+    : generatorLeads;
+
   const referralSourceData = () => {
     const sourceCounts: { [key: string]: number } = {};
 
@@ -871,9 +1000,81 @@ export default function AdminDashboard() {
 
                  
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-8 xl:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="space-y-5">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">Admin</p>
+              <h2 className="mt-2 text-xl font-bold text-gray-900">Dashboard organise</h2>
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+                Chaque espace a maintenant sa propre sous-page pour travailler plus proprement.
+              </p>
+            </div>
+
+            <nav className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+              <div className="space-y-2">
+                {ADMIN_SECTIONS.map((section) => {
+                  const Icon = section.icon;
+                  const isActive = section.id === activeSectionId;
+
+                  return (
+                    <button
+                      key={section.id}
+                      type="button"
+                      onClick={() => openAdminSection(section.id)}
+                      className={`flex w-full items-start gap-3 rounded-2xl px-4 py-3 text-left transition ${
+                        isActive
+                          ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-lg shadow-red-100'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className={`mt-0.5 rounded-xl p-2 ${isActive ? 'bg-white/15' : 'bg-gray-100 text-red-600'}`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-gray-900'}`}>{section.label}</p>
+                        <p className={`mt-1 text-xs leading-5 ${isActive ? 'text-red-50' : 'text-gray-500'}`}>{section.description}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </aside>
+
+          <div className="min-w-0 space-y-8">
+            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">Sous-page admin</p>
+                  <h2 className="mt-2 text-2xl font-bold text-gray-900">{activeSection.label}</h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-500">{activeSection.description}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-2xl bg-gray-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Entreprises</p>
+                    <p className="mt-1 text-lg font-bold text-gray-900">{stats.total}</p>
+                  </div>
+                  <div className="rounded-2xl bg-gray-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Pro</p>
+                    <p className="mt-1 text-lg font-bold text-gray-900">{stats.pro}</p>
+                  </div>
+                  <div className="rounded-2xl bg-gray-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Prospects</p>
+                    <p className="mt-1 text-lg font-bold text-gray-900">{generatorStats.leads.toLocaleString('fr-FR')}</p>
+                  </div>
+                  <div className="rounded-2xl bg-gray-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Support</p>
+                    <p className="mt-1 text-lg font-bold text-gray-900">{supportLogs.length}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {activeSectionId === 'overview' && (
+              <>
         {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-5">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
@@ -938,6 +1139,10 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+              </>
+            )}
+
+            {activeSectionId === 'ai-settings' && (
         <div className="mb-8 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
           <div className="border-b border-emerald-100 bg-gradient-to-r from-emerald-600 to-teal-700 px-6 py-5 text-white">
             <h3 className="text-lg font-semibold">Configuration IA pour analyse PDF TVA</h3>
@@ -1066,12 +1271,44 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Diagramme des sources d'acquisition */}
-        <div className="mb-8">
-          <ReferralSourceChart data={referralSourceData()} />
+            )}
+
+            {activeSectionId === 'overview' && (
+              <>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {ADMIN_SECTIONS.filter((section) => section.id !== 'overview').map((section) => {
+            const Icon = section.icon;
+
+            return (
+              <button
+                key={`shortcut-${section.id}`}
+                type="button"
+                onClick={() => openAdminSection(section.id)}
+                className="rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-red-200 hover:shadow-md"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-red-50 p-3 text-red-600">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">{section.label}</p>
+                    <p className="mt-1 text-xs leading-5 text-gray-500">{section.description}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="mb-8 bg-white rounded-xl shadow-sm border border-gray-200">
+        {/* Diagramme des sources d'acquisition */}
+        <div>
+          <ReferralSourceChart data={referralSourceData()} />
+        </div>
+              </>
+            )}
+
+            {activeSectionId === 'leads' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Prospects du generateur gratuit</h3>
@@ -1084,9 +1321,26 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {generatorLeads.length === 0 ? (
+          <div className="border-b border-gray-100 px-6 py-4">
+            <div className="relative max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={leadSearch}
+                onChange={(event) => setLeadSearch(event.target.value)}
+                placeholder="Rechercher un prospect, telephone, email, template..."
+                className="w-full rounded-xl border border-gray-300 py-3 pl-10 pr-4 text-sm text-gray-900 outline-none transition focus:border-teal-500"
+              />
+            </div>
+          </div>
+
+          {filteredGeneratorLeads.length === 0 ? (
             <div className="px-6 py-10 text-center">
-              <p className="text-gray-500">Aucun prospect generateur pour le moment</p>
+              <p className="text-gray-500">
+                {generatorLeads.length === 0
+                  ? 'Aucun prospect generateur pour le moment'
+                  : 'Aucun prospect ne correspond a cette recherche.'}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1111,7 +1365,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {generatorLeads.map((lead) => (
+                  {filteredGeneratorLeads.map((lead) => (
                     <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">{lead.companyName || 'Entreprise non renseignee'}</div>
@@ -1143,6 +1397,10 @@ export default function AdminDashboard() {
           )}
         </div>
 
+            )}
+
+            {activeSectionId === 'blog' && (
+        <>
         <section id="seo-organization" className="mb-8 overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white shadow-sm">
           <div className="grid gap-6 px-6 py-6 lg:grid-cols-[1fr_1.2fr] lg:items-center">
             <div>
@@ -1177,11 +1435,49 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        <HomepageScreenshotsManager />
-
         <BlogManager />
+        </>
+            )}
 
-        <div className="mb-8 bg-white rounded-xl shadow-sm border border-gray-200">
+            {activeSectionId === 'captures' && (
+        <>
+        <section className="mb-8 overflow-hidden rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-950 via-slate-900 to-slate-950 text-white shadow-sm">
+          <div className="grid gap-6 px-6 py-6 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-cyan-100">
+                <Search className="h-4 w-4" />
+                Homepage
+              </div>
+              <h3 className="mt-4 text-2xl font-black">Captures et galerie produit</h3>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-cyan-50/90">
+                Gere les captures affichees sur la homepage, l ordre des visuels et la qualite de la galerie produit
+                pour garder une presentation propre de Factourati.
+              </p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                <p className="text-sm font-bold">Galerie hero</p>
+                <p className="mt-2 text-xs leading-5 text-cyan-50/80">Organise les visuels principaux visibles sur la page d accueil.</p>
+              </div>
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                <p className="text-sm font-bold">Ordre des slides</p>
+                <p className="mt-2 text-xs leading-5 text-cyan-50/80">Priorise les ecrans les plus forts pour la conversion et la comprehension produit.</p>
+              </div>
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                <p className="text-sm font-bold">Cohérence visuelle</p>
+                <p className="mt-2 text-xs leading-5 text-cyan-50/80">Assure une meme qualite d image entre homepage, SEO et partage social.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <HomepageScreenshotsManager />
+        </>
+            )}
+
+            {activeSectionId === 'support' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Historique des accès support</h3>
@@ -1241,12 +1537,28 @@ export default function AdminDashboard() {
           )}
         </div>
 
+            )}
+
+            {activeSectionId === 'credits' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">Recharges Analyses IA</h3>
             <p className="mt-1 text-sm text-gray-500">
               Suivez les credits TVA restants et rechargez gratuitement un client si besoin.
             </p>
+          </div>
+
+          <div className="border-b border-gray-100 px-6 py-4">
+            <div className="relative max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={companySearch}
+                onChange={(event) => setCompanySearch(event.target.value)}
+                placeholder="Rechercher une entreprise, email, ICE..."
+                className="w-full rounded-xl border border-gray-300 py-3 pl-10 pr-4 text-sm text-gray-900 outline-none transition focus:border-emerald-500"
+              />
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -1271,7 +1583,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {companies.map((company) => {
+                {filteredCompanies.map((company) => {
                   const credits = companyVatCredits[company.id];
 
                   return (
@@ -1307,10 +1619,25 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Liste des entreprises */}
+            )}
+
+            {activeSectionId === 'companies' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">Liste des Entreprises</h3>
+          </div>
+
+          <div className="border-b border-gray-100 px-6 py-4">
+            <div className="relative max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={companySearch}
+                onChange={(event) => setCompanySearch(event.target.value)}
+                placeholder="Rechercher une entreprise, email, source ou ICE..."
+                className="w-full rounded-xl border border-gray-300 py-3 pl-10 pr-4 text-sm text-gray-900 outline-none transition focus:border-red-500"
+              />
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -1344,7 +1671,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {companies.map((company) => (
+                {filteredCompanies.map((company) => (
                   <tr key={company.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
@@ -1458,10 +1785,17 @@ export default function AdminDashboard() {
               </tbody>
             </table>
 
-            {companies.length === 0 && (
+            {filteredCompanies.length === 0 && (
               <div className="text-center py-12">
-                <p className="text-gray-500">Aucune entreprise enregistrée</p>
+                <p className="text-gray-500">
+                  {companies.length === 0
+                    ? 'Aucune entreprise enregistree'
+                    : 'Aucune entreprise ne correspond a cette recherche.'}
+                </p>
               </div>
+            )}
+          </div>
+        </div>
             )}
           </div>
         </div>
