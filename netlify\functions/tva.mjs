@@ -32,6 +32,7 @@ const TVA_COLLECTION = 'factures_achat_tva';
 const SALES_COLLECTION = 'invoices';
 const SALES_MANUAL_COLLECTION = 'factures_vente_tva_manuelles';
 const SALES_ADJUSTMENTS_COLLECTION = 'factures_vente_tva_ajustements';
+const TVA_CARRYOVER_OVERRIDES_COLLECTION = 'factures_tva_credits_reportes';
 const TVA_ANALYSIS_CACHE_COLLECTION = 'tva_analyses_cache';
 const TVA_ANALYSIS_CREDITS_COLLECTION = 'tva_analyses_credits';
 const TVA_ANALYSIS_TRANSACTIONS_COLLECTION = 'tva_analyses_transactions';
@@ -634,7 +635,9 @@ const formatMad = (value) =>
   `${new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(Number.isFinite(Number(value)) ? Number(value) : 0)} MAD`;
+  })
+    .format(Number.isFinite(Number(value)) ? Number(value) : 0)
+    .replace(/[\u202F\u00A0]/g, ' ')} MAD`;
 
 const jsonResponse = (payload, status = 200) =>
   new Response(JSON.stringify(payload), {
@@ -700,6 +703,40 @@ const getRoutePath = (requestUrl) => {
 
 const getCurrentVatPeriod = (date = new Date()) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+const VAT_PERIOD_PATTERN = /^\d{4}-\d{2}$/;
+
+const isValidVatPeriod = (period) => VAT_PERIOD_PATTERN.test(String(period || '').trim());
+
+const getNextVatPeriod = (period) => {
+  if (!isValidVatPeriod(period)) {
+    return null;
+  }
+
+  const [yearPart, monthPart] = String(period).split('-').map(Number);
+  const baseDate = new Date(yearPart, monthPart - 1, 1);
+  baseDate.setMonth(baseDate.getMonth() + 1);
+  return getCurrentVatPeriod(baseDate);
+};
+
+const getEarliestVatPeriod = (purchaseInvoices, salesInvoices, fallbackPeriod) => {
+  const periods = [fallbackPeriod];
+
+  purchaseInvoices.forEach((invoice) => {
+    const candidate = String(invoice?.date || '').slice(0, 7);
+    if (isValidVatPeriod(candidate)) {
+      periods.push(candidate);
+    }
+  });
+
+  salesInvoices.forEach((invoice) => {
+    const candidate = String(invoice?.date || '').slice(0, 7);
+    if (isValidVatPeriod(candidate)) {
+      periods.push(candidate);
+    }
+  });
+
+  return periods.sort()[0] || fallbackPeriod;
+};
 
 const getPeriodRange = (period) => {
   const [yearPart, monthPart] = String(period || '').split('-');
@@ -733,6 +770,24 @@ const getVatDeadlineLabel = (period) => {
     year: 'numeric',
   });
 };
+
+const buildEmptyVatSummary = (period) => ({
+  periode: period,
+  deductibleVat: 0,
+  collectedVat: 0,
+  balanceBeforeCarryover: 0,
+  carryoverCredit: 0,
+  balance: 0,
+  totalInvoices: 0,
+  purchaseInvoicesCount: 0,
+  salesInvoicesCount: 0,
+  purchaseTotalHT: 0,
+  purchaseTotalTTC: 0,
+  salesTotalHT: 0,
+  salesTotalTTC: 0,
+  deadlineLabel: getVatDeadlineLabel(period),
+  status: 'settled',
+});
 
 const getPeriodLabel = (period) => {
   const [year, month] = String(period || '').split('-').map(Number);
@@ -1197,32 +1252,59 @@ const removeVatAnalysisCredits = async ({
   });
 };
 
-const buildVatSummary = (purchaseInvoices, salesInvoices, period) => {
-  const filteredPurchases = purchaseInvoices.filter((invoice) => isDateInPeriod(invoice.date, period));
-  const filteredSales = salesInvoices.filter((invoice) => isDateInPeriod(invoice.date, period));
-  const deductibleVat = roundToTwo(filteredPurchases.reduce((sum, invoice) => sum + Number(invoice.montant_tva || 0), 0));
-  const collectedVat = roundToTwo(filteredSales.reduce((sum, invoice) => sum + Number(invoice.totalVat || 0), 0));
-  const purchaseTotalHT = roundToTwo(filteredPurchases.reduce((sum, invoice) => sum + Number(invoice.montant_ht || 0), 0));
-  const purchaseTotalTTC = roundToTwo(filteredPurchases.reduce((sum, invoice) => sum + Number(invoice.montant_ttc || 0), 0));
-  const salesTotalHT = roundToTwo(filteredSales.reduce((sum, invoice) => sum + Number(invoice.subtotal || 0), 0));
-  const salesTotalTTC = roundToTwo(filteredSales.reduce((sum, invoice) => sum + Number(invoice.totalTTC || 0), 0));
-  const balance = roundToTwo(collectedVat - deductibleVat);
+const buildVatSummary = (purchaseInvoices, salesInvoices, period, carryoverOverrides = []) => {
+  const normalizedPeriod = isValidVatPeriod(period) ? period : getCurrentVatPeriod();
+  const earliestPeriod = getEarliestVatPeriod(purchaseInvoices, salesInvoices, normalizedPeriod);
+  const carryoverOverrideMap = new Map(
+    carryoverOverrides
+      .filter((override) => isValidVatPeriod(String(override?.period || '')))
+      .map((override) => [
+        override.period,
+        roundToTwo(Math.max(0, Number(override?.amount || 0))),
+      ]),
+  );
+  let cursorPeriod = earliestPeriod;
+  let carryoverCredit = 0;
+  let summary = buildEmptyVatSummary(normalizedPeriod);
 
-  return {
-    periode: period,
-    deductibleVat,
-    collectedVat,
-    balance,
-    totalInvoices: filteredPurchases.length + filteredSales.length,
-    purchaseInvoicesCount: filteredPurchases.length,
-    salesInvoicesCount: filteredSales.length,
-    purchaseTotalHT,
-    purchaseTotalTTC,
-    salesTotalHT,
-    salesTotalTTC,
-    deadlineLabel: getVatDeadlineLabel(period),
-    status: balance > 0 ? 'due' : 'credit',
-  };
+  while (cursorPeriod && cursorPeriod <= normalizedPeriod) {
+    const filteredPurchases = purchaseInvoices.filter((invoice) => isDateInPeriod(invoice.date, cursorPeriod));
+    const filteredSales = salesInvoices.filter((invoice) => isDateInPeriod(invoice.date, cursorPeriod));
+    const deductibleVat = roundToTwo(filteredPurchases.reduce((sum, invoice) => sum + Number(invoice.montant_tva || 0), 0));
+    const collectedVat = roundToTwo(filteredSales.reduce((sum, invoice) => sum + Number(invoice.totalVat || 0), 0));
+    const purchaseTotalHT = roundToTwo(filteredPurchases.reduce((sum, invoice) => sum + Number(invoice.montant_ht || 0), 0));
+    const purchaseTotalTTC = roundToTwo(filteredPurchases.reduce((sum, invoice) => sum + Number(invoice.montant_ttc || 0), 0));
+    const salesTotalHT = roundToTwo(filteredSales.reduce((sum, invoice) => sum + Number(invoice.subtotal || 0), 0));
+    const salesTotalTTC = roundToTwo(filteredSales.reduce((sum, invoice) => sum + Number(invoice.totalTTC || 0), 0));
+    const balanceBeforeCarryover = roundToTwo(collectedVat - deductibleVat);
+    const appliedCarryoverCredit = carryoverOverrideMap.has(cursorPeriod)
+      ? carryoverOverrideMap.get(cursorPeriod) || 0
+      : carryoverCredit;
+    const balance = roundToTwo(balanceBeforeCarryover - appliedCarryoverCredit);
+
+    summary = {
+      periode: cursorPeriod,
+      deductibleVat,
+      collectedVat,
+      balanceBeforeCarryover,
+      carryoverCredit: appliedCarryoverCredit,
+      balance,
+      totalInvoices: filteredPurchases.length + filteredSales.length,
+      purchaseInvoicesCount: filteredPurchases.length,
+      salesInvoicesCount: filteredSales.length,
+      purchaseTotalHT,
+      purchaseTotalTTC,
+      salesTotalHT,
+      salesTotalTTC,
+      deadlineLabel: getVatDeadlineLabel(cursorPeriod),
+      status: balance > 0 ? 'due' : balance < 0 ? 'credit' : 'settled',
+    };
+
+    carryoverCredit = balance < 0 ? roundToTwo(Math.abs(balance)) : 0;
+    cursorPeriod = cursorPeriod === normalizedPeriod ? null : getNextVatPeriod(cursorPeriod);
+  }
+
+  return summary;
 };
 
 const flattenOpenAIText = (payload) => {
@@ -2431,16 +2513,17 @@ const extractFromPdfWithConfiguredProvider = async (file, options = {}) => {
 };
 
 const createSummaryPayload = async (entrepriseId, period) => {
-  const [purchaseInvoices, applicationSalesInvoices, manualSalesInvoices, salesAdjustments] = await Promise.all([
+  const [purchaseInvoices, applicationSalesInvoices, manualSalesInvoices, salesAdjustments, carryoverOverrides] = await Promise.all([
     getCollectionRows(TVA_COLLECTION, entrepriseId),
     getCollectionRows(SALES_COLLECTION, entrepriseId),
     getCollectionRows(SALES_MANUAL_COLLECTION, entrepriseId),
     getCollectionRows(SALES_ADJUSTMENTS_COLLECTION, entrepriseId),
+    getCollectionRows(TVA_CARRYOVER_OVERRIDES_COLLECTION, entrepriseId),
   ]);
 
   const normalizedPeriod = period || getCurrentVatPeriod();
   const salesInvoices = resolveSalesVatInvoices(applicationSalesInvoices, manualSalesInvoices, salesAdjustments);
-  const summary = buildVatSummary(purchaseInvoices, salesInvoices, normalizedPeriod);
+  const summary = buildVatSummary(purchaseInvoices, salesInvoices, normalizedPeriod, carryoverOverrides);
 
   return {
     period: normalizedPeriod,
@@ -2450,48 +2533,235 @@ const createSummaryPayload = async (entrepriseId, period) => {
   };
 };
 
-const buildPdfBuffer = ({ period, summary, purchaseInvoices, salesInvoices }) => {
-  const document = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const recapRows = [
-    ...purchaseInvoices.map((invoice) => [new Date(invoice.date).toLocaleDateString('fr-FR'), 'Achat', invoice.fournisseur, invoice.description, formatMad(invoice.montant_ht), formatMad(invoice.montant_tva), formatMad(invoice.montant_ttc)]),
-    ...salesInvoices.map((invoice) => [new Date(invoice.date).toLocaleDateString('fr-FR'), 'Vente', invoice.clientName || invoice.client?.name || 'Client', invoice.description || invoice.items?.[0]?.description || invoice.number || 'Facture de vente', formatMad(invoice.subtotal), formatMad(invoice.totalVat), formatMad(invoice.totalTTC)]),
-  ].sort((left, right) => right[0].localeCompare(left[0]));
+const getVatPdfInitials = (value) =>
+  String(value || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || 'FT';
+
+const fetchImageAsDataUrl = async (url) => {
+  if (!url) return null;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const contentType = response.headers.get('content-type') || 'image/png';
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return `data:${contentType};base64,${buffer.toString('base64')}`;
+  } catch {
+    return null;
+  }
+};
+
+const decorateVatPdfPages = (document, companyName) => {
+  const pageCount = document.getNumberOfPages();
+  const pageWidth = document.internal.pageSize.getWidth();
+  const pageHeight = document.internal.pageSize.getHeight();
+
+  for (let page = 1; page <= pageCount; page += 1) {
+    document.setPage(page);
+    document.setDrawColor(226, 232, 240);
+    document.setLineWidth(0.35);
+    document.line(12, pageHeight - 12, pageWidth - 12, pageHeight - 12);
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(8.5);
+    document.setTextColor(100, 116, 139);
+    document.text(companyName || 'Factourati', 12, pageHeight - 7.2);
+    document.text(`Page ${page} / ${pageCount}`, pageWidth - 12, pageHeight - 7.2, { align: 'right' });
+  }
+};
+
+const buildPdfBuffer = async ({ period, summary, purchaseInvoices, salesInvoices, companyName, companyLogoUrl }) => {
+  const document = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const resolvedCompanyName = String(companyName || '').trim() || 'Factourati';
+  const logoDataUrl = await fetchImageAsDataUrl(companyLogoUrl);
+  const pageWidth = document.internal.pageSize.getWidth();
+  const paymentLabels = {
+    virement: 'Virement',
+    cheque: 'Cheque',
+    effet: 'Effet',
+    paiement_en_ligne: 'Paiement en ligne',
+    carte: 'Carte',
+    especes: 'Especes',
+    autre: 'Autre',
+  };
+  let cursorY = 18;
+
+  document.setDrawColor(226, 232, 240);
+  document.setFillColor(248, 250, 252);
+  document.roundedRect(12, 10, pageWidth - 24, 26, 5, 5, 'FD');
+
+  if (logoDataUrl) {
+    document.addImage(logoDataUrl, 'PNG', 16, 13, 18, 18, undefined, 'FAST');
+  } else {
+    document.setFillColor(15, 118, 110);
+    document.roundedRect(16, 13, 18, 18, 4, 4, 'F');
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(10);
+    document.setTextColor(255, 255, 255);
+    document.text(getVatPdfInitials(resolvedCompanyName), 25, 24.2, { align: 'center' });
+  }
 
   document.setFont('helvetica', 'bold');
   document.setFontSize(18);
-  document.text('Recapitulatif TVA - Factourati', 14, 18);
+  document.setTextColor(15, 23, 42);
+  document.text('Recapitulatif TVA', 39, cursorY);
   document.setFont('helvetica', 'normal');
-  document.setFontSize(11);
-  document.text(`Periode: ${getPeriodLabel(period)}`, 14, 26);
-  document.text(`Declaration DGI avant le ${summary.deadlineLabel}`, 14, 32);
-  document.setFont('helvetica', 'bold');
-  document.setFontSize(13);
-  document.text(summary.balance > 0 ? `TVA a payer: ${formatMad(summary.balance)}` : `Credit TVA: ${formatMad(Math.abs(summary.balance))}`, 14, 42);
+  document.setFontSize(10.5);
+  document.setTextColor(71, 85, 105);
+  document.text(resolvedCompanyName, 39, cursorY + 6.2);
+  document.text(`Periode: ${getPeriodLabel(period)}`, pageWidth - 14, cursorY, { align: 'right' });
+  document.text(`Genere le ${new Date().toLocaleDateString('fr-FR')}`, pageWidth - 14, cursorY + 6.2, { align: 'right' });
+
+  cursorY = 48;
+
+  const summaryCards = [
+    { title: 'TVA achats', value: formatMad(summary.deductibleVat), tone: [13, 148, 136] },
+    { title: 'TVA ventes', value: formatMad(summary.collectedVat), tone: [37, 99, 235] },
+    {
+      title: summary.balance > 0 ? 'TVA a payer' : summary.balance < 0 ? 'Credit TVA' : 'Solde TVA',
+      value: formatMad(Math.abs(summary.balance)),
+      tone: summary.balance > 0 ? [5, 150, 105] : summary.balance < 0 ? [220, 38, 38] : [71, 85, 105],
+    },
+    { title: 'Factures', value: String(summary.totalInvoices), tone: [15, 23, 42] },
+  ];
+  const cardGap = 4;
+  const cardWidth = (pageWidth - 24 - cardGap * 3) / 4;
+
+  summaryCards.forEach((card, index) => {
+    const cardX = 12 + index * (cardWidth + cardGap);
+    document.setFillColor(255, 255, 255);
+    document.setDrawColor(226, 232, 240);
+    document.roundedRect(cardX, cursorY, cardWidth, 20, 4, 4, 'FD');
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(9);
+    document.setTextColor(100, 116, 139);
+    document.text(card.title.toUpperCase(), cardX + 3.5, cursorY + 6);
+    document.setFontSize(14);
+    document.setTextColor(...card.tone);
+    document.text(card.value, cardX + 3.5, cursorY + 14);
+  });
+
+  cursorY += 26;
 
   autoTable(document, {
-    startY: 50,
-    head: [['Indicateur', 'Montant']],
+    startY: cursorY,
+    head: [['Indicateur', 'Montant', 'Details']],
     body: [
-      ['TVA sur achats (deductible)', formatMad(summary.deductibleVat)],
-      ['TVA sur ventes (collectee)', formatMad(summary.collectedVat)],
-      ['Solde TVA', formatMad(summary.balance)],
-      ['Achats HT', formatMad(summary.purchaseTotalHT)],
-      ['Ventes HT', formatMad(summary.salesTotalHT)],
-      ['Nombre total de factures', String(summary.totalInvoices)],
+      ['TVA deductible', formatMad(summary.deductibleVat), `${summary.purchaseInvoicesCount} achat(s)`],
+      ['TVA collectee', formatMad(summary.collectedVat), `${summary.salesInvoicesCount} vente(s)`],
+      ['Solde du mois', formatMad(summary.balanceBeforeCarryover), 'Avant application du credit reporte'],
+      ['Credit reporte', formatMad(summary.carryoverCredit), summary.carryoverCredit > 0 ? 'Credit du mois precedent applique' : 'Aucun credit reporte'],
+      ['Solde TVA final', formatMad(summary.balance), `Declaration DGI avant le ${summary.deadlineLabel}`],
+      ['Achats HT', formatMad(summary.purchaseTotalHT), `Achats TTC: ${formatMad(summary.purchaseTotalTTC)}`],
+      ['Ventes HT', formatMad(summary.salesTotalHT), `Ventes TTC: ${formatMad(summary.salesTotalTTC)}`],
     ],
     theme: 'grid',
-    headStyles: { fillColor: [13, 148, 136] },
-    styles: { fontSize: 10 },
+    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
+    styles: { fontSize: 9.2, cellPadding: 2.8, textColor: [51, 65, 85] },
+    columnStyles: {
+      0: { cellWidth: 52, fontStyle: 'bold' },
+      1: { cellWidth: 42 },
+      2: { cellWidth: 'auto' },
+    },
   });
 
-  autoTable(document, {
-    startY: document.lastAutoTable.finalY + 8,
-    head: [['Date', 'Type', 'Tiers', 'Description', 'HT', 'TVA', 'TTC']],
-    body: recapRows.length ? recapRows : [['-', '-', '-', 'Aucune ecriture sur cette periode', '-', '-', '-']],
+  const purchasesStartY = document.lastAutoTable.finalY + 8;
+  document.setFont('helvetica', 'bold');
+  document.setFontSize(13);
+  document.setTextColor(234, 88, 12);
+  document.text('Tableau des achats', 12, purchasesStartY - 3);
+
+    autoTable(document, {
+      startY: purchasesStartY,
+    head: [['Date', 'Facture', 'Tiers', 'Description', 'Paiement', 'Piece', 'Taux TVA', 'HT', 'TVA', 'TTC', 'ICE']],
+    body: purchaseInvoices.length
+      ? purchaseInvoices
+          .slice()
+          .sort((left, right) => right.date.localeCompare(left.date))
+          .map((invoice) => [
+            new Date(invoice.date).toLocaleDateString('fr-FR'),
+            invoice.numero_facture || '-',
+            invoice.fournisseur,
+            invoice.description || '-',
+            paymentLabels[invoice.mode_paiement] || invoice.mode_paiement || '-',
+            invoice.numero_piece || '-',
+            `${invoice.taux_tva}%`,
+            formatMad(invoice.montant_ht),
+            formatMad(invoice.montant_tva),
+            formatMad(invoice.montant_ttc),
+            invoice.ice_fournisseur || '-',
+          ])
+      : [['-', '-', '-', 'Aucun achat sur cette periode', '-', '-', '-', '-', '-', '-', '-']],
     theme: 'striped',
-    headStyles: { fillColor: [15, 23, 42] },
-    styles: { fontSize: 9, cellPadding: 2.4 },
+    headStyles: { fillColor: [234, 88, 12], textColor: [255, 255, 255] },
+    styles: { fontSize: 8.7, cellPadding: 2.2, textColor: [51, 65, 85], overflow: 'linebreak' },
+    alternateRowStyles: { fillColor: [255, 247, 237] },
+    columnStyles: {
+      0: { cellWidth: 22 },
+      1: { cellWidth: 24 },
+      2: { cellWidth: 40 },
+      3: { cellWidth: 54 },
+      4: { cellWidth: 26 },
+      5: { cellWidth: 22 },
+      6: { cellWidth: 16 },
+      7: { cellWidth: 20 },
+      8: { cellWidth: 20 },
+      9: { cellWidth: 20 },
+      10: { cellWidth: 26 },
+    },
   });
+
+  const salesStartY = document.lastAutoTable.finalY + 10;
+  document.setFont('helvetica', 'bold');
+  document.setFontSize(13);
+  document.setTextColor(37, 99, 235);
+  document.text('Tableau des ventes', 12, salesStartY - 3);
+
+  autoTable(document, {
+    startY: salesStartY,
+    head: [['Date', 'Facture', 'Tiers', 'Description', 'Paiement', 'Piece', 'Taux TVA', 'HT', 'TVA', 'TTC', 'ICE']],
+    body: salesInvoices.length
+      ? salesInvoices
+          .slice()
+          .sort((left, right) => right.date.localeCompare(left.date))
+          .map((invoice) => [
+            new Date(invoice.date).toLocaleDateString('fr-FR'),
+            invoice.number || '-',
+            invoice.clientName || invoice.client?.name || 'Client',
+            invoice.description || invoice.items?.[0]?.description || 'Facture de vente',
+            invoice.mode_paiement ? paymentLabels[invoice.mode_paiement] || invoice.mode_paiement : '-',
+            invoice.numero_piece || '-',
+            `${invoice.subtotal > 0 && invoice.totalVat > 0 ? (Math.round(((invoice.totalVat / invoice.subtotal) * 100) * 100) / 100).toString().replace('.', ',') : '0'}%`,
+            formatMad(invoice.subtotal),
+            formatMad(invoice.totalVat),
+            formatMad(invoice.totalTTC),
+            '-',
+          ])
+      : [['-', '-', '-', 'Aucune vente sur cette periode', '-', '-', '-', '-', '-', '-', '-']],
+    theme: 'striped',
+    headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255] },
+    styles: { fontSize: 8.7, cellPadding: 2.2, textColor: [51, 65, 85], overflow: 'linebreak' },
+    alternateRowStyles: { fillColor: [239, 246, 255] },
+    columnStyles: {
+      0: { cellWidth: 22 },
+      1: { cellWidth: 24 },
+      2: { cellWidth: 40 },
+      3: { cellWidth: 54 },
+      4: { cellWidth: 26 },
+      5: { cellWidth: 22 },
+      6: { cellWidth: 16 },
+      7: { cellWidth: 20 },
+      8: { cellWidth: 20 },
+      9: { cellWidth: 20 },
+      10: { cellWidth: 26 },
+    },
+  });
+
+  decorateVatPdfPages(document, resolvedCompanyName);
 
   return Buffer.from(document.output('arraybuffer'));
 };
@@ -2637,7 +2907,9 @@ const handleExportPdf = async (request) => {
 
   const period = new URL(request.url).searchParams.get('periode') || getCurrentVatPeriod();
   const payload = await createSummaryPayload(entrepriseId, period);
-  const pdfBuffer = buildPdfBuffer(payload);
+  const companyName = String(request.headers.get('x-factourati-company-name') || '').trim();
+  const companyLogoUrl = String(request.headers.get('x-factourati-company-logo') || '').trim();
+  const pdfBuffer = await buildPdfBuffer({ ...payload, companyName, companyLogoUrl });
 
   return new Response(pdfBuffer, {
     status: 200,
@@ -2676,7 +2948,7 @@ const handleBuyCredits = async (request) => {
 
   const body = await request.json();
   const packType = String(body?.type || '').trim();
-  const pack = TVA_ANALYSIS_PACKS[packType];
+  const pack = TVA_ANALYSIS_PACKS.find((item) => item.type === packType);
 
   if (!pack) {
     return jsonResponse({ message: "Le pack d'analyses IA est invalide." }, 400);
@@ -2687,7 +2959,7 @@ const handleBuyCredits = async (request) => {
     entrepriseId,
     transactionType: packType,
     creditsToAdd: pack.credits,
-    amountPaid: pack.amount,
+    amountPaid: pack.price,
     rechargeParAdmin: false,
     adminId: null,
     note: body?.paiement_data?.note || '',
