@@ -187,6 +187,17 @@ export interface VatAnalysisCacheEntry {
   created_at: string;
 }
 
+export interface VatCarryoverOverride {
+  id: string;
+  user_id: string;
+  entrepriseId: string;
+  period: string;
+  amount: number;
+  note?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ManualSalesVatInvoice {
   id: string;
   user_id: string;
@@ -263,6 +274,8 @@ export interface VatSummary {
   periode: string;
   deductibleVat: number;
   collectedVat: number;
+  balanceBeforeCarryover: number;
+  carryoverCredit: number;
   balance: number;
   totalInvoices: number;
   purchaseInvoicesCount: number;
@@ -272,7 +285,7 @@ export interface VatSummary {
   salesTotalHT: number;
   salesTotalTTC: number;
   deadlineLabel: string;
-  status: 'due' | 'credit';
+  status: 'due' | 'credit' | 'settled';
 }
 
 export interface VatHistoryPoint {
