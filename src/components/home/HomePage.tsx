@@ -118,6 +118,12 @@ const quickPoints = [
   'Factures, devis, stock, commandes et TVA',
 ];
 
+const freeGeneratorHighlights = [
+  'Facture PDF prete a imprimer',
+  'Utilisable sans compte',
+  'Passez a Factourati quand vous voulez',
+];
+
 const faqs = [
   {
     question: 'Factourati convient-il aux PME marocaines ?',
@@ -213,7 +219,7 @@ export default function HomePage() {
   }, [currentSlide, screenshots]);
 
   const homeDescription =
-    'Factourati est une solution ERP marocaine pour gerer factures, devis, commandes, stock, clients, fournisseurs et analyser la TVA avec IA. Essayez gratuitement.';
+    'Factourati est une solution ERP marocaine pour gerer factures, devis, commandes, stock, clients, fournisseurs et analyser la TVA avec IA. Essayez gratuitement ou utilisez le generateur de facture gratuit.';
 
   const homeSchema = useMemo(
     () => [
@@ -252,7 +258,7 @@ export default function HomePage() {
       <div className="bg-[linear-gradient(180deg,#f7fffd_0%,#ffffff_30%,#eefcf7_100%)] text-slate-900">
         <section className="relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.24),transparent_30%),radial-gradient(circle_at_15%_15%,rgba(14,165,233,0.20),transparent_35%),radial-gradient(circle_at_70%_80%,rgba(16,185,129,0.16),transparent_28%),linear-gradient(180deg,#f5fffd_0%,#ecfeff_40%,#ffffff_100%)]" />
-          <div className="relative mx-auto grid max-w-7xl gap-10 px-4 pb-16 pt-10 sm:px-6 sm:pb-20 sm:pt-14 lg:grid-cols-[1fr_1.04fr] lg:gap-16 lg:px-8 lg:pb-32 lg:pt-24">
+          <div className="relative mx-auto grid max-w-7xl gap-10 px-4 pb-16 pt-10 sm:px-6 sm:pb-20 sm:pt-14 lg:grid-cols-[0.94fr_1.1fr] lg:gap-16 lg:px-8 lg:pb-32 lg:pt-24">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
@@ -264,15 +270,15 @@ export default function HomePage() {
                 Nouveau : Analyse TVA intelligente avec IA
               </div>
 
-              <h1 className="mt-5 text-4xl font-black leading-[0.98] tracking-tight text-slate-950 sm:mt-6 sm:text-5xl lg:text-7xl">
+              <h1 className="mt-5 text-4xl font-black leading-[0.98] tracking-tight text-slate-950 sm:mt-6 sm:text-[2.75rem] lg:text-[4.15rem]">
                 Factourati - Solution ERP Marocaine pour gerer votre entreprise simplement
               </h1>
 
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-700 sm:mt-7 sm:text-xl sm:leading-9">
+              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-700 sm:mt-7 sm:text-lg sm:leading-8">
                 Creez vos factures, devis, commandes, gerez votre stock, vos clients, vos fournisseurs et analysez votre TVA avec l intelligence artificielle.
               </p>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Link
                   to="/login?mode=register"
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-400 px-6 py-3.5 text-base font-bold text-white shadow-xl shadow-cyan-200 transition hover:scale-[1.01] sm:px-7 sm:py-4.5 sm:text-lg"
@@ -286,6 +292,19 @@ export default function HomePage() {
                 >
                   Voir les fonctionnalites
                 </a>
+                <Link
+                  to="/generateur-facture"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/90 px-6 py-3.5 text-base font-semibold text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 sm:px-7 sm:py-4.5 sm:text-lg"
+                >
+                  Generateur facture gratuit
+                  <ArrowRight className="h-5 w-5" />
+                </Link>
+                <Link
+                  to="/tarifs"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-950 px-6 py-3.5 text-base font-semibold text-white transition hover:bg-slate-800 sm:px-7 sm:py-4.5 sm:text-lg"
+                >
+                  Voir les tarifs
+                </Link>
               </div>
 
               <div className="mt-8 grid gap-3 sm:mt-10 sm:grid-cols-2">
@@ -336,7 +355,11 @@ export default function HomePage() {
 
                 <div className="grid gap-5 p-6">
                   <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">
-                    <img src={featuredScreenshot.imageUrl} alt={featuredScreenshot.title} className="h-80 w-full object-cover sm:h-[24rem] lg:h-[26rem]" />
+                    <img
+                      src={featuredScreenshot.imageUrl}
+                      alt={featuredScreenshot.title}
+                      className="h-[22rem] w-full object-cover sm:h-[26rem] lg:h-[31rem]"
+                    />
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
@@ -370,6 +393,85 @@ export default function HomePage() {
                 </div>
               </div>
             </motion.div>
+          </div>
+        </section>
+
+        <section className="bg-white/70 py-12 text-slate-900">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="overflow-hidden rounded-[2rem] border border-emerald-100 bg-[linear-gradient(135deg,#f0fdf4_0%,#ecfeff_45%,#ffffff_100%)] p-6 shadow-sm lg:p-8">
+              <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/90 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">
+                    <FileText className="h-4 w-4" />
+                    Facture gratuite
+                  </div>
+                  <h2 className="mt-4 max-w-2xl text-2xl font-black text-slate-950 sm:text-[2.15rem]">
+                    Creez une facture gratuite en quelques minutes
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+                    Un lien direct pour preparer une facture propre, rapide et imprimable. Quand vous voulez aller plus loin,
+                    Factourati vous attend avec clients, devis, stock, paiements et TVA IA.
+                  </p>
+
+                  <div className="mt-5 flex flex-wrap gap-2.5">
+                    {['Sans compte', 'PDF imprimable', 'Simple et rapide'].map((item) => (
+                      <span
+                        key={item}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-white bg-white/90 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm"
+                      >
+                        <BadgeCheck className="h-4 w-4 text-emerald-600" />
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <Link
+                      to="/generateur-facture"
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-emerald-100 transition hover:scale-[1.01]"
+                    >
+                      Ouvrir le generateur gratuit
+                      <ArrowRight className="h-5 w-5" />
+                    </Link>
+                    <Link
+                      to="/tarifs"
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-base font-semibold text-slate-800 transition hover:border-cyan-300 hover:text-cyan-700"
+                    >
+                      Voir les tarifs
+                    </Link>
+                    <Link
+                      to="/login?mode=register"
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-base font-semibold text-slate-800 transition hover:border-emerald-300 hover:text-emerald-700"
+                    >
+                      Tester la plateforme complete
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="rounded-[1.7rem] border border-white bg-white/90 p-5 shadow-lg shadow-emerald-100/40">
+                  <div className="rounded-[1.4rem] bg-[linear-gradient(135deg,#052e2b_0%,#0f766e_50%,#0891b2_100%)] p-5 text-white">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-100/85">Acces rapide</p>
+                    <h3 className="mt-3 text-2xl font-black">Generateur de facture gratuit</h3>
+                    <p className="mt-3 text-sm leading-7 text-cyan-50/90">
+                      Pour les independants, TPE et equipes qui veulent une facture rapide avant de passer a une vraie gestion complete.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    {freeGeneratorHighlights.map((item) => (
+                      <div key={item} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3.5">
+                        <div className="flex items-start gap-3">
+                          <div className="rounded-2xl bg-gradient-to-br from-emerald-100 to-cyan-100 p-2 text-emerald-700">
+                            <CheckCircle2 className="h-4 w-4" />
+                          </div>
+                          <p className="text-sm font-semibold leading-6 text-slate-800">{item}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
